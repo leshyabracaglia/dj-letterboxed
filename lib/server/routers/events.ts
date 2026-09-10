@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 
-import { events, logs } from "../../db/schema";
+import { events, reviews } from "../../db/schema";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
 
 export const eventsRouter = router({
@@ -28,9 +28,9 @@ export const eventsRouter = router({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      const eventLogs = await ctx.db.query.logs.findMany({
-        where: eq(logs.eventId, event.id),
-        orderBy: desc(logs.seenAt),
+      const eventLogs = await ctx.db.query.reviews.findMany({
+        where: eq(reviews.eventId, event.id),
+        orderBy: desc(reviews.seenAt),
         with: { user: true, dj: true },
       });
 

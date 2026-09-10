@@ -19,7 +19,8 @@ export async function createContext({ req }: { req: Request }) {
       secretKey: process.env.CLERK_SECRET_KEY!,
     });
     return { db, clerkUserId: verified.sub };
-  } catch {
+  } catch (err) {
+    console.error("[createContext] token verification failed:", err);
     return { db, clerkUserId: null as string | null };
   }
 }

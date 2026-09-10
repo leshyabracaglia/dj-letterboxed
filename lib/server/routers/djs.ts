@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { avg, count, desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 
-import { djs, logs } from "../../db/schema";
+import { djs, reviews } from "../../db/schema";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
 
 function slugify(name: string) {
@@ -34,12 +34,12 @@ export const djsRouter = router({
 
       const [[stats], recentLogs] = await Promise.all([
         ctx.db
-          .select({ avgRating: avg(logs.ratingHalfStars), logCount: count() })
-          .from(logs)
-          .where(eq(logs.djId, dj.id)),
-        ctx.db.query.logs.findMany({
-          where: eq(logs.djId, dj.id),
-          orderBy: desc(logs.seenAt),
+          .select({ avgRating: avg(reviews.ratingHalfStars), logCount: count() })
+          .from(reviews)
+          .where(eq(reviews.djId, dj.id)),
+        ctx.db.query.reviews.findMany({
+          where: eq(reviews.djId, dj.id),
+          orderBy: desc(reviews.seenAt),
           limit: 25,
           with: { user: true, event: true },
         }),

@@ -2,12 +2,12 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq, lt } from "drizzle-orm";
 import { z } from "zod";
 
-import { logs, users } from "../../db/schema";
+import { reviews, users } from "../../db/schema";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
 
 const crowdVibeSchema = z.enum(["electric", "good", "average", "dead"]);
 
-export const logsRouter = router({
+export const reviewsRouter = router({
   create: protectedProcedure
     .input(
       z.object({
@@ -22,7 +22,7 @@ export const logsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const [created] = await ctx.db
-        .insert(logs)
+        .insert(reviews)
         .values({ ...input, userId: ctx.user.id })
         .returning();
       return created;
@@ -41,15 +41,15 @@ export const logsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
-      const [existing] = await ctx.db.select().from(logs).where(eq(logs.id, id)).limit(1);
+      const [existing] = await ctx.db.select().from(reviews).where(eq(reviews.id, id)).limit(1);
       if (!existing || existing.userId !== ctx.user.id) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
       const [updated] = await ctx.db
-        .update(logs)
+        .update(reviews)
         .set({ ...rest, updatedAt: new Date() })
-        .where(eq(logs.id, id))
+        .where(eq(reviews.id, id))
         .returning();
       return updated;
     }),
@@ -59,28 +59,28 @@ export const logsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const [existing] = await ctx.db
         .select()
-        .from(logs)
-        .where(eq(logs.id, input.id))
+        .from(reviews)
+        .where(eq(reviews.id, input.id))
         .limit(1);
       if (!existing || existing.userId !== ctx.user.id) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      await ctx.db.delete(logs).where(eq(logs.id, input.id));
+      await ctx.db.delete(reviews).where(eq(reviews.id, input.id));
       return { success: true };
     }),
 
   getById: publicProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      const log = await ctx.db.query.logs.findFirst({
-        where: eq(logs.id, input.id),
+      const review = await ctx.db.query.reviews.findFirst({
+        where: eq(reviews.id, input.id),
         with: { user: true, dj: true, event: true },
       });
-      if (!log) {
+      if (!review) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
-      return log;
+      return review;
     }),
 
   listByUser: publicProcedure
@@ -102,12 +102,12 @@ export const logsRouter = router({
       }
 
       const where = input.cursor
-        ? and(eq(logs.userId, user.id), lt(logs.seenAt, new Date(input.cursor)))
-        : eq(logs.userId, user.id);
+        ? and(eq(reviews.userId, user.id), lt(reviews.seenAt, new Date(input.cursor)))
+        : eq(reviews.userId, user.id);
 
-      const items = await ctx.db.query.logs.findMany({
+      const items = await ctx.db.query.reviews.findMany({
         where,
-        orderBy: desc(logs.seenAt),
+        orderBy: desc(reviews.seenAt),
         limit: input.limit,
         with: { dj: true, event: true },
       });
@@ -131,12 +131,12 @@ export const logsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const where = input.cursor
-        ? and(eq(logs.djId, input.djId), lt(logs.seenAt, new Date(input.cursor)))
-        : eq(logs.djId, input.djId);
+        ? and(eq(reviews.djId, input.djId), lt(reviews.seenAt, new Date(input.cursor)))
+        : eq(reviews.djId, input.djId);
 
-      const items = await ctx.db.query.logs.findMany({
+      const items = await ctx.db.query.reviews.findMany({
         where,
-        orderBy: desc(logs.seenAt),
+        orderBy: desc(reviews.seenAt),
         limit: input.limit,
         with: { user: true, event: true },
       });

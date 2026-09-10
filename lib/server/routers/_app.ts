@@ -3,14 +3,14 @@ import { djsRouter } from "./djs";
 import { eventsRouter } from "./events";
 import { feedRouter } from "./feed";
 import { followsRouter } from "./follows";
-import { logsRouter } from "./logs";
+import { reviewsRouter } from "./reviews";
 import { usersRouter } from "./users";
 
 export const appRouter = router({
   users: usersRouter,
   djs: djsRouter,
   events: eventsRouter,
-  logs: logsRouter,
+  reviews: reviewsRouter,
   follows: followsRouter,
   feed: feedRouter,
 });

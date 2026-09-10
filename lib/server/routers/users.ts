@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { follows, logs, users } from "../../db/schema";
+import { follows, reviews, users } from "../../db/schema";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
 
 export const usersRouter = router({
@@ -22,7 +22,7 @@ export const usersRouter = router({
       }
 
       const [[logCount], [followerCount], [followingCount]] = await Promise.all([
-        ctx.db.select({ value: count() }).from(logs).where(eq(logs.userId, user.id)),
+        ctx.db.select({ value: count() }).from(reviews).where(eq(reviews.userId, user.id)),
         ctx.db
           .select({ value: count() })
           .from(follows)
