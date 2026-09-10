@@ -14,7 +14,7 @@ export function WebTabBar({ state, descriptors, navigation }: BottomTabBarProps)
       <Link href={ROUTES.FEED} asChild>
         <Pressable className="flex-row items-center gap-2">
           <Ionicons name="disc" size={22} color={ACTIVE_COLOR} />
-          <Text className="text-lg font-bold text-ink">DJ Letterboxed</Text>
+          <Text className="text-lg font-bold text-ink">BeatBox'd</Text>
         </Pressable>
       </Link>
 

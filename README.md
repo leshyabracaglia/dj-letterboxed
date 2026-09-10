@@ -1,4 +1,4 @@
-# DJ Letterboxed
+# BeatBox'd
 
 Letterboxd for DJ sets: log the DJs you've seen live, rate them, write a
 review, and follow other users to see their sets in your feed.

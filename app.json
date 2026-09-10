@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "dj-letterboxed",
-    "slug": "dj-letterboxed",
-    "scheme": "djletterboxed",
+    "name": "BeatBox'd",
+    "slug": "beatboxd",
+    "scheme": "beatboxd",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.djletterboxed.app"
+      "bundleIdentifier": "com.beatboxd.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -20,7 +20,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.djletterboxed.app"
+      "package": "com.beatboxd.app"
     },
     "web": {
       "favicon": "./assets/favicon.png",
