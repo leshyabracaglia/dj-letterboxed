@@ -16,7 +16,7 @@ export default function UserProfileScreen() {
     trpc.users.getByUsername.queryOptions({ username: username! }),
   );
   const { data: logs } = useQuery({
-    ...trpc.logs.listByUser.queryOptions({ username: username! }),
+    ...trpc.reviews.listByUser.queryOptions({ username: username! }),
     enabled: !!username,
   });
 

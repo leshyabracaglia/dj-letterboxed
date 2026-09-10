@@ -1,7 +1,7 @@
 import { Link } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
-import type { Dj, Event, Log, User } from "../lib/db/schema";
+import type { Dj, Event, Review, User } from "../lib/db/schema";
 import { ROUTES } from "../lib/routes";
 import { CrowdVibeBadge } from "./CrowdVibeBadge";
 import { RatingStars } from "./RatingStars";
@@ -9,11 +9,16 @@ import { RatingStars } from "./RatingStars";
 export function LogCard({
   log,
 }: {
-  log: Log & { user?: User; dj?: Dj; event?: Event | null };
+  log: Review & { user?: User; dj?: Dj; event?: Event | null; isPopular?: boolean };
 }) {
   return (
     <Link href={ROUTES.LOG_DETAIL(log.id)} asChild>
       <Pressable className="mb-3 rounded-xl border border-muted/20 bg-white p-4">
+        {log.isPopular ? (
+          <View className="mb-2 self-start rounded-full bg-amber-100 px-2 py-0.5">
+            <Text className="text-xs font-semibold text-amber-700">🔥 Popular</Text>
+          </View>
+        ) : null}
         <View className="flex-row items-center justify-between">
           <Text className="text-base font-semibold text-ink">
             {log.dj?.name ?? "Unknown DJ"}

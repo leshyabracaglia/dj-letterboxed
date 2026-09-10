@@ -6,6 +6,7 @@
     "@clerk/backend": "^3.16.10",
     "@clerk/expo": "^4.5.2",
     "@expo/metro-runtime": "^57.0.12",
+    "@expo/vector-icons": "^15.1.1",
     "@neondatabase/serverless": "^1.1.0",
     "@tanstack/react-query": "^5.101.4",
     "@trpc/client": "^11.18.0",

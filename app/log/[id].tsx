@@ -10,7 +10,7 @@ import { ROUTES } from "../../lib/routes";
 export default function LogDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const trpc = useTRPC();
-  const { data: log } = useQuery(trpc.logs.getById.queryOptions({ id: id! }));
+  const { data: log } = useQuery(trpc.reviews.getById.queryOptions({ id: id! }));
 
   if (!log) {
     return (

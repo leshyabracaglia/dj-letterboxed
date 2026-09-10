@@ -42,7 +42,7 @@ export default function LogSetScreen() {
 
   const createDj = useMutation(trpc.djs.create.mutationOptions());
   const createEvent = useMutation(trpc.events.create.mutationOptions());
-  const createLog = useMutation(trpc.logs.create.mutationOptions());
+  const createLog = useMutation(trpc.reviews.create.mutationOptions());
 
   const pending = createDj.isPending || createEvent.isPending || createLog.isPending;
 

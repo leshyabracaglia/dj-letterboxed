@@ -13,7 +13,7 @@ export default function ProfileScreen() {
 
   const { data: me } = useQuery(trpc.users.me.queryOptions());
   const { data } = useQuery({
-    ...trpc.logs.listByUser.queryOptions({ username: me?.username ?? "" }),
+    ...trpc.reviews.listByUser.queryOptions({ username: me?.username ?? "" }),
     enabled: !!me?.username,
   });
 

@@ -1,15 +1,24 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@clerk/expo";
-import { Redirect, Tabs } from "expo-router";
-import { Text } from "react-native";
+import { Redirect } from "expo-router";
+import { Tabs } from "expo-router/js-tabs";
+import { ColorValue, Platform } from "react-native";
 
+import { WebTabBar } from "../../components/WebTabBar";
 import { ROUTES } from "../../lib/routes";
 
-function TabIcon({ label, focused }: { label: string; focused: boolean }) {
-  return (
-    <Text className={focused ? "text-accent" : "text-muted"} style={{ fontSize: 12 }}>
-      {label}
-    </Text>
-  );
+type IoniconName = keyof typeof Ionicons.glyphMap;
+
+function TabIcon({
+  name,
+  color,
+  size,
+}: {
+  name: IoniconName;
+  color: ColorValue;
+  size: number;
+}) {
+  return <Ionicons name={name} color={color} size={size} />;
 }
 
 export default function TabsLayout() {
@@ -26,37 +35,43 @@ export default function TabsLayout() {
   return (
     <Tabs
       initialRouteName="feed"
+      // Bottom tabs read as a mobile pattern; on web, a horizontal navbar reads better.
+      tabBar={Platform.OS === "web" ? (props) => <WebTabBar {...props} /> : undefined}
       screenOptions={{
         headerShown: false,
+        tabBarPosition: Platform.OS === "web" ? "top" : "bottom",
         tabBarActiveTintColor: "#ff5470",
+        tabBarInactiveTintColor: "#8a8a99",
       }}
     >
       <Tabs.Screen
         name="feed"
         options={{
           title: "Feed",
-          tabBarIcon: ({ focused }) => <TabIcon label="FEED" focused={focused} />,
+          tabBarIcon: ({ color, size }) => <TabIcon name="home" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="browse"
         options={{
           title: "Browse",
-          tabBarIcon: ({ focused }) => <TabIcon label="BROWSE" focused={focused} />,
+          tabBarIcon: ({ color, size }) => <TabIcon name="search" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="log"
         options={{
           title: "Log a Set",
-          tabBarIcon: ({ focused }) => <TabIcon label="LOG" focused={focused} />,
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon name="add-circle" color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ focused }) => <TabIcon label="YOU" focused={focused} />,
+          tabBarIcon: ({ color, size }) => <TabIcon name="person" color={color} size={size} />,
         }}
       />
     </Tabs>

@@ -1,4 +1,4 @@
-import { useSignUp } from "@clerk/expo/legacy";
+import { useSignUp } from "@clerk/expo";
 import { Link, router } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
@@ -6,36 +6,45 @@ import { Pressable, Text, TextInput, View } from "react-native";
 import { ROUTES } from "../../lib/routes";
 
 export default function SignUpScreen() {
-  const { signUp, setActive, isLoaded } = useSignUp();
+  const { signUp, errors, fetchStatus } = useSignUp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [pendingVerification, setPendingVerification] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const navigateAfterAuth = async () => {
+    await signUp.finalize({
+      navigate: ({ session, decorateUrl }) => {
+        if (session?.currentTask) return;
+        const url = decorateUrl(ROUTES.FEED as string);
+        if (url.startsWith("http")) window.location.href = url;
+        else router.replace(ROUTES.FEED);
+      },
+    });
+  };
+
   const onSubmit = async () => {
-    if (!isLoaded) return;
     setError(null);
-    try {
-      await signUp.create({ emailAddress: email, password });
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      setPendingVerification(true);
-    } catch (err: any) {
-      setError(err?.errors?.[0]?.message ?? "Could not sign up");
-    }
+    const { error: submitError } = await signUp.password({
+      emailAddress: email,
+      password,
+    });
+    if (submitError) return;
+
+    await signUp.verifications.sendEmailCode();
+    setPendingVerification(true);
   };
 
   const onVerify = async () => {
-    if (!isLoaded) return;
     setError(null);
-    try {
-      const attempt = await signUp.attemptEmailAddressVerification({ code });
-      if (attempt.status === "complete") {
-        await setActive({ session: attempt.createdSessionId });
-        router.replace(ROUTES.FEED);
-      }
-    } catch (err: any) {
-      setError(err?.errors?.[0]?.message ?? "Invalid code");
+    const { error: verifyError } = await signUp.verifications.verifyEmailCode({ code });
+    if (verifyError) {
+      setError(verifyError.longMessage ?? verifyError.message);
+      return;
+    }
+    if (signUp.status === "complete") {
+      await navigateAfterAuth();
     }
   };
 
@@ -50,7 +59,11 @@ export default function SignUpScreen() {
           className="mb-4 w-full max-w-sm rounded-lg border border-muted/30 bg-white px-4 py-3"
         />
         {error ? <Text className="mb-3 text-accent">{error}</Text> : null}
-        <Pressable onPress={onVerify} className="w-full max-w-sm rounded-lg bg-ink py-3">
+        <Pressable
+          onPress={onVerify}
+          disabled={fetchStatus === "fetching"}
+          className="w-full max-w-sm rounded-lg bg-ink py-3"
+        >
           <Text className="text-center font-semibold text-paper">Verify</Text>
         </Pressable>
       </View>
@@ -75,8 +88,19 @@ export default function SignUpScreen() {
         onChangeText={setPassword}
         className="mb-4 w-full max-w-sm rounded-lg border border-muted/30 bg-white px-4 py-3"
       />
+      {errors.fields.emailAddress ? (
+        <Text className="mb-3 text-accent">{errors.fields.emailAddress.message}</Text>
+      ) : null}
+      {errors.fields.password ? (
+        <Text className="mb-3 text-accent">{errors.fields.password.message}</Text>
+      ) : null}
       {error ? <Text className="mb-3 text-accent">{error}</Text> : null}
-      <Pressable onPress={onSubmit} className="w-full max-w-sm rounded-lg bg-ink py-3">
+      <View nativeID="clerk-captcha" />
+      <Pressable
+        onPress={onSubmit}
+        disabled={fetchStatus === "fetching"}
+        className="w-full max-w-sm rounded-lg bg-ink py-3"
+      >
         <Text className="text-center font-semibold text-paper">Sign up</Text>
       </Pressable>
       <View className="mt-10">
