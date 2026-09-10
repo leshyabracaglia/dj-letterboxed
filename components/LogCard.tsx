@@ -2,6 +2,7 @@ import { Link } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
 import type { Dj, Event, Log, User } from "../lib/db/schema";
+import { ROUTES } from "../lib/routes";
 import { CrowdVibeBadge } from "./CrowdVibeBadge";
 import { RatingStars } from "./RatingStars";
 
@@ -11,7 +12,7 @@ export function LogCard({
   log: Log & { user?: User; dj?: Dj; event?: Event | null };
 }) {
   return (
-    <Link href={`/log/${log.id}`} asChild>
+    <Link href={ROUTES.LOG_DETAIL(log.id)} asChild>
       <Pressable className="mb-3 rounded-xl border border-muted/20 bg-white p-4">
         <View className="flex-row items-center justify-between">
           <Text className="text-base font-semibold text-ink">

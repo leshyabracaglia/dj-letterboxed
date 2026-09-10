@@ -5,6 +5,7 @@ import { FlatList, Pressable, SafeAreaView, Text, View } from "react-native";
 
 import { LogCard } from "../../components/LogCard";
 import { useTRPC } from "../../hooks/trpc";
+import { ROUTES } from "../../lib/routes";
 
 export default function ProfileScreen() {
   const trpc = useTRPC();
@@ -29,7 +30,7 @@ export default function ProfileScreen() {
           <Pressable
             onPress={async () => {
               await signOut();
-              router.replace("/(auth)/sign-in");
+              router.replace(ROUTES.SIGN_IN);
             }}
             className="rounded-full border border-muted/30 px-3 py-2"
           >

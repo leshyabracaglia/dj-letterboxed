@@ -43,3 +43,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+.env*
+
+# vendored Claude Code skill content (reproducible from skills-lock.json)
+.agents/

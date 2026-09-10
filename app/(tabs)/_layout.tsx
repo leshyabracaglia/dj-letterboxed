@@ -2,6 +2,8 @@ import { useAuth } from "@clerk/expo";
 import { Redirect, Tabs } from "expo-router";
 import { Text } from "react-native";
 
+import { ROUTES } from "../../lib/routes";
+
 function TabIcon({ label, focused }: { label: string; focused: boolean }) {
   return (
     <Text className={focused ? "text-accent" : "text-muted"} style={{ fontSize: 12 }}>
@@ -18,7 +20,7 @@ export default function TabsLayout() {
   }
 
   if (!isSignedIn) {
-    return <Redirect href="/(auth)/sign-in" />;
+    return <Redirect href={ROUTES.SIGN_IN} />;
   }
 
   return (

@@ -3,6 +3,8 @@ import { Link, router } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
+import { ROUTES } from "../../lib/routes";
+
 export default function SignUpScreen() {
   const { signUp, setActive, isLoaded } = useSignUp();
   const [email, setEmail] = useState("");
@@ -30,7 +32,7 @@ export default function SignUpScreen() {
       const attempt = await signUp.attemptEmailAddressVerification({ code });
       if (attempt.status === "complete") {
         await setActive({ session: attempt.createdSessionId });
-        router.replace("/(tabs)/feed");
+        router.replace(ROUTES.FEED);
       }
     } catch (err: any) {
       setError(err?.errors?.[0]?.message ?? "Invalid code");
@@ -45,10 +47,10 @@ export default function SignUpScreen() {
           placeholder="Verification code"
           value={code}
           onChangeText={setCode}
-          className="mb-4 w-full rounded-lg border border-muted/30 bg-white px-4 py-3"
+          className="mb-4 w-full max-w-sm rounded-lg border border-muted/30 bg-white px-4 py-3"
         />
         {error ? <Text className="mb-3 text-accent">{error}</Text> : null}
-        <Pressable onPress={onVerify} className="w-full rounded-lg bg-ink py-3">
+        <Pressable onPress={onVerify} className="w-full max-w-sm rounded-lg bg-ink py-3">
           <Text className="text-center font-semibold text-paper">Verify</Text>
         </Pressable>
       </View>
@@ -64,22 +66,24 @@ export default function SignUpScreen() {
         placeholder="Email"
         value={email}
         onChangeText={setEmail}
-        className="mb-3 w-full rounded-lg border border-muted/30 bg-white px-4 py-3"
+        className="mb-3 w-full max-w-sm rounded-lg border border-muted/30 bg-white px-4 py-3"
       />
       <TextInput
         secureTextEntry
         placeholder="Password"
         value={password}
         onChangeText={setPassword}
-        className="mb-4 w-full rounded-lg border border-muted/30 bg-white px-4 py-3"
+        className="mb-4 w-full max-w-sm rounded-lg border border-muted/30 bg-white px-4 py-3"
       />
       {error ? <Text className="mb-3 text-accent">{error}</Text> : null}
-      <Pressable onPress={onSubmit} className="w-full rounded-lg bg-ink py-3">
+      <Pressable onPress={onSubmit} className="w-full max-w-sm rounded-lg bg-ink py-3">
         <Text className="text-center font-semibold text-paper">Sign up</Text>
       </Pressable>
-      <Link href="/(auth)/sign-in" className="mt-6 text-muted">
-        Already have an account? Sign in
-      </Link>
+      <View className="mt-10">
+        <Link href={ROUTES.SIGN_IN}>
+          <Text className="text-muted">Already have an account? Sign in</Text>
+        </Link>
+      </View>
     </View>
   );
 }

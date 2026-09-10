@@ -5,6 +5,7 @@ import { SafeAreaView, ScrollView, Text, View } from "react-native";
 import { CrowdVibeBadge } from "../../components/CrowdVibeBadge";
 import { RatingStars } from "../../components/RatingStars";
 import { useTRPC } from "../../hooks/trpc";
+import { ROUTES } from "../../lib/routes";
 
 export default function LogDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -23,7 +24,7 @@ export default function LogDetailScreen() {
     <SafeAreaView className="flex-1 bg-paper">
       <Stack.Screen options={{ title: log.dj.name }} />
       <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <Link href={`/dj/${log.dj.slug}`}>
+        <Link href={ROUTES.DJ(log.dj.slug)}>
           <Text className="text-2xl font-bold text-ink">{log.dj.name}</Text>
         </Link>
         <View className="mt-2">
@@ -31,7 +32,7 @@ export default function LogDetailScreen() {
         </View>
 
         {log.event ? (
-          <Link href={`/event/${log.event.id}`}>
+          <Link href={ROUTES.EVENT(log.event.id)}>
             <Text className="mt-3 text-ink underline">
               {log.event.name} · {log.event.venue}
             </Text>
@@ -50,7 +51,7 @@ export default function LogDetailScreen() {
           <Text className="mt-4 text-base text-ink">{log.reviewText}</Text>
         ) : null}
 
-        <Link href={`/user/${log.user.username}`}>
+        <Link href={ROUTES.USER(log.user.username)}>
           <Text className="mt-6 text-muted">
             Logged by @{log.user.username}
           </Text>

@@ -2,5 +2,11 @@
   "buildCommand": "expo export -p web",
   "outputDirectory": "dist",
   "framework": null,
-  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
+  "devCommand": "node -e \"require('http').createServer((_, res) => res.end()).listen(process.env.PORT)\"",
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
 }

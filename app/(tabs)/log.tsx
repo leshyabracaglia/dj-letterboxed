@@ -14,6 +14,7 @@ import {
 
 import { RatingStars } from "../../components/RatingStars";
 import { useTRPC } from "../../hooks/trpc";
+import { ROUTES } from "../../lib/routes";
 
 const VIBES = [
   { value: "electric", label: "⚡ Electric" },
@@ -80,7 +81,7 @@ export default function LogSetScreen() {
         seenAt: seenAtDate,
       });
 
-      router.replace("/(tabs)/profile");
+      router.replace(ROUTES.PROFILE);
     } catch (err: any) {
       setError(err?.message ?? "Could not save your log");
     }

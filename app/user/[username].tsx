@@ -5,6 +5,7 @@ import { FlatList, SafeAreaView, Text, View } from "react-native";
 import { FollowButton } from "../../components/FollowButton";
 import { LogCard } from "../../components/LogCard";
 import { useTRPC } from "../../hooks/trpc";
+import { ROUTES } from "../../lib/routes";
 
 export default function UserProfileScreen() {
   const { username } = useLocalSearchParams<{ username: string }>();
@@ -47,10 +48,10 @@ export default function UserProfileScreen() {
         ) : null}
         <View className="mt-3 flex-row gap-4">
           <Text className="text-muted">{profile.logCount} logs</Text>
-          <Link href={`/user/${profile.user.username}/followers`}>
+          <Link href={ROUTES.USER_FOLLOWERS(profile.user.username)}>
             <Text className="text-muted">{profile.followerCount} followers</Text>
           </Link>
-          <Link href={`/user/${profile.user.username}/following`}>
+          <Link href={ROUTES.USER_FOLLOWING(profile.user.username)}>
             <Text className="text-muted">{profile.followingCount} following</Text>
           </Link>
         </View>

@@ -3,6 +3,7 @@ import { Link, Stack, useLocalSearchParams } from "expo-router";
 import { FlatList, Pressable, SafeAreaView, Text } from "react-native";
 
 import { useTRPC } from "../../../hooks/trpc";
+import { ROUTES } from "../../../lib/routes";
 
 export default function FollowersScreen() {
   const { username } = useLocalSearchParams<{ username: string }>();
@@ -24,7 +25,7 @@ export default function FollowersScreen() {
         data={followers ?? []}
         keyExtractor={(item) => item.follower.id}
         renderItem={({ item }) => (
-          <Link href={`/user/${item.follower.username}`} asChild>
+          <Link href={ROUTES.USER(item.follower.username)} asChild>
             <Pressable className="mb-2 rounded-xl border border-muted/20 bg-white p-4">
               <Text className="font-semibold text-ink">
                 {item.follower.displayName ?? item.follower.username}
