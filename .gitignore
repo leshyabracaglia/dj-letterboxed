@@ -44,6 +44,27 @@ yarn-error.*
 /ios
 /android
 .env*
+# ...but *.env.example template files have no real secrets and should be
+# committed (CLAUDE.md's setup instructions rely on `cp .env.example .env`
+# existing) - these were previously silently excluded by .env* above.
+!.env.example
+!**/.env.example
 
 # vendored Claude Code skill content (reproducible from skills-lock.json)
 .agents/
+
+# Terraform (also gitignored inside infra/terraform/ - duplicated here at
+# root as a second line of defense so it's caught regardless of where
+# `git add` is run from; these can contain real secrets in plaintext
+# (DB passwords, API keys) even when Terraform marks them "sensitive")
+**/.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+*.auto.tfvars
+crash.log
+
+# Go build artifacts
+server/bin/
+*.exe
+*.test
