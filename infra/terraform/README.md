@@ -81,10 +81,14 @@ ALB-based design.
    an in-place update, re-run the SSM deploy command above after rotating
    the secret so the running container picks up the new DSN).
 
-6. **GitHub Actions**: put `terraform output -raw github_deploy_role_arn`
-   into the repo's Actions secrets/vars as `AWS_DEPLOY_ROLE_ARN` — Phase 3's
-   `server-deploy.yml` assumes this role via OIDC and runs the same
-   build → push → SSM-redeploy sequence as the manual bootstrap above.
+6. **GitHub Actions**: `.github/workflows/server-deploy.yml` assumes
+   `terraform output -raw github_deploy_role_arn` via OIDC (set as the
+   repo's `AWS_DEPLOY_ROLE_ARN` Actions variable) and runs the same
+   build → push → SSM-redeploy sequence as the manual bootstrap above,
+   triggered once `server-ci` succeeds on `main`. It looks up the running
+   instance by its `Name=beatboxd-app` tag rather than a hardcoded
+   instance ID, since that ID changes across a `user_data`-forced
+   replacement (e.g. rotating `clerk_issuer`/`clerk_jwks_url`).
 
 ## Why these choices (and what changed from the original ECS/Aurora design)
 

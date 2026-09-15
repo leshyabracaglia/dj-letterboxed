@@ -33,7 +33,7 @@ type TopDj struct {
 
 func GetTopDjsForUser(ctx context.Context, q DBTX, userID string) ([]TopDj, error) {
 	rows, err := q.Query(ctx, `
-		SELECT `+djCols+`, COUNT(r.id) AS log_count
+		SELECT d.id, d.name, d.slug, d.bio, d.genres, d.image_url, d.spotify_id, d.created_by_user_id, d.created_at, d.updated_at, COUNT(r.id) AS log_count
 		FROM reviews r
 		JOIN djs d ON d.id = r.dj_id
 		WHERE r.user_id = $1
