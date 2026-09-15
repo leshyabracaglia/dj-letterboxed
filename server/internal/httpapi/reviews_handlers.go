@@ -287,7 +287,7 @@ func (h *Handlers) GetReviewByID(w http.ResponseWriter, r *http.Request) {
 		InternalError(w, err)
 		return
 	}
-	dto.TaggedUsers = taggedUsers
+	dto.TaggedUsers = orEmpty(taggedUsers)
 
 	WriteJSON(w, http.StatusOK, dto)
 }

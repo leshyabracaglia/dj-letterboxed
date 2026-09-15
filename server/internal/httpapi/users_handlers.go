@@ -1,13 +1,17 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
+	"regexp"
 
 	"github.com/go-chi/chi/v5"
 
 	"beatboxd/server/internal/db"
 	"beatboxd/server/internal/db/queries"
 )
+
+var usernameRe = regexp.MustCompile(`^[a-z0-9_]{3,32}$`)
 
 // Referenced only by swag doc comments below (@Success/@Param types) -
 // keeps the import resolvable for OpenAPI generation without an unused
@@ -167,6 +171,7 @@ func (h *Handlers) GetLeaderboard(w http.ResponseWriter, r *http.Request) {
 }
 
 type updateProfileRequest struct {
+	Username    *string `json:"username"`
 	DisplayName *string `json:"displayName"`
 	Bio         *string `json:"bio"`
 	AvatarURL   *string `json:"avatarUrl"`
@@ -180,7 +185,9 @@ type updateProfileRequest struct {
 //	@Produce	json
 //	@Param		body	body		updateProfileRequest	true	"fields to update"
 //	@Success	200		{object}	db.User
+//	@Failure	400		{object}	errorEnvelope
 //	@Failure	401		{object}	errorEnvelope
+//	@Failure	409		{object}	errorEnvelope
 //	@Security	BearerAuth
 //	@Router		/api/users/me [patch]
 func (h *Handlers) UpdateProfile(w http.ResponseWriter, r *http.Request) {
@@ -194,9 +201,17 @@ func (h *Handlers) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		BadRequest(w, "invalid request body")
 		return
 	}
+	if req.Username != nil && !usernameRe.MatchString(*req.Username) {
+		BadRequest(w, "username must be 3-32 characters: lowercase letters, numbers, underscores")
+		return
+	}
 
-	updated, err := queries.UpdateUserProfile(r.Context(), h.Pool, user.ID, req.DisplayName, req.Bio, req.AvatarURL)
+	updated, err := queries.UpdateUserProfile(r.Context(), h.Pool, user.ID, req.Username, req.DisplayName, req.Bio, req.AvatarURL)
 	if err != nil {
+		if errors.Is(err, queries.ErrUsernameTaken) {
+			WriteError(w, http.StatusConflict, "USERNAME_TAKEN", "that username is already taken")
+			return
+		}
 		InternalError(w, err)
 		return
 	}

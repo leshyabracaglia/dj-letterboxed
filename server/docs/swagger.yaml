@@ -269,6 +269,7 @@ definitions:
     - ratingHalfStars
     - reviewText
     - seenAt
+    - taggedUsers
     - updatedAt
     - userId
     type: object
@@ -480,10 +481,13 @@ definitions:
         type: string
       displayName:
         type: string
+      username:
+        type: string
     required:
     - avatarUrl
     - bio
     - displayName
+    - username
     type: object
   updateReviewRequest:
     properties:
@@ -1263,8 +1267,16 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/errorEnvelope'
       security:

@@ -1,11 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@clerk/expo";
+import { useQuery } from "@tanstack/react-query";
 import { Redirect } from "expo-router";
 import { Tabs } from "expo-router/js-tabs";
 import { ColorValue, Platform } from "react-native";
 
 import { WebTabBar } from "../../components/WebTabBar";
+import { useApi } from "../../lib/api/client";
+import { queryKeys } from "../../lib/api/queryKeys";
+import type { User } from "../../lib/api/types";
 import { ROUTES } from "../../lib/routes";
+import { needsOnboarding } from "../../lib/user";
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -23,6 +28,13 @@ function TabIcon({
 
 export default function TabsLayout() {
   const { isSignedIn, isLoaded } = useAuth();
+  const api = useApi();
+
+  const { data: me } = useQuery({
+    queryKey: queryKeys.users.me(),
+    queryFn: () => api.get<User>("/users/me"),
+    enabled: !!isSignedIn,
+  });
 
   if (!isLoaded) {
     return null;
@@ -30,6 +42,10 @@ export default function TabsLayout() {
 
   if (!isSignedIn) {
     return <Redirect href={ROUTES.SIGN_IN} />;
+  }
+
+  if (needsOnboarding(me?.username)) {
+    return <Redirect href={ROUTES.ONBOARDING} />;
   }
 
   return (
@@ -40,7 +56,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarPosition: Platform.OS === "web" ? "top" : "bottom",
-        tabBarActiveTintColor: "#ff5470",
+        tabBarActiveTintColor: "#884ACF",
         tabBarInactiveTintColor: "#8a8a99",
       }}
     >

@@ -1168,8 +1168,26 @@ export interface paths {
                         "application/json": components["schemas"]["User"];
                     };
                 };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
                 /** @description Unauthorized */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1541,7 +1559,7 @@ export interface components {
             ratingHalfStars: number;
             reviewText: string;
             seenAt: string;
-            taggedUsers?: components["schemas"]["User"][];
+            taggedUsers: components["schemas"]["User"][];
             updatedAt: string;
             user?: components["schemas"]["User"];
             userId: string;
@@ -1622,6 +1640,7 @@ export interface components {
             avatarUrl: string;
             bio: string;
             displayName: string;
+            username: string;
         };
         updateReviewRequest: {
             crowdVibe: string;

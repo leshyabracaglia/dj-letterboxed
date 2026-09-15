@@ -1,26 +1,21 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Text } from "../../components/Text";
 
 import { ArtistSearchInput, type ArtistPick } from "../../components/ArtistSearchInput";
 import { RatingStars } from "../../components/RatingStars";
 import { TagFriendsPicker } from "../../components/TagFriendsPicker";
 import { useApi } from "../../lib/api/client";
+import { queryKeys } from "../../lib/api/queryKeys";
 import type {
   CreateEventInput,
   CreateReviewInput,
   Dj,
   Event,
+  Paginated,
   Review,
   User,
 } from "../../lib/api/types";
@@ -39,6 +34,12 @@ function todayISODate() {
 
 export default function LogSetScreen() {
   const api = useApi();
+  const queryClient = useQueryClient();
+
+  const { data: me } = useQuery({
+    queryKey: queryKeys.users.me(),
+    queryFn: () => api.get<User>("/users/me"),
+  });
 
   const [djName, setDjName] = useState("");
   const [artistPick, setArtistPick] = useState<ArtistPick | null>(null);
@@ -96,26 +97,52 @@ export default function LogSetScreen() {
                 : { name: djName.trim() },
             );
 
-      let eventId: string | undefined;
+      let event: Event | undefined;
       if (eventName.trim() && venue.trim()) {
-        const event = await createEvent.mutateAsync({
+        event = await createEvent.mutateAsync({
           name: eventName.trim(),
           venue: venue.trim(),
           city: city.trim() || undefined,
           eventDate: seenAtDate.toISOString(),
         });
-        eventId = event.id;
       }
 
-      await createLog.mutateAsync({
+      const created = await createLog.mutateAsync({
         djId: dj.id,
-        eventId,
+        eventId: event?.id,
         ratingHalfStars: rating,
         reviewText: reviewText.trim() || undefined,
         crowdVibe,
         seenAt: seenAtDate.toISOString(),
         taggedUserIds: taggedUsers.map((u) => u.id),
       });
+
+      // Seed the profile list with the full review (server response only
+      // carries bare row fields) so it's there the instant we redirect,
+      // instead of a blank/stale list until a background refetch lands.
+      if (me?.username) {
+        const reviewsKey = queryKeys.reviews.byUser(me.username);
+        const fullReview: Review = {
+          ...created,
+          dj,
+          event,
+          taggedUsers,
+          likeCount: 0,
+          commentCount: 0,
+          isLikedByMe: false,
+        };
+        queryClient.setQueryData<Paginated<Review>>(reviewsKey, (old) => ({
+          items: [fullReview, ...(old?.items ?? [])],
+          nextCursor: old?.nextCursor ?? null,
+        }));
+        queryClient.invalidateQueries({ queryKey: reviewsKey });
+        queryClient.invalidateQueries({ queryKey: queryKeys.users.stats(me.username) });
+      }
+      queryClient.invalidateQueries({ queryKey: queryKeys.djs.bySlug(dj.slug) });
+      if (event) queryClient.invalidateQueries({ queryKey: queryKeys.events.byId(event.id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.feed.activity() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.feed.popular() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.leaderboard() });
 
       router.replace(ROUTES.PROFILE);
     } catch (err: any) {
@@ -124,13 +151,13 @@ export default function LogSetScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-paper">
+    <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1"
       >
         <ScrollView contentContainerStyle={{ padding: 16 }}>
-          <Text className="mb-4 text-2xl font-bold text-ink">Log a set</Text>
+          <Text className="mb-4 text-2xl font-bold text-ink dark:text-paper">Log a set</Text>
 
           <Text className="mb-1 text-sm font-medium text-muted">DJ</Text>
           <View className="mb-4">
@@ -153,19 +180,19 @@ export default function LogSetScreen() {
             placeholder="Event name"
             value={eventName}
             onChangeText={setEventName}
-            className="mb-2 rounded-lg border border-muted/30 bg-white px-4 py-3"
+            className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
           />
           <TextInput
             placeholder="Venue"
             value={venue}
             onChangeText={setVenue}
-            className="mb-2 rounded-lg border border-muted/30 bg-white px-4 py-3"
+            className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
           />
           <TextInput
             placeholder="City"
             value={city}
             onChangeText={setCity}
-            className="mb-4 rounded-lg border border-muted/30 bg-white px-4 py-3"
+            className="mb-4 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
           />
 
           <Text className="mb-1 text-sm font-medium text-muted">Date you saw them</Text>
@@ -173,7 +200,7 @@ export default function LogSetScreen() {
             placeholder="YYYY-MM-DD"
             value={seenAt}
             onChangeText={setSeenAt}
-            className="mb-4 rounded-lg border border-muted/30 bg-white px-4 py-3"
+            className="mb-4 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
           />
 
           <Text className="mb-1 text-sm font-medium text-muted">Rating</Text>
@@ -188,10 +215,10 @@ export default function LogSetScreen() {
                 key={v.value}
                 onPress={() => setCrowdVibe(v.value)}
                 className={`rounded-full px-3 py-2 ${
-                  crowdVibe === v.value ? "bg-ink" : "bg-white border border-muted/30"
+                  crowdVibe === v.value ? "bg-primary" : "bg-white dark:bg-surface-dark border border-primary/20"
                 }`}
               >
-                <Text className={crowdVibe === v.value ? "text-paper" : "text-ink"}>
+                <Text className={crowdVibe === v.value ? "text-paper" : "text-ink dark:text-paper"}>
                   {v.label}
                 </Text>
               </Pressable>
@@ -205,7 +232,7 @@ export default function LogSetScreen() {
             onChangeText={setReviewText}
             multiline
             numberOfLines={4}
-            className="mb-4 min-h-24 rounded-lg border border-muted/30 bg-white px-4 py-3"
+            className="mb-4 min-h-24 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
           />
 
           <Text className="mb-1 text-sm font-medium text-muted">Tag friends (optional)</Text>
@@ -219,12 +246,12 @@ export default function LogSetScreen() {
             />
           </View>
 
-          {error ? <Text className="mb-3 text-accent">{error}</Text> : null}
+          {error ? <Text className="mb-3 text-danger">{error}</Text> : null}
 
           <Pressable
             disabled={pending}
             onPress={onSubmit}
-            className="rounded-lg bg-ink py-3"
+            className="rounded-xl bg-primary py-3 active:opacity-90"
           >
             <Text className="text-center font-semibold text-paper">
               {pending ? "Saving..." : "Save log"}

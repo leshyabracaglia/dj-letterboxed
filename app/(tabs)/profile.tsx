@@ -1,8 +1,11 @@
 import { useAuth } from "@clerk/expo";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { FlatList, Pressable, SafeAreaView, Text, View } from "react-native";
+import { FlatList, Pressable, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Text } from "../../components/Text";
 
+import { Avatar } from "../../components/Avatar";
 import { EmptyState } from "../../components/EmptyState";
 import { ReviewCard } from "../../components/ReviewCard";
 import { StatsSummary } from "../../components/StatsSummary";
@@ -27,33 +30,37 @@ export default function ProfileScreen() {
   });
 
   return (
-    <SafeAreaView className="flex-1 bg-paper">
+    <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
       <View className="px-4 pb-2 pt-4">
         <View className="flex-row items-center justify-between">
-          <View>
-            <Text className="text-2xl font-bold text-ink">
-              {me?.displayName ?? me?.username ?? "Your profile"}
-            </Text>
-            {me?.username ? <Text className="text-muted">@{me.username}</Text> : null}
+          <View className="flex-row items-center gap-3">
+            <Avatar uri={me?.avatarUrl} name={me?.displayName ?? me?.username ?? "?"} size={48} />
+            <View>
+              <Text className="text-2xl font-bold text-ink dark:text-paper">
+                {me?.displayName ?? me?.username ?? "Your profile"}
+              </Text>
+              {me?.username ? <Text className="text-muted">@{me.username}</Text> : null}
+            </View>
           </View>
           <View className="flex-row gap-2">
             <Pressable
               onPress={() => router.push(ROUTES.SETTINGS)}
-              className="rounded-full border border-muted/30 px-3 py-2"
+              className="rounded-full border border-primary/25 px-3 py-2"
             >
-              <Text className="text-ink">Settings</Text>
+              <Text className="text-ink dark:text-paper">Settings</Text>
             </Pressable>
             <Pressable
               onPress={async () => {
                 await signOut();
                 router.replace(ROUTES.SIGN_IN);
               }}
-              className="rounded-full border border-muted/30 px-3 py-2"
+              className="rounded-full border border-primary/25 px-3 py-2"
             >
-              <Text className="text-ink">Sign out</Text>
+              <Text className="text-ink dark:text-paper">Sign out</Text>
             </Pressable>
           </View>
         </View>
+        {me?.bio ? <Text className="mt-2 text-ink dark:text-paper">{me.bio}</Text> : null}
         {me?.username ? <StatsSummary username={me.username} /> : null}
       </View>
       <FlatList

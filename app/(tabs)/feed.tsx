@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { FlatList, Pressable, SafeAreaView, Text, View } from "react-native";
+import { FlatList, Pressable, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Text } from "../../components/Text";
 
 import { EmptyState } from "../../components/EmptyState";
 import { ReviewCard } from "../../components/ReviewCard";
@@ -33,19 +35,19 @@ export default function FeedScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-paper">
+    <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
       <View className="px-4 pb-2 pt-4">
-        <Text className="mb-3 text-2xl font-bold text-ink">Feed</Text>
+        <Text className="mb-3 text-2xl font-display text-ink dark:text-paper">Feed</Text>
         <View className="flex-row gap-2">
           {TABS.map((t) => (
             <Pressable
               key={t}
               onPress={() => setTab(t)}
               className={`rounded-full px-3 py-1.5 ${
-                effectiveTab === t ? "bg-ink" : "bg-white border border-muted/30"
+                effectiveTab === t ? "bg-primary" : "bg-white dark:bg-surface-dark border border-primary/20"
               }`}
             >
-              <Text className={effectiveTab === t ? "text-paper" : "text-ink"}>
+              <Text className={effectiveTab === t ? "text-paper" : "text-ink dark:text-paper"}>
                 {TAB_LABELS[t]}
               </Text>
             </Pressable>
@@ -80,17 +82,24 @@ export default function FeedScreen() {
           contentContainerStyle={{ padding: 16 }}
           data={leaderboard ?? []}
           keyExtractor={(row) => row.user.id}
-          renderItem={({ item, index }) => (
-            <View className="mb-2 flex-row items-center justify-between rounded-xl border border-muted/20 bg-white p-4">
-              <View className="flex-row items-center gap-3">
-                <Text className="w-6 text-center font-semibold text-muted">{index + 1}</Text>
-                <Text className="text-ink">
-                  {item.user.displayName ?? item.user.username}
-                </Text>
+          renderItem={({ item, index }) => {
+            const rankBg =
+              index === 0 ? "bg-accent" : index === 1 ? "bg-primary" : "bg-muted/15";
+            const rankText = index < 2 ? "text-white" : "text-muted";
+            return (
+              <View className="mb-2 flex-row items-center justify-between rounded-2xl border border-primary/15 bg-white dark:bg-surface-dark p-4 shadow-sm">
+                <View className="flex-row items-center gap-3">
+                  <View className={`h-7 w-7 items-center justify-center rounded-full ${rankBg}`}>
+                    <Text className={`font-bold ${rankText}`}>{index + 1}</Text>
+                  </View>
+                  <Text className="text-ink dark:text-paper">
+                    {item.user.displayName ?? item.user.username}
+                  </Text>
+                </View>
+                <Text className="text-muted">{item.logCount} shows</Text>
               </View>
-              <Text className="text-muted">{item.logCount} shows</Text>
-            </View>
-          )}
+            );
+          }}
           ListEmptyComponent={
             !isLeaderboardLoading ? (
               <EmptyState message="Follow some people to see a leaderboard." />

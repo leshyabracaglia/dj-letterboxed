@@ -14,7 +14,7 @@ type ReviewDTO struct {
 	User         *db.User  `json:"user,omitempty"`
 	Dj           *db.Dj    `json:"dj,omitempty"`
 	Event        *db.Event `json:"event,omitempty"`
-	TaggedUsers  []db.User `json:"taggedUsers,omitempty"`
+	TaggedUsers  []db.User `json:"taggedUsers"`
 	LikeCount    *int64    `json:"likeCount,omitempty"`
 	CommentCount *int64    `json:"commentCount,omitempty"`
 	IsLikedByMe  *bool     `json:"isLikedByMe,omitempty"`
@@ -22,7 +22,7 @@ type ReviewDTO struct {
 }
 
 func newReviewDTO(r db.Review) ReviewDTO {
-	return ReviewDTO{Review: r}
+	return ReviewDTO{Review: r, TaggedUsers: []db.User{}}
 }
 
 func (d ReviewDTO) withEngagement(e queries.Engagement) ReviewDTO {

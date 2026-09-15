@@ -1022,8 +1022,20 @@ const docTemplate = `{
                             "$ref": "#/definitions/User"
                         }
                     },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/errorEnvelope"
                         }
@@ -1561,6 +1573,7 @@ const docTemplate = `{
                 "ratingHalfStars",
                 "reviewText",
                 "seenAt",
+                "taggedUsers",
                 "updatedAt",
                 "userId"
             ],
@@ -1922,7 +1935,8 @@ const docTemplate = `{
             "required": [
                 "avatarUrl",
                 "bio",
-                "displayName"
+                "displayName",
+                "username"
             ],
             "properties": {
                 "avatarUrl": {
@@ -1932,6 +1946,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "displayName": {
+                    "type": "string"
+                },
+                "username": {
                     "type": "string"
                 }
             }

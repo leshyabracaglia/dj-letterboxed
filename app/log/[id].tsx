@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, Stack, useLocalSearchParams } from "expo-router";
-import { SafeAreaView, ScrollView, Text, View } from "react-native";
+import { ScrollView, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Text } from "../../components/Text";
 
 import { CommentSection } from "../../components/CommentSection";
 import { CrowdVibeBadge } from "../../components/CrowdVibeBadge";
@@ -36,11 +38,11 @@ export default function LogDetailScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-paper">
+    <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
       <Stack.Screen options={{ title: log.dj.name }} />
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         <Link href={ROUTES.DJ(log.dj.slug)}>
-          <Text className="text-2xl font-bold text-ink">{log.dj.name}</Text>
+          <Text className="text-2xl font-bold text-ink dark:text-paper">{log.dj.name}</Text>
         </Link>
         <View className="mt-2">
           <RatingStars value={log.ratingHalfStars} size={24} />
@@ -48,7 +50,7 @@ export default function LogDetailScreen() {
 
         {log.event ? (
           <Link href={ROUTES.EVENT(log.event.id)}>
-            <Text className="mt-3 text-ink underline">
+            <Text className="mt-3 text-ink dark:text-paper underline">
               {log.event.name} · {log.event.venue}
             </Text>
           </Link>
@@ -61,10 +63,10 @@ export default function LogDetailScreen() {
         </View>
 
         {log.reviewText ? (
-          <Text className="mt-4 text-base text-ink">{log.reviewText}</Text>
+          <Text className="mt-4 text-base text-ink dark:text-paper">{log.reviewText}</Text>
         ) : null}
 
-        {log.taggedUsers.length > 0 ? (
+        {log.taggedUsers && log.taggedUsers.length > 0 ? (
           <Text className="mt-3 text-sm text-muted">
             With{" "}
             {log.taggedUsers.map((u) => `@${u.username}`).join(", ")}

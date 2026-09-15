@@ -5,11 +5,15 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"beatboxd/server/internal/db"
 )
 
 var ErrNotFound = errors.New("not found")
+var ErrUsernameTaken = errors.New("username taken")
+
+const uniqueViolationCode = "23505"
 
 func scanUser(row pgx.Row) (*db.User, error) {
 	var u db.User
@@ -135,16 +139,25 @@ func GetUsersByIDs(ctx context.Context, q DBTX, ids []string) (map[string]db.Use
 	return out, rows.Err()
 }
 
-func UpdateUserProfile(ctx context.Context, q DBTX, id string, displayName, bio, avatarURL *string) (*db.User, error) {
+func UpdateUserProfile(ctx context.Context, q DBTX, id string, username, displayName, bio, avatarURL *string) (*db.User, error) {
 	row := q.QueryRow(ctx, `
 		UPDATE users SET
-			display_name = COALESCE($2, display_name),
-			bio = COALESCE($3, bio),
-			avatar_url = COALESCE($4, avatar_url),
+			username = COALESCE($2, username),
+			display_name = COALESCE($3, display_name),
+			bio = COALESCE($4, bio),
+			avatar_url = COALESCE($5, avatar_url),
 			updated_at = now()
 		WHERE id = $1
-		RETURNING `+userCols, id, displayName, bio, avatarURL)
-	return scanUser(row)
+		RETURNING `+userCols, id, username, displayName, bio, avatarURL)
+	u, err := scanUser(row)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == uniqueViolationCode {
+			return nil, ErrUsernameTaken
+		}
+		return nil, err
+	}
+	return u, nil
 }
 
 type LeaderboardEntry struct {

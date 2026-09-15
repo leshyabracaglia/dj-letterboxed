@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import { Text } from "./Text";
 
 import { useApi } from "../lib/api/client";
 import { queryKeys } from "../lib/api/queryKeys";
@@ -15,21 +16,21 @@ export function StatsSummary({ username }: { username: string }) {
   if (!stats || stats.totalLogs === 0) return null;
 
   return (
-    <View className="mt-3 border-t border-muted/20 pt-3">
+    <View className="mt-3 border-t border-primary/15 pt-3">
       <View className="flex-row gap-6">
         <View>
-          <Text className="text-lg font-bold text-ink">{stats.totalLogs}</Text>
+          <Text className="text-lg font-bold text-primary dark:text-primary-dark">{stats.totalLogs}</Text>
           <Text className="text-xs text-muted">shows</Text>
         </View>
         <View>
-          <Text className="text-lg font-bold text-ink">{stats.uniqueDjs}</Text>
+          <Text className="text-lg font-bold text-primary dark:text-primary-dark">{stats.uniqueDjs}</Text>
           <Text className="text-xs text-muted">DJs</Text>
         </View>
       </View>
 
       {stats.topDjs.length > 0 ? (
         <View className="mt-3">
-          <Text className="mb-1 text-sm font-semibold text-ink">Top DJs</Text>
+          <Text className="mb-1 text-sm font-semibold text-ink dark:text-paper">Top DJs</Text>
           {stats.topDjs.map((row) => (
             <Text key={row.dj.id} className="text-sm text-muted">
               {row.dj.name} · {row.logCount}
@@ -40,7 +41,7 @@ export function StatsSummary({ username }: { username: string }) {
 
       {stats.topVenues.length > 0 ? (
         <View className="mt-3">
-          <Text className="mb-1 text-sm font-semibold text-ink">Top venues</Text>
+          <Text className="mb-1 text-sm font-semibold text-ink dark:text-paper">Top venues</Text>
           {stats.topVenues.map((row) => (
             <Text key={row.venue} className="text-sm text-muted">
               {row.venue} · {row.logCount}

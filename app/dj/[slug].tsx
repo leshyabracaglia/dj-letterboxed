@@ -1,5 +1,7 @@
 import { Stack, useLocalSearchParams } from "expo-router";
-import { FlatList, SafeAreaView, Text, View } from "react-native";
+import { FlatList, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Text } from "../../components/Text";
 
 import { EmptyState } from "../../components/EmptyState";
 import { RatingStars } from "../../components/RatingStars";
@@ -20,10 +22,10 @@ export default function DjProfileScreen() {
   const avgHalfStars = data.avgRating ? Number(data.avgRating) : null;
 
   return (
-    <SafeAreaView className="flex-1 bg-paper">
+    <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
       <Stack.Screen options={{ title: data.dj.name }} />
-      <View className="border-b border-muted/20 px-4 py-4">
-        <Text className="text-2xl font-bold text-ink">{data.dj.name}</Text>
+      <View className="border-b border-primary/15 px-4 py-4">
+        <Text className="text-2xl font-bold text-ink dark:text-paper">{data.dj.name}</Text>
         {data.dj.genres && data.dj.genres.length > 0 ? (
           <Text className="mt-1 text-muted">{data.dj.genres.join(" · ")}</Text>
         ) : null}
@@ -33,7 +35,7 @@ export default function DjProfileScreen() {
             {formatStars(avgHalfStars)} ({data.logCount} logs)
           </Text>
         </View>
-        {data.dj.bio ? <Text className="mt-3 text-ink">{data.dj.bio}</Text> : null}
+        {data.dj.bio ? <Text className="mt-3 text-ink dark:text-paper">{data.dj.bio}</Text> : null}
       </View>
       <FlatList
         contentContainerStyle={{ padding: 16 }}

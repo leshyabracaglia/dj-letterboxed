@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, TextInput, View } from "react-native";
+import { Text } from "./Text";
 
 import { useApi } from "../lib/api/client";
 import { queryKeys } from "../lib/api/queryKeys";
@@ -48,10 +49,10 @@ export function ArtistSearchInput({
         placeholder="Who did you see?"
         value={value}
         onChangeText={onChangeText}
-        className="rounded-lg border border-muted/30 bg-white px-4 py-3"
+        className="rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
       />
       {showDropdown ? (
-        <View className="mt-1 overflow-hidden rounded-lg border border-muted/30 bg-white">
+        <View className="mt-1 overflow-hidden rounded-xl border border-primary/20 bg-white dark:bg-surface-dark">
           {isLocalFetching || isSpotifyFetching ? (
             <View className="px-4 py-2">
               <ActivityIndicator size="small" />
@@ -63,7 +64,7 @@ export function ArtistSearchInput({
               onPress={() => onSelect({ type: "existing", dj })}
               className="border-b border-muted/10 px-4 py-3"
             >
-              <Text className="text-ink">{dj.name}</Text>
+              <Text className="text-ink dark:text-paper">{dj.name}</Text>
               <Text className="text-xs text-muted">Already on Beatboxd</Text>
             </Pressable>
           ))}
@@ -73,7 +74,7 @@ export function ArtistSearchInput({
               onPress={() => onSelect({ type: "spotify", artist })}
               className="border-b border-muted/10 px-4 py-3"
             >
-              <Text className="text-ink">{artist.name}</Text>
+              <Text className="text-ink dark:text-paper">{artist.name}</Text>
               <Text className="text-xs text-muted">
                 {artist.genres.length > 0 ? artist.genres.join(", ") : "From Spotify"}
               </Text>

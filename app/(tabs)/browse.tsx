@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { FlatList, SafeAreaView, Text, TextInput, View } from "react-native";
+import { FlatList, TextInput, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Text } from "../../components/Text";
 
 import { DjCard } from "../../components/DjCard";
 import { EmptyState } from "../../components/EmptyState";
@@ -19,14 +21,14 @@ export default function BrowseScreen() {
   });
 
   return (
-    <SafeAreaView className="flex-1 bg-paper">
+    <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
       <View className="px-4 pb-2 pt-4">
-        <Text className="mb-3 text-2xl font-bold text-ink">Browse DJs</Text>
+        <Text className="mb-3 text-2xl font-display text-ink dark:text-paper">Browse DJs</Text>
         <TextInput
           placeholder="Search DJs..."
           value={query}
           onChangeText={setQuery}
-          className="rounded-lg border border-muted/30 bg-white px-4 py-3"
+          className="rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
         />
       </View>
       <FlatList

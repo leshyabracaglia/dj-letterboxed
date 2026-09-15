@@ -1,7 +1,8 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import { Text } from "./Text";
 
 const VIBE_STYLES: Record<string, { label: string; bg: string; text: string }> = {
-  electric: { label: "⚡ Electric", bg: "bg-accent/15", text: "text-accent" },
+  electric: { label: "⚡ Electric", bg: "bg-accent-tint", text: "text-accent-text" },
   good: { label: "🙂 Good", bg: "bg-emerald-100", text: "text-emerald-700" },
   average: { label: "😐 Average", bg: "bg-amber-100", text: "text-amber-700" },
   dead: { label: "💀 Dead", bg: "bg-muted/20", text: "text-muted" },

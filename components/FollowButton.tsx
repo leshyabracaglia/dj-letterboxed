@@ -1,28 +1,69 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pressable, Text } from "react-native";
+import { Pressable } from "react-native";
+import { Text } from "./Text";
 
 import { useApi } from "../lib/api/client";
 import { queryKeys } from "../lib/api/queryKeys";
+import type { UserProfile } from "../lib/api/types";
 
-export function FollowButton({ userId }: { userId: string }) {
+type FollowingSnapshot = { following: boolean } | undefined;
+
+/** `username` is optional so this still works anywhere we only have a userId;
+ * pass it when available so the profile's follower count updates in step. */
+export function FollowButton({ userId, username }: { userId: string; username?: string }) {
   const api = useApi();
   const queryClient = useQueryClient();
+  const followingKey = queryKeys.follows.isFollowing(userId);
+  const profileKey = username ? queryKeys.users.byUsername(username) : undefined;
 
   const { data } = useQuery({
-    queryKey: queryKeys.follows.isFollowing(userId),
+    queryKey: followingKey,
     queryFn: () => api.get<{ following: boolean }>(`/follows/is-following/${userId}`),
   });
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: queryKeys.follows.isFollowing(userId) });
+  const applyOptimistic = async (following: boolean) => {
+    await queryClient.cancelQueries({ queryKey: followingKey });
+    const previousFollowing = queryClient.getQueryData<FollowingSnapshot>(followingKey);
+    queryClient.setQueryData<{ following: boolean }>(followingKey, { following });
+
+    let previousProfile: UserProfile | undefined;
+    if (profileKey) {
+      await queryClient.cancelQueries({ queryKey: profileKey });
+      previousProfile = queryClient.getQueryData<UserProfile>(profileKey);
+      if (previousProfile) {
+        queryClient.setQueryData<UserProfile>(profileKey, {
+          ...previousProfile,
+          followerCount: previousProfile.followerCount + (following ? 1 : -1),
+        });
+      }
+    }
+    return { previousFollowing, previousProfile };
+  };
+
+  const rollback = (ctx?: { previousFollowing: FollowingSnapshot; previousProfile?: UserProfile }) => {
+    if (!ctx) return;
+    queryClient.setQueryData(followingKey, ctx.previousFollowing);
+    if (profileKey && ctx.previousProfile) {
+      queryClient.setQueryData(profileKey, ctx.previousProfile);
+    }
+  };
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: followingKey });
+    if (profileKey) queryClient.invalidateQueries({ queryKey: profileKey });
+  };
 
   const follow = useMutation({
     mutationFn: () => api.post(`/follows/${userId}`),
-    onSuccess: invalidate,
+    onMutate: () => applyOptimistic(true),
+    onError: (_err, _vars, ctx) => rollback(ctx),
+    onSettled: invalidate,
   });
   const unfollow = useMutation({
     mutationFn: () => api.del(`/follows/${userId}`),
-    onSuccess: invalidate,
+    onMutate: () => applyOptimistic(false),
+    onError: (_err, _vars, ctx) => rollback(ctx),
+    onSettled: invalidate,
   });
 
   const isFollowing = data?.following ?? false;
@@ -32,9 +73,9 @@ export function FollowButton({ userId }: { userId: string }) {
     <Pressable
       disabled={pending}
       onPress={() => (isFollowing ? unfollow.mutate() : follow.mutate())}
-      className={`rounded-full px-4 py-2 ${isFollowing ? "bg-muted/20" : "bg-ink"}`}
+      className={`rounded-full px-4 py-2 active:opacity-80 ${isFollowing ? "bg-muted/20" : "bg-primary"}`}
     >
-      <Text className={isFollowing ? "text-ink" : "text-paper"}>
+      <Text className={isFollowing ? "text-ink dark:text-paper" : "text-paper"}>
         {isFollowing ? "Following" : "Follow"}
       </Text>
     </Pressable>

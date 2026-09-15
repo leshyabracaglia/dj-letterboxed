@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, Stack, useLocalSearchParams } from "expo-router";
-import { FlatList, SafeAreaView, Text, View } from "react-native";
+import { FlatList, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Text } from "../../components/Text";
 
+import { Avatar } from "../../components/Avatar";
 import { EmptyState } from "../../components/EmptyState";
 import { FollowButton } from "../../components/FollowButton";
 import { ReviewCard } from "../../components/ReviewCard";
@@ -35,20 +38,29 @@ export default function UserProfileScreen() {
   const isSelf = me?.id === profile.user.id;
 
   return (
-    <SafeAreaView className="flex-1 bg-paper">
+    <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
       <Stack.Screen options={{ title: `@${profile.user.username}` }} />
-      <View className="border-b border-muted/20 px-4 py-4">
+      <View className="border-b border-primary/15 px-4 py-4">
         <View className="flex-row items-center justify-between">
-          <View>
-            <Text className="text-2xl font-bold text-ink">
-              {profile.user.displayName ?? profile.user.username}
-            </Text>
-            <Text className="text-muted">@{profile.user.username}</Text>
+          <View className="flex-row items-center gap-3">
+            <Avatar
+              uri={profile.user.avatarUrl}
+              name={profile.user.displayName ?? profile.user.username}
+              size={48}
+            />
+            <View>
+              <Text className="text-2xl font-bold text-ink dark:text-paper">
+                {profile.user.displayName ?? profile.user.username}
+              </Text>
+              <Text className="text-muted">@{profile.user.username}</Text>
+            </View>
           </View>
-          {!isSelf ? <FollowButton userId={profile.user.id} /> : null}
+          {!isSelf ? (
+            <FollowButton userId={profile.user.id} username={profile.user.username} />
+          ) : null}
         </View>
         {profile.user.bio ? (
-          <Text className="mt-2 text-ink">{profile.user.bio}</Text>
+          <Text className="mt-2 text-ink dark:text-paper">{profile.user.bio}</Text>
         ) : null}
         <View className="mt-3 flex-row gap-4">
           <Text className="text-muted">{profile.logCount} logs</Text>

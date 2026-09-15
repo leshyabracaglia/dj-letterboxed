@@ -1,5 +1,7 @@
 import { Stack, useLocalSearchParams } from "expo-router";
-import { FlatList, SafeAreaView, Text, View } from "react-native";
+import { FlatList, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Text } from "../../components/Text";
 
 import { EmptyState } from "../../components/EmptyState";
 import { ReviewCard } from "../../components/ReviewCard";
@@ -16,17 +18,17 @@ export default function EventScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-paper">
+    <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
       <Stack.Screen options={{ title: data.event.name }} />
-      <View className="border-b border-muted/20 px-4 py-4">
-        <Text className="text-2xl font-bold text-ink">{data.event.name}</Text>
+      <View className="border-b border-accent/15 px-4 py-4">
+        <Text className="text-2xl font-bold text-ink dark:text-paper">{data.event.name}</Text>
         <Text className="mt-1 text-muted">
           {data.event.venue}
           {data.event.city ? ` · ${data.event.city}` : ""}
         </Text>
         <Text className="mt-1 text-xs text-muted">{formatDateTime(data.event.eventDate)}</Text>
         {data.event.description ? (
-          <Text className="mt-3 text-ink">{data.event.description}</Text>
+          <Text className="mt-3 text-ink dark:text-paper">{data.event.description}</Text>
         ) : null}
       </View>
       <FlatList

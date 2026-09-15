@@ -1,7 +1,8 @@
 import { useSignIn } from "@clerk/expo";
 import { Link, router } from "expo-router";
 import { useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Pressable, TextInput, View } from "react-native";
+import { Text } from "../../components/Text";
 
 import { ROUTES } from "../../lib/routes";
 
@@ -64,8 +65,8 @@ export default function SignInScreen() {
 
   if (needsVerification) {
     return (
-      <View className="flex-1 items-center justify-center bg-paper px-6">
-        <Text className="mb-8 text-3xl font-bold text-ink">Verify it&apos;s you</Text>
+      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink px-6">
+        <Text className="mb-8 text-3xl font-display text-ink dark:text-paper">Verify it&apos;s you</Text>
         <Text className="mb-4 text-center text-muted">
           We sent a code to {email} to confirm this new device.
         </Text>
@@ -73,13 +74,13 @@ export default function SignInScreen() {
           placeholder="Verification code"
           value={code}
           onChangeText={setCode}
-          className="mb-4 w-full max-w-sm rounded-lg border border-muted/30 bg-white px-4 py-3"
+          className="mb-4 w-full max-w-sm rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
         />
-        {error ? <Text className="mb-3 text-accent">{error}</Text> : null}
+        {error ? <Text className="mb-3 text-danger">{error}</Text> : null}
         <Pressable
           onPress={onVerify}
           disabled={fetchStatus === "fetching"}
-          className="w-full max-w-sm rounded-lg bg-ink py-3"
+          className="w-full max-w-sm rounded-xl bg-primary py-3 active:opacity-90"
         >
           <Text className="text-center font-semibold text-paper">Verify</Text>
         </Pressable>
@@ -88,34 +89,34 @@ export default function SignInScreen() {
   }
 
   return (
-    <View className="flex-1 items-center justify-center bg-paper px-6">
-      <Text className="mb-8 text-3xl font-bold text-ink">Welcome back</Text>
+    <View className="flex-1 items-center justify-center bg-paper dark:bg-ink px-6">
+      <Text className="mb-8 text-3xl font-display text-ink dark:text-paper">Welcome back</Text>
       <TextInput
         autoCapitalize="none"
         keyboardType="email-address"
         placeholder="Email"
         value={email}
         onChangeText={setEmail}
-        className="mb-3 w-full max-w-sm rounded-lg border border-muted/30 bg-white px-4 py-3"
+        className="mb-3 w-full max-w-sm rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
       />
       <TextInput
         secureTextEntry
         placeholder="Password"
         value={password}
         onChangeText={setPassword}
-        className="mb-4 w-full max-w-sm rounded-lg border border-muted/30 bg-white px-4 py-3"
+        className="mb-4 w-full max-w-sm rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
       />
       {errors.fields.identifier ? (
-        <Text className="mb-3 text-accent">{errors.fields.identifier.message}</Text>
+        <Text className="mb-3 text-danger">{errors.fields.identifier.message}</Text>
       ) : null}
       {errors.fields.password ? (
-        <Text className="mb-3 text-accent">{errors.fields.password.message}</Text>
+        <Text className="mb-3 text-danger">{errors.fields.password.message}</Text>
       ) : null}
-      {error ? <Text className="mb-3 text-accent">{error}</Text> : null}
+      {error ? <Text className="mb-3 text-danger">{error}</Text> : null}
       <Pressable
         onPress={onSubmit}
         disabled={fetchStatus === "fetching"}
-        className="w-full max-w-sm rounded-lg bg-ink py-3"
+        className="w-full max-w-sm rounded-xl bg-primary py-3 active:opacity-90"
       >
         <Text className="text-center font-semibold text-paper">Sign in</Text>
       </Pressable>

@@ -71,6 +71,7 @@ export type UpdateReviewInput = Partial<Omit<CreateReviewInput, "djId">> & {
 };
 
 export type UpdateProfileInput = {
+  username?: string;
   displayName?: string;
   bio?: string;
   avatarUrl?: string;

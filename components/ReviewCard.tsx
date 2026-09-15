@@ -1,8 +1,11 @@
-import { Text, View } from "react-native";
+import { router } from "expo-router";
+import { Pressable, View } from "react-native";
+import { Text } from "./Text";
 
 import type { Dj, Event, Review, User } from "../lib/api/types";
 import { formatDate } from "../lib/format";
 import { ROUTES } from "../lib/routes";
+import { Avatar } from "./Avatar";
 import { Card } from "./Card";
 import { CrowdVibeBadge } from "./CrowdVibeBadge";
 import { RatingStars } from "./RatingStars";
@@ -20,13 +23,25 @@ export function ReviewCard({
         </View>
       ) : null}
       <View className="flex-row items-center justify-between">
-        <Text className="text-base font-semibold text-ink">{log.dj?.name ?? "Unknown DJ"}</Text>
+        <Text className="text-base font-semibold text-ink dark:text-paper">{log.dj?.name ?? "Unknown DJ"}</Text>
         <RatingStars value={log.ratingHalfStars} size={14} />
       </View>
       {log.user ? (
-        <Text className="mt-1 text-xs text-muted">
-          logged by {log.user.displayName ?? log.user.username}
-        </Text>
+        <Pressable
+          className="mt-1 flex-row items-center gap-1.5 self-start"
+          hitSlop={4}
+          onPress={(e) => {
+            // Card wraps this whole row in its own Link, so stop the press
+            // from bubbling up and navigating to the log detail instead.
+            e.stopPropagation();
+            router.push(ROUTES.USER(log.user!.username));
+          }}
+        >
+          <Avatar uri={log.user.avatarUrl} name={log.user.displayName ?? log.user.username} size={16} />
+          <Text className="text-xs text-muted">
+            logged by {log.user.displayName ?? log.user.username}
+          </Text>
+        </Pressable>
       ) : null}
       {log.event ? (
         <Text className="mt-1 text-sm text-muted">
@@ -35,7 +50,7 @@ export function ReviewCard({
       ) : null}
       <Text className="mt-1 text-xs text-muted">{formatDate(log.seenAt)}</Text>
       {log.reviewText ? (
-        <Text className="mt-2 text-sm text-ink" numberOfLines={3}>
+        <Text className="mt-2 text-sm text-ink dark:text-paper" numberOfLines={3}>
           {log.reviewText}
         </Text>
       ) : null}

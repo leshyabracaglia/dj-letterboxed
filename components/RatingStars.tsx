@@ -1,4 +1,5 @@
-import { Pressable, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Pressable, View } from "react-native";
 
 // `value` and `onChange` are in half-star units (1-10). Read-only when
 // `onChange` is omitted.
@@ -18,20 +19,17 @@ export function RatingStars({
       {Array.from({ length: 5 }).map((_, i) => {
         const starValue = (i + 1) * 2;
         const halfValue = starValue - 1;
-        const symbol =
-          filled >= starValue ? "★" : filled >= halfValue ? "⯨" : "☆";
+        const iconName = filled >= starValue ? "star" : filled >= halfValue ? "star-half" : "star-outline";
+
+        const star = <Ionicons name={iconName} size={size} color="#884ACF" />;
 
         if (!onChange) {
-          return (
-            <Text key={i} style={{ fontSize: size, color: "#ff5470" }}>
-              {symbol}
-            </Text>
-          );
+          return <View key={i}>{star}</View>;
         }
 
         return (
           <Pressable key={i} onPress={() => onChange(starValue)} hitSlop={4}>
-            <Text style={{ fontSize: size, color: "#ff5470" }}>{symbol}</Text>
+            {star}
           </Pressable>
         );
       })}
