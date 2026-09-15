@@ -1,0 +1,65 @@
+#!/bin/bash
+set -euo pipefail
+
+dnf install -y docker
+systemctl enable --now docker
+
+mkdir -p /usr/local/lib/docker/cli-plugins
+curl -sSL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$(uname -m)" \
+  -o /usr/local/lib/docker/cli-plugins/docker-compose
+chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+mkdir -p /opt/beatboxd
+cd /opt/beatboxd
+
+get_secret() {
+  aws secretsmanager get-secret-value --region "${aws_region}" --secret-id "$1" --query SecretString --output text
+}
+
+cat > .env <<EOF
+DATABASE_URL=$(get_secret "${database_url_secret_arn}")
+CLERK_SECRET_KEY=$(get_secret "${clerk_secret_key_secret_arn}")
+CLERK_WEBHOOK_SIGNING_SECRET=$(get_secret "${clerk_webhook_signing_secret_secret_arn}")
+SPOTIFY_CLIENT_ID=$(get_secret "${spotify_client_id_secret_arn}")
+SPOTIFY_CLIENT_SECRET=$(get_secret "${spotify_client_secret_secret_arn}")
+CLERK_JWKS_URL=${clerk_jwks_url}
+CLERK_ISSUER=${clerk_issuer}
+PORT=8080
+EOF
+chmod 600 .env
+
+cat > Caddyfile <<EOF
+${domain_name} {
+	reverse_proxy api:8080
+}
+EOF
+
+cat > docker-compose.yml <<'EOF'
+services:
+  api:
+    image: ${ecr_repository_url}:latest
+    restart: always
+    env_file: .env
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  caddy_data:
+  caddy_config:
+EOF
+
+aws ecr get-login-password --region "${aws_region}" | docker login --username AWS --password-stdin "${ecr_registry}"
+
+cd /opt/beatboxd
+docker compose pull
+docker compose up -d

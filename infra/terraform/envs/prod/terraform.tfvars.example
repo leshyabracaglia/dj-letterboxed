@@ -1,0 +1,17 @@
+aws_region  = "us-east-1"
+project     = "beatboxd"
+domain_name = "api.beatboxd.com"
+github_repo = "leshyabracaglia/dj-letterboxed"
+
+# From your Clerk Dashboard -> API Keys page.
+clerk_jwks_url = "https://YOUR-INSTANCE.clerk.accounts.dev/.well-known/jwks.json"
+clerk_issuer   = "https://YOUR-INSTANCE.clerk.accounts.dev"
+
+# Sensitive - copy from the root project's .env, or the Clerk Dashboard's
+# Webhooks page (Signing Secret) for the webhook one. Never commit the
+# real values - this file should stay untracked once you fill it in
+# (terraform.tfvars is gitignored; only this .example file is committed).
+clerk_secret_key             = "sk_test_..."
+clerk_webhook_signing_secret = "whsec_..."
+spotify_client_id            = ""
+spotify_client_secret        = ""
