@@ -1,4 +1,5 @@
 .PHONY: run build test vet migrate-up migrate-down seed compose-up compose-down openapi openapi-check
+# oidc-debug-trigger
 
 DATABASE_URL ?= postgres://beatboxd:beatboxd@localhost:5433/beatboxd?sslmode=disable
 
