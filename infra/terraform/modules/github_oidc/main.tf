@@ -26,12 +26,17 @@ data "aws_iam_policy_document" "github_assume" {
       values   = ["sts.amazonaws.com"]
     }
     condition {
-      test     = "StringLike"
-      variable = "token.actions.githubusercontent.com:sub"
-      # Restricts to workflow runs triggered from this repo's main branch.
-      # Widen to "repo:${var.github_repo}:*" if PR-triggered deploys are
-      # ever wanted, though server-deploy.yml is main-only per the plan.
-      values = ["repo:${var.github_repo}:ref:refs/heads/main"]
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:job_workflow_ref"
+      # job_workflow_ref instead of sub: this repo is on GitHub's newer
+      # "immutable" sub format (repo:OWNER@id/REPO@id:ref:...), which
+      # embeds numeric owner/repo IDs and broke a plain
+      # "repo:${var.github_repo}:ref:refs/heads/main" match (verified by
+      # decoding an actual token - AssumeRoleWithWebIdentity was denied
+      # for every trigger type, not just workflow_run). job_workflow_ref
+      # stays name-based and additionally scopes trust to this one
+      # workflow file rather than any workflow in the repo.
+      values = ["${var.github_repo}/.github/workflows/server-deploy.yml@refs/heads/main"]
     }
   }
 }
