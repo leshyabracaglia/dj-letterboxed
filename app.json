@@ -35,10 +35,25 @@
         {
           "experimentalLauncherActivity": true
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "17.0"
+          }
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b7998b25-53a3-4f16-b127-93511d68b4f0"
+      }
+    },
+    "owner": "q.t.3.1415"
   }
 }

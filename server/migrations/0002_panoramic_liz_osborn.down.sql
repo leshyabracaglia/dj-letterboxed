@@ -1,0 +1,3 @@
+ALTER TABLE "djs" DROP CONSTRAINT IF EXISTS "djs_spotify_id_unique";
+ALTER TABLE "djs" DROP COLUMN IF EXISTS "spotify_id";
+DROP TABLE IF EXISTS "review_tags" CASCADE;
