@@ -6,9 +6,11 @@ import { CommentSection } from "../../components/CommentSection";
 import { CrowdVibeBadge } from "../../components/CrowdVibeBadge";
 import { LikeButton } from "../../components/LikeButton";
 import { RatingStars } from "../../components/RatingStars";
+import { ScreenLoading } from "../../components/ScreenLoading";
 import { useApi } from "../../lib/api/client";
 import { queryKeys } from "../../lib/api/queryKeys";
 import type { Dj, Event, Review, User } from "../../lib/api/types";
+import { formatDate } from "../../lib/format";
 import { ROUTES } from "../../lib/routes";
 
 // getById always hydrates these relations, so narrow them to required here.
@@ -26,15 +28,11 @@ export default function LogDetailScreen() {
   const api = useApi();
   const { data: log } = useQuery({
     queryKey: queryKeys.reviews.byId(id!),
-    queryFn: () => api.get<LogDetail>(`/api/reviews/${id}`),
+    queryFn: () => api.get<LogDetail>(`/reviews/${id}`),
   });
 
   if (!log) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-paper">
-        <Text className="text-muted">Loading...</Text>
-      </SafeAreaView>
-    );
+    return <ScreenLoading />;
   }
 
   return (
@@ -56,9 +54,7 @@ export default function LogDetailScreen() {
           </Link>
         ) : null}
 
-        <Text className="mt-1 text-sm text-muted">
-          Seen {new Date(log.seenAt).toLocaleString()}
-        </Text>
+        <Text className="mt-1 text-sm text-muted">Seen {formatDate(log.seenAt)}</Text>
 
         <View className="mt-3">
           <CrowdVibeBadge vibe={log.crowdVibe} />

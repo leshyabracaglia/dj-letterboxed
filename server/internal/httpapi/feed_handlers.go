@@ -39,10 +39,20 @@ func (h *Handlers) fetchPopularReviews(ctx context.Context, limit, offset int, e
 	return dtos, nil
 }
 
+// GetActivity godoc
+//
+//	@Summary	Activity feed: followed users' reviews interleaved with popular ones every 4th item
+//	@Tags		feed
+//	@Produce	json
+//	@Param		cursor	query		string	false	"pagination cursor (opaque, encodes createdAt + popular-pool offset)"
+//	@Param		limit	query		int		false	"page size, 1-50, default 20"
+//	@Success	200		{object}	FeedResponse
+//	@Failure	401		{object}	errorEnvelope
+//	@Security	BearerAuth
+//	@Router		/api/feed [get]
 func (h *Handlers) GetActivity(w http.ResponseWriter, r *http.Request) {
-	user, ok := UserFromContext(r.Context())
+	user, ok := mustUser(w, r)
 	if !ok {
-		Unauthorized(w)
 		return
 	}
 
@@ -52,9 +62,7 @@ func (h *Handlers) GetActivity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(followedIDs) == 0 {
-		WriteJSON(w, http.StatusOK, map[string]any{
-			"items": []ReviewDTO{}, "nextCursor": nil, "followingCount": 0,
-		})
+		WriteJSON(w, http.StatusOK, FeedResponse{Items: []ReviewDTO{}, NextCursor: nil, FollowingCount: 0})
 		return
 	}
 
@@ -103,17 +111,26 @@ func (h *Handlers) GetActivity(w http.ResponseWriter, r *http.Request) {
 		nextCursor = &enc
 	}
 
-	WriteJSON(w, http.StatusOK, map[string]any{
-		"items":          items,
-		"nextCursor":     nextCursor,
-		"followingCount": len(followedIDs),
+	WriteJSON(w, http.StatusOK, FeedResponse{
+		Items:          items,
+		NextCursor:     nextCursor,
+		FollowingCount: len(followedIDs),
 	})
 }
 
+// GetPopular godoc
+//
+//	@Summary	Most-liked-and-commented reviews, ranked
+//	@Tags		feed
+//	@Produce	json
+//	@Param		limit	query		int	false	"page size, 1-50, default 20"
+//	@Success	200		{object}	PopularResponse
+//	@Failure	401		{object}	errorEnvelope
+//	@Security	BearerAuth
+//	@Router		/api/feed/popular [get]
 func (h *Handlers) GetPopular(w http.ResponseWriter, r *http.Request) {
-	user, ok := UserFromContext(r.Context())
+	user, ok := mustUser(w, r)
 	if !ok {
-		Unauthorized(w)
 		return
 	}
 	limit := queryLimit(r, 20, 50)
@@ -123,7 +140,7 @@ func (h *Handlers) GetPopular(w http.ResponseWriter, r *http.Request) {
 		InternalError(w, err)
 		return
 	}
-	WriteJSON(w, http.StatusOK, map[string]any{"items": items})
+	WriteJSON(w, http.StatusOK, PopularResponse{Items: items})
 }
 
 // interleaveFeed splices a popular item in after every Nth followed item,

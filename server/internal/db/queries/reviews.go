@@ -3,6 +3,7 @@ package queries
 import (
 	"context"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -81,17 +82,29 @@ func DeleteReview(ctx context.Context, q DBTX, id string) error {
 	return err
 }
 
+// listReviewsPage runs a cursor-paginated reviews query: WHERE baseWhere
+// (already parameterized against args) AND, if cursor is set, cursorCol <
+// the next placeholder - ordered and limited by that same column. Powers
+// ListReviewsByUser, ListReviewsByDj, and ListReviewsByUserIDs, which only
+// differ in their WHERE clause and cursor column.
+func listReviewsPage(ctx context.Context, q DBTX, baseWhere, cursorCol string, args []any, cursor *time.Time, limit int) ([]db.Review, error) {
+	sql := "SELECT " + reviewCols + " FROM reviews WHERE " + baseWhere
+	queryArgs := append([]any{}, args...)
+	if cursor != nil {
+		queryArgs = append(queryArgs, *cursor)
+		sql += " AND " + cursorCol + " < $" + strconv.Itoa(len(queryArgs))
+	}
+	queryArgs = append(queryArgs, limit)
+	sql += " ORDER BY " + cursorCol + " DESC LIMIT $" + strconv.Itoa(len(queryArgs))
+
+	rows, err := q.Query(ctx, sql, queryArgs...)
+	return collectReviews(rows, err)
+}
+
 // ListReviewsByUser returns reviews for userID ordered seen_at desc,
 // optionally paginated by a seen_at cursor (strictly less than).
 func ListReviewsByUser(ctx context.Context, q DBTX, userID string, cursor *time.Time, limit int) ([]db.Review, error) {
-	var rows pgx.Rows
-	var err error
-	if cursor != nil {
-		rows, err = q.Query(ctx, "SELECT "+reviewCols+" FROM reviews WHERE user_id = $1 AND seen_at < $2 ORDER BY seen_at DESC LIMIT $3", userID, *cursor, limit)
-	} else {
-		rows, err = q.Query(ctx, "SELECT "+reviewCols+" FROM reviews WHERE user_id = $1 ORDER BY seen_at DESC LIMIT $2", userID, limit)
-	}
-	return collectReviews(rows, err)
+	return listReviewsPage(ctx, q, "user_id = $1", "seen_at", []any{userID}, cursor, limit)
 }
 
 // ListReviewsByEvent returns all reviews for an event, ordered seen_at desc
@@ -102,14 +115,7 @@ func ListReviewsByEvent(ctx context.Context, q DBTX, eventID string) ([]db.Revie
 }
 
 func ListReviewsByDj(ctx context.Context, q DBTX, djID string, cursor *time.Time, limit int) ([]db.Review, error) {
-	var rows pgx.Rows
-	var err error
-	if cursor != nil {
-		rows, err = q.Query(ctx, "SELECT "+reviewCols+" FROM reviews WHERE dj_id = $1 AND seen_at < $2 ORDER BY seen_at DESC LIMIT $3", djID, *cursor, limit)
-	} else {
-		rows, err = q.Query(ctx, "SELECT "+reviewCols+" FROM reviews WHERE dj_id = $1 ORDER BY seen_at DESC LIMIT $2", djID, limit)
-	}
-	return collectReviews(rows, err)
+	return listReviewsPage(ctx, q, "dj_id = $1", "seen_at", []any{djID}, cursor, limit)
 }
 
 func collectReviews(rows pgx.Rows, err error) ([]db.Review, error) {
@@ -205,7 +211,7 @@ func SetReviewTags(ctx context.Context, q DBTX, reviewID string, taggedUserIDs [
 		return err
 	}
 
-	deduped := dedupeStrings(taggedUserIDs)
+	deduped := DedupeStrings(taggedUserIDs)
 	if len(deduped) == 0 {
 		return nil
 	}
@@ -233,7 +239,9 @@ func GetTaggedUsers(ctx context.Context, q DBTX, reviewID string) ([]db.User, er
 	return scanUserRows(rows, err)
 }
 
-func dedupeStrings(in []string) []string {
+// DedupeStrings returns in with duplicate values removed, preserving order
+// of first occurrence.
+func DedupeStrings(in []string) []string {
 	seen := make(map[string]struct{}, len(in))
 	out := make([]string, 0, len(in))
 	for _, s := range in {

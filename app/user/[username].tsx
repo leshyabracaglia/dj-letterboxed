@@ -2,12 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, Stack, useLocalSearchParams } from "expo-router";
 import { FlatList, SafeAreaView, Text, View } from "react-native";
 
+import { EmptyState } from "../../components/EmptyState";
 import { FollowButton } from "../../components/FollowButton";
-import { LogCard } from "../../components/LogCard";
+import { ReviewCard } from "../../components/ReviewCard";
+import { ScreenLoading } from "../../components/ScreenLoading";
 import { StatsSummary } from "../../components/StatsSummary";
 import { useApi } from "../../lib/api/client";
+import { useUserProfile } from "../../lib/api/hooks";
 import { queryKeys } from "../../lib/api/queryKeys";
-import type { Paginated, Review, User, UserProfile } from "../../lib/api/types";
+import type { Paginated, Review, User } from "../../lib/api/types";
 import { ROUTES } from "../../lib/routes";
 
 export default function UserProfileScreen() {
@@ -16,24 +19,17 @@ export default function UserProfileScreen() {
 
   const { data: me } = useQuery({
     queryKey: queryKeys.users.me(),
-    queryFn: () => api.get<User>("/api/users/me"),
+    queryFn: () => api.get<User>("/users/me"),
   });
-  const { data: profile } = useQuery({
-    queryKey: queryKeys.users.byUsername(username!),
-    queryFn: () => api.get<UserProfile>(`/api/users/${username}`),
-  });
+  const { data: profile } = useUserProfile(username);
   const { data: logs } = useQuery({
     queryKey: queryKeys.reviews.byUser(username!),
-    queryFn: () => api.get<Paginated<Review>>(`/api/users/${username}/reviews`, { limit: 20 }),
+    queryFn: () => api.get<Paginated<Review>>(`/users/${username}/reviews`, { limit: 20 }),
     enabled: !!username,
   });
 
   if (!profile) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-paper">
-        <Text className="text-muted">Loading...</Text>
-      </SafeAreaView>
-    );
+    return <ScreenLoading />;
   }
 
   const isSelf = me?.id === profile.user.id;
@@ -69,10 +65,8 @@ export default function UserProfileScreen() {
         contentContainerStyle={{ padding: 16 }}
         data={logs?.items ?? []}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <LogCard log={{ ...item, user: profile.user }} />}
-        ListEmptyComponent={
-          <Text className="mt-10 text-center text-muted">No logs yet.</Text>
-        }
+        renderItem={({ item }) => <ReviewCard log={{ ...item, user: profile.user }} />}
+        ListEmptyComponent={<EmptyState message="No logs yet." />}
       />
     </SafeAreaView>
   );

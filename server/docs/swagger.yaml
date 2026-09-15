@@ -1,0 +1,1301 @@
+basePath: /
+definitions:
+  CrowdVibe:
+    enum:
+    - electric
+    - good
+    - average
+    - dead
+    type: string
+    x-enum-varnames:
+    - CrowdVibeElectric
+    - CrowdVibeGood
+    - CrowdVibeAverage
+    - CrowdVibeDead
+  Dj:
+    properties:
+      bio:
+        type: string
+      createdAt:
+        type: string
+      createdByUserId:
+        type: string
+      genres:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      imageUrl:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+      spotifyId:
+        type: string
+      updatedAt:
+        type: string
+    required:
+    - bio
+    - createdAt
+    - createdByUserId
+    - genres
+    - id
+    - imageUrl
+    - name
+    - slug
+    - spotifyId
+    - updatedAt
+    type: object
+  DjDetailResponse:
+    properties:
+      avgRating:
+        type: number
+      dj:
+        $ref: '#/definitions/Dj'
+      logCount:
+        type: integer
+      recentLogs:
+        items:
+          $ref: '#/definitions/ReviewDTO'
+        type: array
+    required:
+    - avgRating
+    - dj
+    - logCount
+    - recentLogs
+    type: object
+  Event:
+    properties:
+      city:
+        type: string
+      createdAt:
+        type: string
+      createdByUserId:
+        type: string
+      description:
+        type: string
+      eventDate:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      venue:
+        type: string
+    required:
+    - city
+    - createdAt
+    - createdByUserId
+    - description
+    - eventDate
+    - id
+    - name
+    - venue
+    type: object
+  EventDetailResponse:
+    properties:
+      event:
+        $ref: '#/definitions/Event'
+      logs:
+        items:
+          $ref: '#/definitions/ReviewDTO'
+        type: array
+    required:
+    - event
+    - logs
+    type: object
+  FeedResponse:
+    properties:
+      followingCount:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/ReviewDTO'
+        type: array
+      nextCursor:
+        type: string
+    required:
+    - followingCount
+    - items
+    - nextCursor
+    type: object
+  FollowingStatusResponse:
+    properties:
+      following:
+        type: boolean
+    required:
+    - following
+    type: object
+  LeaderboardEntry:
+    properties:
+      logCount:
+        type: integer
+      user:
+        $ref: '#/definitions/User'
+    required:
+    - logCount
+    - user
+    type: object
+  PaginatedReviews:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/ReviewDTO'
+        type: array
+      nextCursor:
+        type: string
+    required:
+    - items
+    - nextCursor
+    type: object
+  PopularResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/ReviewDTO'
+        type: array
+    required:
+    - items
+    type: object
+  Review:
+    properties:
+      createdAt:
+        type: string
+      crowdVibe:
+        $ref: '#/definitions/CrowdVibe'
+      crowdVibeNote:
+        type: string
+      djId:
+        type: string
+      eventId:
+        type: string
+      id:
+        type: string
+      ratingHalfStars:
+        type: integer
+      reviewText:
+        type: string
+      seenAt:
+        type: string
+      updatedAt:
+        type: string
+      userId:
+        type: string
+    required:
+    - createdAt
+    - crowdVibe
+    - crowdVibeNote
+    - djId
+    - eventId
+    - id
+    - ratingHalfStars
+    - reviewText
+    - seenAt
+    - updatedAt
+    - userId
+    type: object
+  ReviewComment:
+    properties:
+      body:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      reviewId:
+        type: string
+      user:
+        $ref: '#/definitions/User'
+      userId:
+        type: string
+    required:
+    - body
+    - createdAt
+    - id
+    - reviewId
+    - userId
+    type: object
+  ReviewDTO:
+    properties:
+      commentCount:
+        type: integer
+      createdAt:
+        type: string
+      crowdVibe:
+        $ref: '#/definitions/CrowdVibe'
+      crowdVibeNote:
+        type: string
+      dj:
+        $ref: '#/definitions/Dj'
+      djId:
+        type: string
+      event:
+        $ref: '#/definitions/Event'
+      eventId:
+        type: string
+      id:
+        type: string
+      isLikedByMe:
+        type: boolean
+      isPopular:
+        type: boolean
+      likeCount:
+        type: integer
+      ratingHalfStars:
+        type: integer
+      reviewText:
+        type: string
+      seenAt:
+        type: string
+      taggedUsers:
+        items:
+          $ref: '#/definitions/User'
+        type: array
+      updatedAt:
+        type: string
+      user:
+        $ref: '#/definitions/User'
+      userId:
+        type: string
+    required:
+    - createdAt
+    - crowdVibe
+    - crowdVibeNote
+    - djId
+    - eventId
+    - id
+    - ratingHalfStars
+    - reviewText
+    - seenAt
+    - updatedAt
+    - userId
+    type: object
+  SpotifyArtist:
+    properties:
+      genres:
+        items:
+          type: string
+        type: array
+      imageUrl:
+        type: string
+      name:
+        type: string
+      spotifyId:
+        type: string
+    required:
+    - genres
+    - imageUrl
+    - name
+    - spotifyId
+    type: object
+  SuccessResponse:
+    properties:
+      success:
+        type: boolean
+    required:
+    - success
+    type: object
+  TopDj:
+    properties:
+      dj:
+        $ref: '#/definitions/Dj'
+      logCount:
+        type: integer
+    required:
+    - dj
+    - logCount
+    type: object
+  TopVenue:
+    properties:
+      logCount:
+        type: integer
+      venue:
+        type: string
+    required:
+    - logCount
+    - venue
+    type: object
+  User:
+    properties:
+      avatarUrl:
+        type: string
+      bio:
+        type: string
+      createdAt:
+        type: string
+      displayName:
+        type: string
+      id:
+        type: string
+      updatedAt:
+        type: string
+      username:
+        type: string
+    required:
+    - avatarUrl
+    - bio
+    - createdAt
+    - displayName
+    - id
+    - updatedAt
+    - username
+    type: object
+  UserProfileResponse:
+    properties:
+      followerCount:
+        type: integer
+      followingCount:
+        type: integer
+      logCount:
+        type: integer
+      user:
+        $ref: '#/definitions/User'
+    required:
+    - followerCount
+    - followingCount
+    - logCount
+    - user
+    type: object
+  UserStatsResponse:
+    properties:
+      topDjs:
+        items:
+          $ref: '#/definitions/TopDj'
+        type: array
+      topVenues:
+        items:
+          $ref: '#/definitions/TopVenue'
+        type: array
+      totalLogs:
+        type: integer
+      uniqueDjs:
+        type: integer
+    required:
+    - topDjs
+    - topVenues
+    - totalLogs
+    - uniqueDjs
+    type: object
+  addCommentRequest:
+    properties:
+      body:
+        type: string
+    required:
+    - body
+    type: object
+  apiError:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+    required:
+    - code
+    - message
+    type: object
+  createDjRequest:
+    properties:
+      bio:
+        type: string
+      genres:
+        items:
+          type: string
+        type: array
+      imageUrl:
+        type: string
+      name:
+        type: string
+      spotifyId:
+        type: string
+    required:
+    - bio
+    - genres
+    - imageUrl
+    - name
+    - spotifyId
+    type: object
+  createEventRequest:
+    properties:
+      city:
+        type: string
+      description:
+        type: string
+      eventDate:
+        type: string
+      name:
+        type: string
+      venue:
+        type: string
+    required:
+    - city
+    - description
+    - eventDate
+    - name
+    - venue
+    type: object
+  createReviewRequest:
+    properties:
+      crowdVibe:
+        type: string
+      crowdVibeNote:
+        type: string
+      djId:
+        type: string
+      eventId:
+        type: string
+      ratingHalfStars:
+        type: integer
+      reviewText:
+        type: string
+      seenAt:
+        type: string
+      taggedUserIds:
+        items:
+          type: string
+        type: array
+    required:
+    - crowdVibe
+    - crowdVibeNote
+    - djId
+    - eventId
+    - ratingHalfStars
+    - reviewText
+    - seenAt
+    - taggedUserIds
+    type: object
+  errorEnvelope:
+    properties:
+      error:
+        $ref: '#/definitions/apiError'
+    required:
+    - error
+    type: object
+  updateProfileRequest:
+    properties:
+      avatarUrl:
+        type: string
+      bio:
+        type: string
+      displayName:
+        type: string
+    required:
+    - avatarUrl
+    - bio
+    - displayName
+    type: object
+  updateReviewRequest:
+    properties:
+      crowdVibe:
+        type: string
+      crowdVibeNote:
+        type: string
+      ratingHalfStars:
+        type: integer
+      reviewText:
+        type: string
+      seenAt:
+        type: string
+      taggedUserIds:
+        items:
+          type: string
+        type: array
+    required:
+    - crowdVibe
+    - crowdVibeNote
+    - ratingHalfStars
+    - reviewText
+    - seenAt
+    - taggedUserIds
+    type: object
+info:
+  contact: {}
+  description: |-
+    REST API for Beatboxd (Letterboxd for DJ sets). Generated from
+    server/internal/httpapi handler annotations via swag - run
+    `make openapi` in server/ to regenerate after changing a handler.
+  title: Beatboxd API
+  version: "1.0"
+paths:
+  /api/comments/{id}:
+    delete:
+      parameters:
+      - description: comment id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Delete a comment owned by the caller (404, never 403, if not owned/found)
+      tags:
+      - reviews
+  /api/djs:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: DJ to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/createDjRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Dj'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Create a DJ (or return the existing one, deduped by spotifyId then
+        slug)
+      tags:
+      - djs
+  /api/djs/{id}/reviews:
+    get:
+      parameters:
+      - description: DJ id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: pagination cursor (RFC3339 seenAt of the last item)
+        in: query
+        name: cursor
+        type: string
+      - description: page size, 1-50, default 20
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/PaginatedReviews'
+      summary: List reviews for a DJ, cursor-paginated by seenAt desc
+      tags:
+      - djs
+  /api/djs/{slug}:
+    get:
+      parameters:
+      - description: DJ slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/DjDetailResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: Get a DJ by slug, with rating aggregate and recent reviews
+      tags:
+      - djs
+  /api/djs/search:
+    get:
+      parameters:
+      - description: search query
+        in: query
+        name: q
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Dj'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: Search DJs by name
+      tags:
+      - djs
+  /api/djs/spotify-search:
+    get:
+      parameters:
+      - description: search query
+        in: query
+        name: q
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/SpotifyArtist'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: Search Spotify for artists (fails open to [] on Spotify errors)
+      tags:
+      - djs
+  /api/events:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: event to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/createEventRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Event'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Create an event (or return the existing one, deduped by exact name+venue+date)
+      tags:
+      - events
+  /api/events/{id}:
+    get:
+      parameters:
+      - description: event id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/EventDetailResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: Get an event by id, with all its reviews
+      tags:
+      - events
+  /api/events/search:
+    get:
+      parameters:
+      - description: search query
+        in: query
+        name: q
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/Event'
+            type: array
+      summary: Search events by name
+      tags:
+      - events
+  /api/feed:
+    get:
+      parameters:
+      - description: pagination cursor (opaque, encodes createdAt + popular-pool offset)
+        in: query
+        name: cursor
+        type: string
+      - description: page size, 1-50, default 20
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/FeedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 'Activity feed: followed users'' reviews interleaved with popular ones
+        every 4th item'
+      tags:
+      - feed
+  /api/feed/popular:
+    get:
+      parameters:
+      - description: page size, 1-50, default 20
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/PopularResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Most-liked-and-commented reviews, ranked
+      tags:
+      - feed
+  /api/follows/{userId}:
+    delete:
+      parameters:
+      - description: user id to unfollow
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Unfollow a user
+      tags:
+      - follows
+    post:
+      parameters:
+      - description: user id to follow
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Follow a user
+      tags:
+      - follows
+  /api/follows/is-following/{userId}:
+    get:
+      parameters:
+      - description: user id
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/FollowingStatusResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Whether the caller follows the given user
+      tags:
+      - follows
+  /api/leaderboard:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/LeaderboardEntry'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Leaderboard scoped to the caller and everyone they follow
+      tags:
+      - users
+  /api/reviews:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: review to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/createReviewRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Review'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 'Log a set: create a review of a DJ (optionally tied to an event)'
+      tags:
+      - reviews
+  /api/reviews/{id}:
+    delete:
+      parameters:
+      - description: review id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Delete a review owned by the caller (404, never 403, if not owned/found)
+      tags:
+      - reviews
+    get:
+      parameters:
+      - description: review id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ReviewDTO'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: Get a review with its relations, engagement, and tagged users
+      tags:
+      - reviews
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: review id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/updateReviewRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Review'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Update a review owned by the caller (404, never 403, if not owned/found)
+      tags:
+      - reviews
+  /api/reviews/{id}/comments:
+    get:
+      parameters:
+      - description: review id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/ReviewComment'
+            type: array
+      summary: List a review's comments, oldest first
+      tags:
+      - reviews
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: review id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: comment body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/addCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ReviewComment'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Add a comment to a review
+      tags:
+      - reviews
+  /api/reviews/{id}/like:
+    delete:
+      parameters:
+      - description: review id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Unlike a review
+      tags:
+      - reviews
+    post:
+      parameters:
+      - description: review id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Like a review
+      tags:
+      - reviews
+  /api/users/{userId}/followers:
+    get:
+      parameters:
+      - description: user id
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/User'
+            type: array
+      summary: List the users who follow the given user
+      tags:
+      - follows
+  /api/users/{userId}/following:
+    get:
+      parameters:
+      - description: user id
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/User'
+            type: array
+      summary: List the users the given user follows
+      tags:
+      - follows
+  /api/users/{username}:
+    get:
+      parameters:
+      - description: username
+        in: path
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UserProfileResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: Get a user's profile by username, with follow/log counts
+      tags:
+      - users
+  /api/users/{username}/reviews:
+    get:
+      parameters:
+      - description: username
+        in: path
+        name: username
+        required: true
+        type: string
+      - description: pagination cursor (RFC3339 seenAt of the last item)
+        in: query
+        name: cursor
+        type: string
+      - description: page size, 1-50, default 20
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/PaginatedReviews'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: List a user's reviews, cursor-paginated by seenAt desc
+      tags:
+      - reviews
+  /api/users/{username}/stats:
+    get:
+      parameters:
+      - description: username
+        in: path
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UserStatsResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: 'Get a user''s log stats: totals, top DJs, top venues'
+      tags:
+      - users
+  /api/users/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/User'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Get the caller's own user row
+      tags:
+      - users
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/updateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/User'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Update the caller's own profile
+      tags:
+      - users
+  /api/users/search:
+    get:
+      parameters:
+      - description: search query
+        in: query
+        name: q
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/User'
+            type: array
+      summary: Search users by username or display name
+      tags:
+      - users
+securityDefinitions:
+  BearerAuth:
+    description: Clerk-issued session JWT, e.g. "Bearer eyJhbGc..."
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

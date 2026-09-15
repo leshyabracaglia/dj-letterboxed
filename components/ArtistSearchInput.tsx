@@ -26,12 +26,12 @@ export function ArtistSearchInput({
 
   const { data: localResults, isFetching: isLocalFetching } = useQuery({
     queryKey: queryKeys.djs.search(query),
-    queryFn: () => api.get<Dj[]>("/api/djs/search", { q: query }),
+    queryFn: () => api.get<Dj[]>("/djs/search", { q: query }),
     enabled,
   });
   const { data: spotifyResults, isFetching: isSpotifyFetching } = useQuery({
     queryKey: queryKeys.djs.spotifySearch(query),
-    queryFn: () => api.get<SpotifyArtist[]>("/api/djs/spotify-search", { q: query }),
+    queryFn: () => api.get<SpotifyArtist[]>("/djs/spotify-search", { q: query }),
     enabled,
   });
 

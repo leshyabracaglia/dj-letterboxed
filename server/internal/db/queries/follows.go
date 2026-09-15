@@ -84,12 +84,7 @@ func GetFollowing(ctx context.Context, q DBTX, userID string) ([]db.User, error)
 	return scanUserRows(rows, err)
 }
 
-func scanUserRows(rows interface {
-	Next() bool
-	Scan(...any) error
-	Err() error
-	Close()
-}, err error) ([]db.User, error) {
+func scanUserRows(rows pgx.Rows, err error) ([]db.User, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -97,11 +92,11 @@ func scanUserRows(rows interface {
 
 	var out []db.User
 	for rows.Next() {
-		var u db.User
-		if err := rows.Scan(&u.ID, &u.ClerkID, &u.Username, &u.DisplayName, &u.Bio, &u.AvatarURL, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		u, err := scanUser(rows)
+		if err != nil {
 			return nil, err
 		}
-		out = append(out, u)
+		out = append(out, *u)
 	}
 	return out, rows.Err()
 }

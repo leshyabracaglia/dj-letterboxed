@@ -9,7 +9,7 @@ export function StatsSummary({ username }: { username: string }) {
   const api = useApi();
   const { data: stats } = useQuery({
     queryKey: queryKeys.users.stats(username),
-    queryFn: () => api.get<UserStats>(`/api/users/${username}/stats`),
+    queryFn: () => api.get<UserStats>(`/users/${username}/stats`),
   });
 
   if (!stats || stats.totalLogs === 0) return null;

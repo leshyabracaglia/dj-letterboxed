@@ -37,3 +37,68 @@ func (d ReviewDTO) withPopular(isPopular bool) ReviewDTO {
 	d.IsPopular = &isPopular
 	return d
 }
+
+// nextSeenAtCursor builds the opaque cursor for a seenAt-ordered,
+// limit-sized page: present only when the page came back full, since
+// that's the only case where there might be more rows.
+func nextSeenAtCursor(reviews []db.Review, limit int) *string {
+	if len(reviews) != limit {
+		return nil
+	}
+	s := reviews[len(reviews)-1].SeenAt.Format(rfc3339)
+	return &s
+}
+
+// Named response types for every handler that used to return an ad-hoc
+// map[string]any literal. Named structs (not maps) are what let swag/
+// openapi-typescript actually introspect field names and types instead of
+// emitting an opaque {} — this is also just better Go.
+
+type PaginatedReviews struct {
+	Items      []ReviewDTO `json:"items"`
+	NextCursor *string     `json:"nextCursor"`
+}
+
+type DjDetailResponse struct {
+	Dj         db.Dj       `json:"dj"`
+	AvgRating  *float64    `json:"avgRating"`
+	LogCount   int64       `json:"logCount"`
+	RecentLogs []ReviewDTO `json:"recentLogs"`
+}
+
+type EventDetailResponse struct {
+	Event db.Event    `json:"event"`
+	Logs  []ReviewDTO `json:"logs"`
+}
+
+type UserProfileResponse struct {
+	User           db.User `json:"user"`
+	LogCount       int64   `json:"logCount"`
+	FollowerCount  int64   `json:"followerCount"`
+	FollowingCount int64   `json:"followingCount"`
+}
+
+type UserStatsResponse struct {
+	TotalLogs int64              `json:"totalLogs"`
+	UniqueDjs int64              `json:"uniqueDjs"`
+	TopDjs    []queries.TopDj    `json:"topDjs"`
+	TopVenues []queries.TopVenue `json:"topVenues"`
+}
+
+type FeedResponse struct {
+	Items          []ReviewDTO `json:"items"`
+	NextCursor     *string     `json:"nextCursor"`
+	FollowingCount int         `json:"followingCount"`
+}
+
+type PopularResponse struct {
+	Items []ReviewDTO `json:"items"`
+}
+
+type SuccessResponse struct {
+	Success bool `json:"success"`
+}
+
+type FollowingStatusResponse struct {
+	Following bool `json:"following"`
+}

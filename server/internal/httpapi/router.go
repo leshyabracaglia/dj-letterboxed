@@ -6,7 +6,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 
+	_ "beatboxd/server/docs" // swagger docs, registered via its init()
 	"beatboxd/server/internal/auth"
 	"beatboxd/server/internal/domain"
 )
@@ -38,6 +40,8 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	})
 
 	r.Post("/api/webhooks/clerk", h.ClerkWebhook(cfg.ClerkWebhookSigningSecret))
+
+	r.Get("/docs/*", httpSwagger.WrapHandler)
 
 	r.Route("/api", func(r chi.Router) {
 		// Public (no auth required)

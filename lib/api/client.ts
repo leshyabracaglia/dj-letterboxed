@@ -16,7 +16,7 @@ export class ApiError extends Error {
 type Params = Record<string, string | number | undefined>;
 
 function buildUrl(path: string, params?: Params) {
-  const url = new URL(API_URL + path);
+  const url = new URL(API_URL + "/api" + path);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined) url.searchParams.set(key, String(value));
@@ -65,7 +65,7 @@ export type ApiClient = {
   del<T>(path: string, body?: unknown): Promise<T>;
 };
 
-/** Thin fetch wrapper: base URL + Clerk bearer token, replacing hooks/trpc.ts. */
+/** Thin fetch wrapper: base URL (+ "/api" prefix) + Clerk bearer token, replacing hooks/trpc.ts. Call paths omit "/api". */
 export function useApi(): ApiClient {
   const { getToken } = useAuth();
 

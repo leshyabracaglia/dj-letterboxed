@@ -8,10 +8,19 @@ import (
 	"beatboxd/server/internal/db/queries"
 )
 
+// IsFollowing godoc
+//
+//	@Summary	Whether the caller follows the given user
+//	@Tags		follows
+//	@Produce	json
+//	@Param		userId	path		string	true	"user id"
+//	@Success	200		{object}	FollowingStatusResponse
+//	@Failure	401		{object}	errorEnvelope
+//	@Security	BearerAuth
+//	@Router		/api/follows/is-following/{userId} [get]
 func (h *Handlers) IsFollowing(w http.ResponseWriter, r *http.Request) {
-	user, ok := UserFromContext(r.Context())
+	user, ok := mustUser(w, r)
 	if !ok {
-		Unauthorized(w)
 		return
 	}
 	targetID := chi.URLParam(r, "userId")
@@ -21,5 +30,5 @@ func (h *Handlers) IsFollowing(w http.ResponseWriter, r *http.Request) {
 		InternalError(w, err)
 		return
 	}
-	WriteJSON(w, http.StatusOK, map[string]bool{"following": following})
+	WriteJSON(w, http.StatusOK, FollowingStatusResponse{Following: following})
 }

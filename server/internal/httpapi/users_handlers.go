@@ -1,27 +1,47 @@
 package httpapi
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
+	"beatboxd/server/internal/db"
 	"beatboxd/server/internal/db/queries"
 )
 
+// Referenced only by swag doc comments below (@Success/@Param types) -
+// keeps the import resolvable for OpenAPI generation without an unused
+// import error.
+var _ db.User
+
+// Me godoc
+//
+//	@Summary	Get the caller's own user row
+//	@Tags		users
+//	@Produce	json
+//	@Success	200	{object}	db.User
+//	@Failure	401	{object}	errorEnvelope
+//	@Security	BearerAuth
+//	@Router		/api/users/me [get]
 func (h *Handlers) Me(w http.ResponseWriter, r *http.Request) {
-	user, ok := UserFromContext(r.Context())
+	user, ok := mustUser(w, r)
 	if !ok {
-		Unauthorized(w)
 		return
 	}
 	WriteJSON(w, http.StatusOK, user)
 }
 
+// SearchUsers godoc
+//
+//	@Summary	Search users by username or display name
+//	@Tags		users
+//	@Produce	json
+//	@Param		q	query	string	true	"search query"
+//	@Success	200	{array}	db.User
+//	@Router		/api/users/search [get]
 func (h *Handlers) SearchUsers(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query().Get("q")
-	if q == "" {
-		BadRequest(w, "q is required")
+	q, ok := requireQueryParam(w, r, "q")
+	if !ok {
 		return
 	}
 	users, err := queries.SearchUsers(r.Context(), h.Pool, q)
@@ -32,16 +52,21 @@ func (h *Handlers) SearchUsers(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, users)
 }
 
+// GetUserByUsername godoc
+//
+//	@Summary	Get a user's profile by username, with follow/log counts
+//	@Tags		users
+//	@Produce	json
+//	@Param		username	path		string	true	"username"
+//	@Success	200			{object}	UserProfileResponse
+//	@Failure	404			{object}	errorEnvelope
+//	@Router		/api/users/{username} [get]
 func (h *Handlers) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
 	username := chi.URLParam(r, "username")
 
-	user, err := queries.GetUserByUsername(r.Context(), h.Pool, username)
-	if errors.Is(err, queries.ErrNotFound) {
-		NotFound(w)
-		return
-	}
-	if err != nil {
-		InternalError(w, err)
+	u, err := queries.GetUserByUsername(r.Context(), h.Pool, username)
+	user, ok := fetchOr404(w, u, err)
+	if !ok {
 		return
 	}
 
@@ -61,24 +86,29 @@ func (h *Handlers) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, map[string]any{
-		"user":           user,
-		"logCount":       logCount,
-		"followerCount":  followerCount,
-		"followingCount": followingCount,
+	WriteJSON(w, http.StatusOK, UserProfileResponse{
+		User:           *user,
+		LogCount:       logCount,
+		FollowerCount:  followerCount,
+		FollowingCount: followingCount,
 	})
 }
 
+// GetUserStats godoc
+//
+//	@Summary	Get a user's log stats: totals, top DJs, top venues
+//	@Tags		users
+//	@Produce	json
+//	@Param		username	path		string	true	"username"
+//	@Success	200			{object}	UserStatsResponse
+//	@Failure	404			{object}	errorEnvelope
+//	@Router		/api/users/{username}/stats [get]
 func (h *Handlers) GetUserStats(w http.ResponseWriter, r *http.Request) {
 	username := chi.URLParam(r, "username")
 
-	user, err := queries.GetUserByUsername(r.Context(), h.Pool, username)
-	if errors.Is(err, queries.ErrNotFound) {
-		NotFound(w)
-		return
-	}
-	if err != nil {
-		InternalError(w, err)
+	u, err := queries.GetUserByUsername(r.Context(), h.Pool, username)
+	user, ok := fetchOr404(w, u, err)
+	if !ok {
 		return
 	}
 
@@ -98,32 +128,26 @@ func (h *Handlers) GetUserStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, map[string]any{
-		"totalLogs": totals.TotalLogs,
-		"uniqueDjs": totals.UniqueDjs,
-		"topDjs":    orEmptyTopDjs(topDjs),
-		"topVenues": orEmptyTopVenues(topVenues),
+	WriteJSON(w, http.StatusOK, UserStatsResponse{
+		TotalLogs: totals.TotalLogs,
+		UniqueDjs: totals.UniqueDjs,
+		TopDjs:    orEmpty(topDjs),
+		TopVenues: orEmpty(topVenues),
 	})
 }
 
-func orEmptyTopDjs(in []queries.TopDj) []queries.TopDj {
-	if in == nil {
-		return []queries.TopDj{}
-	}
-	return in
-}
-
-func orEmptyTopVenues(in []queries.TopVenue) []queries.TopVenue {
-	if in == nil {
-		return []queries.TopVenue{}
-	}
-	return in
-}
-
+// GetLeaderboard godoc
+//
+//	@Summary	Leaderboard scoped to the caller and everyone they follow
+//	@Tags		users
+//	@Produce	json
+//	@Success	200	{array}	queries.LeaderboardEntry
+//	@Failure	401	{object}	errorEnvelope
+//	@Security	BearerAuth
+//	@Router		/api/leaderboard [get]
 func (h *Handlers) GetLeaderboard(w http.ResponseWriter, r *http.Request) {
-	user, ok := UserFromContext(r.Context())
+	user, ok := mustUser(w, r)
 	if !ok {
-		Unauthorized(w)
 		return
 	}
 
@@ -139,10 +163,7 @@ func (h *Handlers) GetLeaderboard(w http.ResponseWriter, r *http.Request) {
 		InternalError(w, err)
 		return
 	}
-	if entries == nil {
-		entries = []queries.LeaderboardEntry{}
-	}
-	WriteJSON(w, http.StatusOK, entries)
+	WriteJSON(w, http.StatusOK, orEmpty(entries))
 }
 
 type updateProfileRequest struct {
@@ -151,10 +172,20 @@ type updateProfileRequest struct {
 	AvatarURL   *string `json:"avatarUrl"`
 }
 
+// UpdateProfile godoc
+//
+//	@Summary	Update the caller's own profile
+//	@Tags		users
+//	@Accept		json
+//	@Produce	json
+//	@Param		body	body		updateProfileRequest	true	"fields to update"
+//	@Success	200		{object}	db.User
+//	@Failure	401		{object}	errorEnvelope
+//	@Security	BearerAuth
+//	@Router		/api/users/me [patch]
 func (h *Handlers) UpdateProfile(w http.ResponseWriter, r *http.Request) {
-	user, ok := UserFromContext(r.Context())
+	user, ok := mustUser(w, r)
 	if !ok {
-		Unauthorized(w)
 		return
 	}
 
@@ -172,10 +203,20 @@ func (h *Handlers) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, updated)
 }
 
+// Follow godoc
+//
+//	@Summary	Follow a user
+//	@Tags		follows
+//	@Produce	json
+//	@Param		userId	path		string	true	"user id to follow"
+//	@Success	200		{object}	SuccessResponse
+//	@Failure	400		{object}	errorEnvelope
+//	@Failure	401		{object}	errorEnvelope
+//	@Security	BearerAuth
+//	@Router		/api/follows/{userId} [post]
 func (h *Handlers) Follow(w http.ResponseWriter, r *http.Request) {
-	user, ok := UserFromContext(r.Context())
+	user, ok := mustUser(w, r)
 	if !ok {
-		Unauthorized(w)
 		return
 	}
 	targetID := chi.URLParam(r, "userId")
@@ -188,13 +229,22 @@ func (h *Handlers) Follow(w http.ResponseWriter, r *http.Request) {
 		InternalError(w, err)
 		return
 	}
-	WriteJSON(w, http.StatusOK, map[string]bool{"success": true})
+	WriteJSON(w, http.StatusOK, SuccessResponse{Success: true})
 }
 
+// Unfollow godoc
+//
+//	@Summary	Unfollow a user
+//	@Tags		follows
+//	@Produce	json
+//	@Param		userId	path		string	true	"user id to unfollow"
+//	@Success	200		{object}	SuccessResponse
+//	@Failure	401		{object}	errorEnvelope
+//	@Security	BearerAuth
+//	@Router		/api/follows/{userId} [delete]
 func (h *Handlers) Unfollow(w http.ResponseWriter, r *http.Request) {
-	user, ok := UserFromContext(r.Context())
+	user, ok := mustUser(w, r)
 	if !ok {
-		Unauthorized(w)
 		return
 	}
 	targetID := chi.URLParam(r, "userId")
@@ -203,9 +253,17 @@ func (h *Handlers) Unfollow(w http.ResponseWriter, r *http.Request) {
 		InternalError(w, err)
 		return
 	}
-	WriteJSON(w, http.StatusOK, map[string]bool{"success": true})
+	WriteJSON(w, http.StatusOK, SuccessResponse{Success: true})
 }
 
+// GetFollowers godoc
+//
+//	@Summary	List the users who follow the given user
+//	@Tags		follows
+//	@Produce	json
+//	@Param		userId	path	string	true	"user id"
+//	@Success	200		{array}	db.User
+//	@Router		/api/users/{userId}/followers [get]
 func (h *Handlers) GetFollowers(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "userId")
 	followers, err := queries.GetFollowers(r.Context(), h.Pool, userID)
@@ -216,6 +274,14 @@ func (h *Handlers) GetFollowers(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, followers)
 }
 
+// GetFollowing godoc
+//
+//	@Summary	List the users the given user follows
+//	@Tags		follows
+//	@Produce	json
+//	@Param		userId	path	string	true	"user id"
+//	@Success	200		{array}	db.User
+//	@Router		/api/users/{userId}/following [get]
 func (h *Handlers) GetFollowing(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "userId")
 	following, err := queries.GetFollowing(r.Context(), h.Pool, userID)

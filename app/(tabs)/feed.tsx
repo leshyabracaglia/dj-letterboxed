@@ -1,11 +1,9 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { FlatList, Pressable, SafeAreaView, Text, View } from "react-native";
 
-import { LogCard } from "../../components/LogCard";
-import { useApi } from "../../lib/api/client";
-import { queryKeys } from "../../lib/api/queryKeys";
-import type { FeedResponse, LeaderboardEntry, PopularResponse } from "../../lib/api/types";
+import { EmptyState } from "../../components/EmptyState";
+import { ReviewCard } from "../../components/ReviewCard";
+import { useFeed, useLeaderboard, usePopularFeed } from "../../lib/api/hooks";
 
 const TABS = ["following", "popular", "leaderboard"] as const;
 type Tab = (typeof TABS)[number];
@@ -16,22 +14,9 @@ const TAB_LABELS: Record<Tab, string> = {
 };
 
 export default function FeedScreen() {
-  const api = useApi();
   const [tab, setTab] = useState<Tab>("following");
 
-  const {
-    data,
-    isLoading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: queryKeys.feed.activity(),
-    queryFn: ({ pageParam }: { pageParam?: string }) =>
-      api.get<FeedResponse>("/api/feed", { cursor: pageParam, limit: 20 }),
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-  });
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useFeed();
 
   const pages = data?.pages ?? [];
   const items = pages.flatMap((page) => page.items);
@@ -39,17 +24,13 @@ export default function FeedScreen() {
   const noFollowing = !isLoading && followingCount === 0;
   const effectiveTab: Tab = tab === "following" && noFollowing ? "popular" : tab;
 
-  const { data: popularData, isLoading: isPopularLoading } = useQuery({
-    queryKey: queryKeys.feed.popular(),
-    queryFn: () => api.get<PopularResponse>("/api/feed/popular", { limit: 20 }),
-    enabled: effectiveTab === "popular",
-  });
+  const { data: popularData, isLoading: isPopularLoading } = usePopularFeed(
+    effectiveTab === "popular",
+  );
 
-  const { data: leaderboard, isLoading: isLeaderboardLoading } = useQuery({
-    queryKey: queryKeys.users.leaderboard(),
-    queryFn: () => api.get<LeaderboardEntry[]>("/api/leaderboard"),
-    enabled: effectiveTab === "leaderboard",
-  });
+  const { data: leaderboard, isLoading: isLeaderboardLoading } = useLeaderboard(
+    effectiveTab === "leaderboard",
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-paper">
@@ -77,7 +58,7 @@ export default function FeedScreen() {
           contentContainerStyle={{ padding: 16 }}
           data={popularData?.items ?? []}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <LogCard log={item} />}
+          renderItem={({ item }) => <ReviewCard log={item} />}
           ListHeaderComponent={
             noFollowing ? (
               <Text className="mb-4 text-center text-muted">
@@ -87,9 +68,10 @@ export default function FeedScreen() {
           }
           ListEmptyComponent={
             !isPopularLoading ? (
-              <Text className="mt-4 text-center text-muted">
-                No reviews yet — be the first to log a set.
-              </Text>
+              <EmptyState
+                message="No reviews yet — be the first to log a set."
+                className="mt-4 text-center text-muted"
+              />
             ) : null
           }
         />
@@ -111,9 +93,7 @@ export default function FeedScreen() {
           )}
           ListEmptyComponent={
             !isLeaderboardLoading ? (
-              <Text className="mt-10 text-center text-muted">
-                Follow some people to see a leaderboard.
-              </Text>
+              <EmptyState message="Follow some people to see a leaderboard." />
             ) : null
           }
         />
@@ -122,7 +102,7 @@ export default function FeedScreen() {
           contentContainerStyle={{ padding: 16 }}
           data={items}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <LogCard log={item} />}
+          renderItem={({ item }) => <ReviewCard log={item} />}
           onEndReachedThreshold={0.5}
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) {
@@ -136,9 +116,7 @@ export default function FeedScreen() {
           }
           ListEmptyComponent={
             !isLoading ? (
-              <Text className="mt-10 text-center text-muted">
-                Follow some people to see their logs here.
-              </Text>
+              <EmptyState message="Follow some people to see their logs here." />
             ) : null
           }
         />

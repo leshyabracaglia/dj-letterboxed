@@ -17,6 +17,16 @@ import (
 	"beatboxd/server/internal/httpapi"
 )
 
+// @title						Beatboxd API
+// @version					1.0
+// @description				REST API for Beatboxd (Letterboxd for DJ sets). Generated from
+// @description				server/internal/httpapi handler annotations via swag - run
+// @description				`make openapi` in server/ to regenerate after changing a handler.
+// @BasePath					/
+// @securityDefinitions.apikey	BearerAuth
+// @in							header
+// @name						Authorization
+// @description				Clerk-issued session JWT, e.g. "Bearer eyJhbGc..."
 func main() {
 	if err := run(); err != nil {
 		slog.Error("fatal", "error", err)

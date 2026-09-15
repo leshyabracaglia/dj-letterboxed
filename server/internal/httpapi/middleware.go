@@ -114,3 +114,27 @@ func lastN(s string, n int) string {
 	}
 	return s[len(s)-n:]
 }
+
+// mustUser resolves the authenticated user from context, writing a 401 and
+// returning ok=false if there isn't one. Routes wired behind RequireAuth
+// are always authed here; this only trips for the rare misuse of calling it
+// from a route that isn't.
+func mustUser(w http.ResponseWriter, r *http.Request) (*db.User, bool) {
+	user, ok := UserFromContext(r.Context())
+	if !ok {
+		Unauthorized(w)
+		return nil, false
+	}
+	return user, true
+}
+
+// optionalUserID returns the authenticated caller's user id, or nil if the
+// request has no (or an unresolved) authenticated user - for endpoints that
+// personalize output for a logged-in caller without requiring auth.
+func optionalUserID(r *http.Request) *string {
+	user, ok := UserFromContext(r.Context())
+	if !ok {
+		return nil
+	}
+	return &user.ID
+}

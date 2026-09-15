@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-
 	"beatboxd/server/internal/db"
 )
 
@@ -93,26 +91,5 @@ func ListReviewsByUserIDs(ctx context.Context, q DBTX, userIDs []string, cursor 
 	if len(userIDs) == 0 {
 		return nil, nil
 	}
-
-	var rows pgx.Rows
-	var err error
-	if cursor != nil {
-		rows, err = q.Query(ctx, "SELECT "+reviewCols+" FROM reviews WHERE user_id = ANY($1) AND created_at < $2 ORDER BY created_at DESC LIMIT $3", userIDs, *cursor, limit)
-	} else {
-		rows, err = q.Query(ctx, "SELECT "+reviewCols+" FROM reviews WHERE user_id = ANY($1) ORDER BY created_at DESC LIMIT $2", userIDs, limit)
-	}
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []db.Review
-	for rows.Next() {
-		r, err := scanReviewRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, r)
-	}
-	return out, rows.Err()
+	return listReviewsPage(ctx, q, "user_id = ANY($1)", "created_at", []any{userIDs}, cursor, limit)
 }

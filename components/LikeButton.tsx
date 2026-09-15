@@ -20,11 +20,11 @@ export function LikeButton({
     queryClient.invalidateQueries({ queryKey: queryKeys.reviews.byId(reviewId) });
 
   const like = useMutation({
-    mutationFn: () => api.post(`/api/reviews/${reviewId}/like`),
+    mutationFn: () => api.post(`/reviews/${reviewId}/like`),
     onSuccess: invalidate,
   });
   const unlike = useMutation({
-    mutationFn: () => api.del(`/api/reviews/${reviewId}/like`),
+    mutationFn: () => api.del(`/reviews/${reviewId}/like`),
     onSuccess: invalidate,
   });
   const pending = like.isPending || unlike.isPending;

@@ -13,11 +13,11 @@ export function CommentSection({ reviewId }: { reviewId: string }) {
 
   const { data: comments } = useQuery({
     queryKey: queryKeys.reviews.comments(reviewId),
-    queryFn: () => api.get<ReviewComment[]>(`/api/reviews/${reviewId}/comments`),
+    queryFn: () => api.get<ReviewComment[]>(`/reviews/${reviewId}/comments`),
   });
   const { data: me } = useQuery({
     queryKey: queryKeys.users.me(),
-    queryFn: () => api.get<User>("/api/users/me"),
+    queryFn: () => api.get<User>("/users/me"),
   });
 
   const invalidate = () =>
@@ -25,14 +25,14 @@ export function CommentSection({ reviewId }: { reviewId: string }) {
 
   const addComment = useMutation({
     mutationFn: (input: { body: string }) =>
-      api.post<ReviewComment>(`/api/reviews/${reviewId}/comments`, input),
+      api.post<ReviewComment>(`/reviews/${reviewId}/comments`, input),
     onSuccess: () => {
       setBody("");
       invalidate();
     },
   });
   const deleteComment = useMutation({
-    mutationFn: (id: string) => api.del(`/api/comments/${id}`),
+    mutationFn: (id: string) => api.del(`/comments/${id}`),
     onSuccess: invalidate,
   });
 

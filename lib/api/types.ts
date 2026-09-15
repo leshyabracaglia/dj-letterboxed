@@ -1,126 +1,41 @@
-// Mirrors the JSON shapes produced by the Go API (server/internal/httpapi).
+// Response types are aliased from lib/api/generated.ts, which is
+// generated (not hand-written) from the Go API's OpenAPI spec - itself
+// generated from @-annotations on each handler in server/internal/httpapi.
+// Regenerate both after changing a handler: `npm run codegen:api-types`
+// (see scripts/generate-api-types.sh). Request body types stay hand-written
+// below - lower drift risk since adding a new one touches both ends at once,
+// and OpenAPI's json-schema request shapes don't carry TS's optional-vs-
+// omitted distinction cleanly (see taggedUserIds below).
+//
 // Dates arrive as RFC3339 strings, not Date objects (plain JSON, no
 // superjson) - callers already wrap them in `new Date(...)` where needed.
 
-export type CrowdVibe = "electric" | "good" | "average" | "dead";
+import type { components } from "./generated";
 
-export type User = {
-  id: string;
-  username: string;
-  displayName: string | null;
-  bio: string | null;
-  avatarUrl: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
+type Schemas = components["schemas"];
 
-export type Dj = {
-  id: string;
-  name: string;
-  slug: string;
-  bio: string | null;
-  genres: string[] | null;
-  imageUrl: string | null;
-  spotifyId: string | null;
-  createdByUserId: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type Event = {
-  id: string;
-  name: string;
-  venue: string;
-  city: string | null;
-  eventDate: string;
-  description: string | null;
-  createdByUserId: string | null;
-  createdAt: string;
-};
-
-export type Review = {
-  id: string;
-  userId: string;
-  djId: string;
-  eventId: string | null;
-  ratingHalfStars: number | null;
-  reviewText: string | null;
-  crowdVibe: CrowdVibe | null;
-  crowdVibeNote: string | null;
-  seenAt: string;
-  createdAt: string;
-  updatedAt: string;
-  user?: User;
-  dj?: Dj;
-  event?: Event;
-  taggedUsers?: User[];
-  likeCount?: number;
-  commentCount?: number;
-  isLikedByMe?: boolean;
-  isPopular?: boolean;
-};
-
-export type ReviewComment = {
-  id: string;
-  reviewId: string;
-  userId: string;
-  body: string;
-  createdAt: string;
-  user?: User;
-};
-
-export type SpotifyArtist = {
-  spotifyId: string;
-  name: string;
-  imageUrl: string | null;
-  genres: string[];
-};
+export type CrowdVibe = Schemas["CrowdVibe"];
+export type User = Schemas["User"];
+export type Dj = Schemas["Dj"];
+export type Event = Schemas["Event"];
+/** The flattened review shape most endpoints return: review fields plus
+ * optional user/dj/event relations and engagement counts. */
+export type Review = Schemas["ReviewDTO"];
+export type ReviewComment = Schemas["ReviewComment"];
+export type SpotifyArtist = Schemas["SpotifyArtist"];
 
 export type Paginated<T> = {
   items: T[];
   nextCursor: string | null;
 };
 
-export type DjDetail = {
-  dj: Dj;
-  avgRating: number | null;
-  logCount: number;
-  recentLogs: Review[];
-};
-
-export type EventDetail = {
-  event: Event;
-  logs: Review[];
-};
-
-export type UserProfile = {
-  user: User;
-  logCount: number;
-  followerCount: number;
-  followingCount: number;
-};
-
-export type UserStats = {
-  totalLogs: number;
-  uniqueDjs: number;
-  topDjs: { dj: Dj; logCount: number }[];
-  topVenues: { venue: string; logCount: number }[];
-};
-
-export type LeaderboardEntry = {
-  user: User;
-  logCount: number;
-};
-
-export type FeedResponse = {
-  items: Review[];
-  nextCursor: string | null;
-  followingCount: number;
-};
-
-export type PopularResponse = {
-  items: Review[];
-};
+export type DjDetail = Schemas["DjDetailResponse"];
+export type EventDetail = Schemas["EventDetailResponse"];
+export type UserProfile = Schemas["UserProfileResponse"];
+export type UserStats = Schemas["UserStatsResponse"];
+export type LeaderboardEntry = Schemas["LeaderboardEntry"];
+export type FeedResponse = Schemas["FeedResponse"];
+export type PopularResponse = Schemas["PopularResponse"];
 
 // Request bodies
 

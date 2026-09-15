@@ -1,0 +1,97 @@
+name: server-ci
+
+on:
+  pull_request:
+    paths:
+      - "server/**"
+      - "lib/api/**"
+      - "scripts/generate-api-types.sh"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/server-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - "lib/api/**"
+      - "scripts/generate-api-types.sh"
+      - "package.json"
+      - "package-lock.json"
+
+jobs:
+  go:
+    name: Go build / vet / test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: beatboxd
+          POSTGRES_PASSWORD: beatboxd
+          POSTGRES_DB: beatboxd
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U beatboxd"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Run migrations against the CI Postgres
+        run: go run ./cmd/migrate up
+        env:
+          DATABASE_URL: postgres://beatboxd:beatboxd@localhost:5432/beatboxd?sslmode=disable
+
+      - name: Test
+        run: go test ./...
+
+  openapi-sync:
+    name: OpenAPI spec + generated TS types are in sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install swag
+        run: go install github.com/swaggo/swag/cmd/swag@latest
+
+      - name: Regenerate OpenAPI spec and fail if it drifted from what's committed
+        working-directory: server
+        run: |
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          make openapi-check
+
+      - name: Install root deps
+        run: npm ci
+
+      - name: Regenerate lib/api/generated.ts and fail if it drifted
+        run: |
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          bash scripts/generate-api-types.sh
+          git diff --exit-code lib/api/generated.ts || (echo "lib/api/generated.ts is out of date - run 'npm run codegen:api-types' and commit the result" && exit 1)
+
+      - name: Type-check the client against the generated types
+        run: npx tsc --noEmit

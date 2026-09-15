@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { FlatList, Pressable, SafeAreaView, Text, View } from "react-native";
 
-import { LogCard } from "../../components/LogCard";
+import { EmptyState } from "../../components/EmptyState";
+import { ReviewCard } from "../../components/ReviewCard";
 import { StatsSummary } from "../../components/StatsSummary";
 import { useApi } from "../../lib/api/client";
 import { queryKeys } from "../../lib/api/queryKeys";
@@ -16,12 +17,12 @@ export default function ProfileScreen() {
 
   const { data: me } = useQuery({
     queryKey: queryKeys.users.me(),
-    queryFn: () => api.get<User>("/api/users/me"),
+    queryFn: () => api.get<User>("/users/me"),
   });
   const { data } = useQuery({
     queryKey: queryKeys.reviews.byUser(me?.username ?? ""),
     queryFn: () =>
-      api.get<Paginated<Review>>(`/api/users/${me?.username}/reviews`, { limit: 20 }),
+      api.get<Paginated<Review>>(`/users/${me?.username}/reviews`, { limit: 20 }),
     enabled: !!me?.username,
   });
 
@@ -59,12 +60,8 @@ export default function ProfileScreen() {
         contentContainerStyle={{ padding: 16 }}
         data={data?.items ?? []}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <LogCard log={{ ...item, user: me }} />}
-        ListEmptyComponent={
-          <Text className="mt-10 text-center text-muted">
-            You haven&apos;t logged any sets yet.
-          </Text>
-        }
+        renderItem={({ item }) => <ReviewCard log={{ ...item, user: me }} />}
+        ListEmptyComponent={<EmptyState message="You haven't logged any sets yet." />}
       />
     </SafeAreaView>
   );

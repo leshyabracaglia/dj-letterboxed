@@ -1,27 +1,19 @@
-import { useQuery } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { FlatList, SafeAreaView, Text, View } from "react-native";
 
-import { LogCard } from "../../components/LogCard";
+import { EmptyState } from "../../components/EmptyState";
 import { RatingStars } from "../../components/RatingStars";
-import { useApi } from "../../lib/api/client";
-import { queryKeys } from "../../lib/api/queryKeys";
-import type { DjDetail } from "../../lib/api/types";
+import { ReviewCard } from "../../components/ReviewCard";
+import { ScreenLoading } from "../../components/ScreenLoading";
+import { useDjDetail } from "../../lib/api/hooks";
+import { formatStars } from "../../lib/format";
 
 export default function DjProfileScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const api = useApi();
-  const { data } = useQuery({
-    queryKey: queryKeys.djs.bySlug(slug!),
-    queryFn: () => api.get<DjDetail>(`/api/djs/${slug}`),
-  });
+  const { data } = useDjDetail(slug);
 
   if (!data) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-paper">
-        <Text className="text-muted">Loading...</Text>
-      </SafeAreaView>
-    );
+    return <ScreenLoading />;
   }
 
   // avgRating is the average of `ratingHalfStars` (1-10 units); divide by 2 for a 0.5-5.0 star display.
@@ -38,7 +30,7 @@ export default function DjProfileScreen() {
         <View className="mt-2 flex-row items-center gap-2">
           <RatingStars value={avgHalfStars} />
           <Text className="text-muted">
-            {avgHalfStars ? (avgHalfStars / 2).toFixed(1) : "—"} ({data.logCount} logs)
+            {formatStars(avgHalfStars)} ({data.logCount} logs)
           </Text>
         </View>
         {data.dj.bio ? <Text className="mt-3 text-ink">{data.dj.bio}</Text> : null}
@@ -47,10 +39,8 @@ export default function DjProfileScreen() {
         contentContainerStyle={{ padding: 16 }}
         data={data.recentLogs}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <LogCard log={item} />}
-        ListEmptyComponent={
-          <Text className="mt-10 text-center text-muted">No logs yet for this DJ.</Text>
-        }
+        renderItem={({ item }) => <ReviewCard log={item} />}
+        ListEmptyComponent={<EmptyState message="No logs yet for this DJ." />}
       />
     </SafeAreaView>
   );

@@ -1,26 +1,18 @@
-import { useQuery } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { FlatList, SafeAreaView, Text, View } from "react-native";
 
-import { LogCard } from "../../components/LogCard";
-import { useApi } from "../../lib/api/client";
-import { queryKeys } from "../../lib/api/queryKeys";
-import type { EventDetail } from "../../lib/api/types";
+import { EmptyState } from "../../components/EmptyState";
+import { ReviewCard } from "../../components/ReviewCard";
+import { ScreenLoading } from "../../components/ScreenLoading";
+import { useEventDetail } from "../../lib/api/hooks";
+import { formatDateTime } from "../../lib/format";
 
 export default function EventScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const api = useApi();
-  const { data } = useQuery({
-    queryKey: queryKeys.events.byId(id!),
-    queryFn: () => api.get<EventDetail>(`/api/events/${id}`),
-  });
+  const { data } = useEventDetail(id);
 
   if (!data) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-paper">
-        <Text className="text-muted">Loading...</Text>
-      </SafeAreaView>
-    );
+    return <ScreenLoading />;
   }
 
   return (
@@ -32,9 +24,7 @@ export default function EventScreen() {
           {data.event.venue}
           {data.event.city ? ` · ${data.event.city}` : ""}
         </Text>
-        <Text className="mt-1 text-xs text-muted">
-          {new Date(data.event.eventDate).toLocaleString()}
-        </Text>
+        <Text className="mt-1 text-xs text-muted">{formatDateTime(data.event.eventDate)}</Text>
         {data.event.description ? (
           <Text className="mt-3 text-ink">{data.event.description}</Text>
         ) : null}
@@ -43,12 +33,8 @@ export default function EventScreen() {
         contentContainerStyle={{ padding: 16 }}
         data={data.logs}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <LogCard log={item} />}
-        ListEmptyComponent={
-          <Text className="mt-10 text-center text-muted">
-            No logs yet for this event.
-          </Text>
-        }
+        renderItem={({ item }) => <ReviewCard log={item} />}
+        ListEmptyComponent={<EmptyState message="No logs yet for this event." />}
       />
     </SafeAreaView>
   );

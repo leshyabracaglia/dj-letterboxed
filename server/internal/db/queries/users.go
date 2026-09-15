@@ -105,11 +105,11 @@ func SearchUsers(ctx context.Context, q DBTX, query string) ([]db.User, error) {
 
 	var out []db.User
 	for rows.Next() {
-		var u db.User
-		if err := rows.Scan(&u.ID, &u.ClerkID, &u.Username, &u.DisplayName, &u.Bio, &u.AvatarURL, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		u, err := scanUser(rows)
+		if err != nil {
 			return nil, err
 		}
-		out = append(out, u)
+		out = append(out, *u)
 	}
 	return out, rows.Err()
 }
@@ -126,11 +126,11 @@ func GetUsersByIDs(ctx context.Context, q DBTX, ids []string) (map[string]db.Use
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var u db.User
-		if err := rows.Scan(&u.ID, &u.ClerkID, &u.Username, &u.DisplayName, &u.Bio, &u.AvatarURL, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		u, err := scanUser(rows)
+		if err != nil {
 			return nil, err
 		}
-		out[u.ID] = u
+		out[u.ID] = *u
 	}
 	return out, rows.Err()
 }

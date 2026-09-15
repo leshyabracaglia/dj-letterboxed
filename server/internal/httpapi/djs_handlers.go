@@ -6,14 +6,28 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"beatboxd/server/internal/db"
 	"beatboxd/server/internal/db/queries"
 	"beatboxd/server/internal/domain"
 )
 
+// Referenced only by swag doc comments below (@Success/@Param types) -
+// keeps the import resolvable for OpenAPI generation without an unused
+// import error.
+var _ db.Dj
+
+// SearchDjs godoc
+//
+//	@Summary	Search DJs by name
+//	@Tags		djs
+//	@Produce	json
+//	@Param		q	query		string	true	"search query"
+//	@Success	200	{array}		db.Dj
+//	@Failure	400	{object}	errorEnvelope
+//	@Router		/api/djs/search [get]
 func (h *Handlers) SearchDjs(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query().Get("q")
-	if q == "" {
-		BadRequest(w, "q is required")
+	q, ok := requireQueryParam(w, r, "q")
+	if !ok {
 		return
 	}
 	djs, err := queries.SearchDjs(r.Context(), h.Pool, q)
@@ -24,16 +38,21 @@ func (h *Handlers) SearchDjs(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, djs)
 }
 
+// GetDjBySlug godoc
+//
+//	@Summary	Get a DJ by slug, with rating aggregate and recent reviews
+//	@Tags		djs
+//	@Produce	json
+//	@Param		slug	path		string	true	"DJ slug"
+//	@Success	200		{object}	DjDetailResponse
+//	@Failure	404		{object}	errorEnvelope
+//	@Router		/api/djs/{slug} [get]
 func (h *Handlers) GetDjBySlug(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "slug")
 
-	dj, err := queries.GetDjBySlug(r.Context(), h.Pool, slug)
-	if errors.Is(err, queries.ErrNotFound) {
-		NotFound(w)
-		return
-	}
-	if err != nil {
-		InternalError(w, err)
+	d, err := queries.GetDjBySlug(r.Context(), h.Pool, slug)
+	dj, ok := fetchOr404(w, d, err)
+	if !ok {
 		return
 	}
 
@@ -54,11 +73,11 @@ func (h *Handlers) GetDjBySlug(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, map[string]any{
-		"dj":         dj,
-		"avgRating":  agg.AvgRating,
-		"logCount":   agg.LogCount,
-		"recentLogs": recentDTOs,
+	WriteJSON(w, http.StatusOK, DjDetailResponse{
+		Dj:         *dj,
+		AvgRating:  agg.AvgRating,
+		LogCount:   agg.LogCount,
+		RecentLogs: recentDTOs,
 	})
 }
 
@@ -70,10 +89,21 @@ type createDjRequest struct {
 	ImageURL  *string  `json:"imageUrl"`
 }
 
+// CreateDj godoc
+//
+//	@Summary	Create a DJ (or return the existing one, deduped by spotifyId then slug)
+//	@Tags		djs
+//	@Accept		json
+//	@Produce	json
+//	@Param		body	body		createDjRequest	true	"DJ to create"
+//	@Success	200		{object}	db.Dj
+//	@Failure	400		{object}	errorEnvelope
+//	@Failure	401		{object}	errorEnvelope
+//	@Security	BearerAuth
+//	@Router		/api/djs [post]
 func (h *Handlers) CreateDj(w http.ResponseWriter, r *http.Request) {
-	user, ok := UserFromContext(r.Context())
+	user, ok := mustUser(w, r)
 	if !ok {
-		Unauthorized(w)
 		return
 	}
 
@@ -118,10 +148,18 @@ func (h *Handlers) CreateDj(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, dj)
 }
 
+// SearchSpotify godoc
+//
+//	@Summary	Search Spotify for artists (fails open to [] on Spotify errors)
+//	@Tags		djs
+//	@Produce	json
+//	@Param		q	query		string	true	"search query"
+//	@Success	200	{array}		domain.SpotifyArtist
+//	@Failure	400	{object}	errorEnvelope
+//	@Router		/api/djs/spotify-search [get]
 func (h *Handlers) SearchSpotify(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query().Get("q")
-	if q == "" {
-		BadRequest(w, "q is required")
+	q, ok := requireQueryParam(w, r, "q")
+	if !ok {
 		return
 	}
 	artists, err := h.Spotify.SearchArtists(q)
@@ -134,6 +172,16 @@ func (h *Handlers) SearchSpotify(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, artists)
 }
 
+// ListReviewsByDj godoc
+//
+//	@Summary	List reviews for a DJ, cursor-paginated by seenAt desc
+//	@Tags		djs
+//	@Produce	json
+//	@Param		id		path		string	true	"DJ id"
+//	@Param		cursor	query		string	false	"pagination cursor (RFC3339 seenAt of the last item)"
+//	@Param		limit	query		int		false	"page size, 1-50, default 20"
+//	@Success	200		{object}	PaginatedReviews
+//	@Router		/api/djs/{id}/reviews [get]
 func (h *Handlers) ListReviewsByDj(w http.ResponseWriter, r *http.Request) {
 	djID := chi.URLParam(r, "id")
 	limit := queryLimit(r, 20, 50)
@@ -145,24 +193,13 @@ func (h *Handlers) ListReviewsByDj(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var currentUserID *string
-	if user, ok := UserFromContext(r.Context()); ok {
-		currentUserID = &user.ID
-	}
-
 	dtos, err := h.hydrateReviews(r.Context(), reviews, hydrateOpts{
-		IncludeUser: true, IncludeEvent: true, IncludeEngagement: true, CurrentUserID: currentUserID,
+		IncludeUser: true, IncludeEvent: true, IncludeEngagement: true, CurrentUserID: optionalUserID(r),
 	})
 	if err != nil {
 		InternalError(w, err)
 		return
 	}
 
-	var nextCursor *string
-	if len(reviews) == limit {
-		s := reviews[len(reviews)-1].SeenAt.Format(rfc3339)
-		nextCursor = &s
-	}
-
-	WriteJSON(w, http.StatusOK, map[string]any{"items": dtos, "nextCursor": nextCursor})
+	WriteJSON(w, http.StatusOK, PaginatedReviews{Items: dtos, NextCursor: nextSeenAtCursor(reviews, limit)})
 }

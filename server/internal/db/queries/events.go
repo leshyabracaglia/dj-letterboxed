@@ -33,11 +33,11 @@ func SearchEvents(ctx context.Context, q DBTX, query string) ([]db.Event, error)
 
 	var out []db.Event
 	for rows.Next() {
-		var e db.Event
-		if err := rows.Scan(&e.ID, &e.Name, &e.Venue, &e.City, &e.EventDate, &e.Description, &e.CreatedByUserID, &e.CreatedAt); err != nil {
+		e, err := scanEvent(rows)
+		if err != nil {
 			return nil, err
 		}
-		out = append(out, e)
+		out = append(out, *e)
 	}
 	return out, rows.Err()
 }
@@ -62,11 +62,11 @@ func GetEventsByIDs(ctx context.Context, q DBTX, ids []string) (map[string]db.Ev
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var e db.Event
-		if err := rows.Scan(&e.ID, &e.Name, &e.Venue, &e.City, &e.EventDate, &e.Description, &e.CreatedByUserID, &e.CreatedAt); err != nil {
+		e, err := scanEvent(rows)
+		if err != nil {
 			return nil, err
 		}
-		out[e.ID] = e
+		out[e.ID] = *e
 	}
 	return out, rows.Err()
 }

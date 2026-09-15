@@ -58,13 +58,13 @@ export default function LogSetScreen() {
       spotifyId?: string;
       imageUrl?: string;
       genres?: string[];
-    }) => api.post<Dj>("/api/djs", input),
+    }) => api.post<Dj>("/djs", input),
   });
   const createEvent = useMutation({
-    mutationFn: (input: CreateEventInput) => api.post<Event>("/api/events", input),
+    mutationFn: (input: CreateEventInput) => api.post<Event>("/events", input),
   });
   const createLog = useMutation({
-    mutationFn: (input: CreateReviewInput) => api.post<Review>("/api/reviews", input),
+    mutationFn: (input: CreateReviewInput) => api.post<Review>("/reviews", input),
   });
 
   const pending = createDj.isPending || createEvent.isPending || createLog.isPending;

@@ -29,6 +29,8 @@
     "babel-plugin-module-resolver": "^5.0.3",
     "babel-preset-expo": "^57.0.7",
     "concurrently": "^10.0.5",
+    "openapi-typescript": "^7.13.0",
+    "swagger2openapi": "^7.0.8",
     "typescript": "~6.0.3",
     "vercel": "^59.3.0"
   },
@@ -42,7 +44,8 @@
     "dev": "bash scripts/dev-windows.sh",
     "dev:concurrent": "concurrently \"npm:dev:api\" \"npm:dev:app\"",
     "db:migrate": "cd server && make migrate-up",
-    "db:seed": "cd server && make seed"
+    "db:seed": "cd server && make seed",
+    "codegen:api-types": "cd server && make openapi && cd .. && bash scripts/generate-api-types.sh"
   },
   "private": true
 }

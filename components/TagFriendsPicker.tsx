@@ -21,7 +21,7 @@ export function TagFriendsPicker({
 
   const { data: results } = useQuery({
     queryKey: queryKeys.users.search(trimmed),
-    queryFn: () => api.get<User[]>("/api/users/search", { q: trimmed }),
+    queryFn: () => api.get<User[]>("/users/search", { q: trimmed }),
     enabled: trimmed.length > 1,
   });
 

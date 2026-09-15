@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -29,13 +30,13 @@ type clerkUserEvent struct {
 func (h *Handlers) ClerkWebhook(webhookSecret string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if webhookSecret == "" {
-			http.Error(w, "Webhook secret not configured", http.StatusInternalServerError)
+			InternalError(w, errors.New("webhook secret not configured"))
 			return
 		}
 
 		payload, err := io.ReadAll(r.Body)
 		if err != nil {
-			http.Error(w, "invalid body", http.StatusBadRequest)
+			BadRequest(w, "invalid body")
 			return
 		}
 
@@ -45,13 +46,13 @@ func (h *Handlers) ClerkWebhook(webhookSecret string) http.HandlerFunc {
 			return
 		}
 		if err := wh.Verify(payload, r.Header); err != nil {
-			http.Error(w, "Invalid signature", http.StatusBadRequest)
+			BadRequest(w, "invalid signature")
 			return
 		}
 
 		var event clerkUserEvent
 		if err := json.Unmarshal(payload, &event); err != nil {
-			http.Error(w, "invalid payload", http.StatusBadRequest)
+			BadRequest(w, "invalid payload")
 			return
 		}
 
@@ -66,8 +67,7 @@ func (h *Handlers) ClerkWebhook(webhookSecret string) http.HandlerFunc {
 			return
 		}
 
-		username := clerkID[max(0, len(clerkID)-8):]
-		username = "user_" + username
+		username := "user_" + lastN(clerkID, 8)
 		if event.Data.Username != nil && *event.Data.Username != "" {
 			username = *event.Data.Username
 		}

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { FlatList, SafeAreaView, Text, TextInput, View } from "react-native";
 
 import { DjCard } from "../../components/DjCard";
+import { EmptyState } from "../../components/EmptyState";
 import { useApi } from "../../lib/api/client";
 import { queryKeys } from "../../lib/api/queryKeys";
 import type { Dj } from "../../lib/api/types";
@@ -13,7 +14,7 @@ export default function BrowseScreen() {
 
   const { data } = useQuery({
     queryKey: queryKeys.djs.search(query),
-    queryFn: () => api.get<Dj[]>("/api/djs/search", { q: query }),
+    queryFn: () => api.get<Dj[]>("/djs/search", { q: query }),
     enabled: query.length > 0,
   });
 
@@ -35,13 +36,9 @@ export default function BrowseScreen() {
         renderItem={({ item }) => <DjCard dj={item} />}
         ListEmptyComponent={
           query.length > 0 ? (
-            <Text className="mt-10 text-center text-muted">
-              No DJs found. Add one when you log a set.
-            </Text>
+            <EmptyState message="No DJs found. Add one when you log a set." />
           ) : (
-            <Text className="mt-10 text-center text-muted">
-              Search for a DJ to see their profile and reviews.
-            </Text>
+            <EmptyState message="Search for a DJ to see their profile and reviews." />
           )
         }
       />

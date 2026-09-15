@@ -10,18 +10,18 @@ export function FollowButton({ userId }: { userId: string }) {
 
   const { data } = useQuery({
     queryKey: queryKeys.follows.isFollowing(userId),
-    queryFn: () => api.get<{ following: boolean }>(`/api/follows/is-following/${userId}`),
+    queryFn: () => api.get<{ following: boolean }>(`/follows/is-following/${userId}`),
   });
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: queryKeys.follows.isFollowing(userId) });
 
   const follow = useMutation({
-    mutationFn: () => api.post(`/api/follows/${userId}`),
+    mutationFn: () => api.post(`/follows/${userId}`),
     onSuccess: invalidate,
   });
   const unfollow = useMutation({
-    mutationFn: () => api.del(`/api/follows/${userId}`),
+    mutationFn: () => api.del(`/follows/${userId}`),
     onSuccess: invalidate,
   });
 

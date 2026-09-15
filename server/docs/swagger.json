@@ -1,0 +1,1975 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "REST API for Beatboxd (Letterboxd for DJ sets). Generated from\nserver/internal/httpapi handler annotations via swag - run\n`make openapi` in server/ to regenerate after changing a handler.",
+        "title": "Beatboxd API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "basePath": "/",
+    "paths": {
+        "/api/comments/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reviews"
+                ],
+                "summary": "Delete a comment owned by the caller (404, never 403, if not owned/found)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "comment id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/djs": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "djs"
+                ],
+                "summary": "Create a DJ (or return the existing one, deduped by spotifyId then slug)",
+                "parameters": [
+                    {
+                        "description": "DJ to create",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/createDjRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Dj"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/djs/search": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "djs"
+                ],
+                "summary": "Search DJs by name",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search query",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Dj"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/djs/spotify-search": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "djs"
+                ],
+                "summary": "Search Spotify for artists (fails open to [] on Spotify errors)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search query",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/SpotifyArtist"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/djs/{id}/reviews": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "djs"
+                ],
+                "summary": "List reviews for a DJ, cursor-paginated by seenAt desc",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "DJ id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "pagination cursor (RFC3339 seenAt of the last item)",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page size, 1-50, default 20",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/PaginatedReviews"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/djs/{slug}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "djs"
+                ],
+                "summary": "Get a DJ by slug, with rating aggregate and recent reviews",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "DJ slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/DjDetailResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/events": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "events"
+                ],
+                "summary": "Create an event (or return the existing one, deduped by exact name+venue+date)",
+                "parameters": [
+                    {
+                        "description": "event to create",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/createEventRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Event"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/events/search": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "events"
+                ],
+                "summary": "Search events by name",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search query",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Event"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/events/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "events"
+                ],
+                "summary": "Get an event by id, with all its reviews",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "event id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/EventDetailResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/feed": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "feed"
+                ],
+                "summary": "Activity feed: followed users' reviews interleaved with popular ones every 4th item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "pagination cursor (opaque, encodes createdAt + popular-pool offset)",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page size, 1-50, default 20",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/FeedResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/feed/popular": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "feed"
+                ],
+                "summary": "Most-liked-and-commented reviews, ranked",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "page size, 1-50, default 20",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/PopularResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/follows/is-following/{userId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "follows"
+                ],
+                "summary": "Whether the caller follows the given user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "user id",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/FollowingStatusResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/follows/{userId}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "follows"
+                ],
+                "summary": "Follow a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "user id to follow",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "follows"
+                ],
+                "summary": "Unfollow a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "user id to unfollow",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/leaderboard": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Leaderboard scoped to the caller and everyone they follow",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/LeaderboardEntry"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/reviews": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reviews"
+                ],
+                "summary": "Log a set: create a review of a DJ (optionally tied to an event)",
+                "parameters": [
+                    {
+                        "description": "review to create",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/createReviewRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Review"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/reviews/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reviews"
+                ],
+                "summary": "Get a review with its relations, engagement, and tagged users",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "review id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/ReviewDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reviews"
+                ],
+                "summary": "Delete a review owned by the caller (404, never 403, if not owned/found)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "review id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reviews"
+                ],
+                "summary": "Update a review owned by the caller (404, never 403, if not owned/found)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "review id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "fields to update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/updateReviewRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Review"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/reviews/{id}/comments": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reviews"
+                ],
+                "summary": "List a review's comments, oldest first",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "review id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/ReviewComment"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reviews"
+                ],
+                "summary": "Add a comment to a review",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "review id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "comment body",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/addCommentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/ReviewComment"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/reviews/{id}/like": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reviews"
+                ],
+                "summary": "Like a review",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "review id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reviews"
+                ],
+                "summary": "Unlike a review",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "review id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get the caller's own user row",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/User"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update the caller's own profile",
+                "parameters": [
+                    {
+                        "description": "fields to update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/updateProfileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/User"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/search": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Search users by username or display name",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search query",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/User"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/{userId}/followers": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "follows"
+                ],
+                "summary": "List the users who follow the given user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "user id",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/User"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/{userId}/following": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "follows"
+                ],
+                "summary": "List the users the given user follows",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "user id",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/User"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/{username}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get a user's profile by username, with follow/log counts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "username",
+                        "name": "username",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/UserProfileResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/{username}/reviews": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reviews"
+                ],
+                "summary": "List a user's reviews, cursor-paginated by seenAt desc",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "username",
+                        "name": "username",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "pagination cursor (RFC3339 seenAt of the last item)",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page size, 1-50, default 20",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/PaginatedReviews"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/{username}/stats": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get a user's log stats: totals, top DJs, top venues",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "username",
+                        "name": "username",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/UserStatsResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "CrowdVibe": {
+            "type": "string",
+            "enum": [
+                "electric",
+                "good",
+                "average",
+                "dead"
+            ],
+            "x-enum-varnames": [
+                "CrowdVibeElectric",
+                "CrowdVibeGood",
+                "CrowdVibeAverage",
+                "CrowdVibeDead"
+            ]
+        },
+        "Dj": {
+            "type": "object",
+            "required": [
+                "bio",
+                "createdAt",
+                "createdByUserId",
+                "genres",
+                "id",
+                "imageUrl",
+                "name",
+                "slug",
+                "spotifyId",
+                "updatedAt"
+            ],
+            "properties": {
+                "bio": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "createdByUserId": {
+                    "type": "string"
+                },
+                "genres": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "imageUrl": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "spotifyId": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "DjDetailResponse": {
+            "type": "object",
+            "required": [
+                "avgRating",
+                "dj",
+                "logCount",
+                "recentLogs"
+            ],
+            "properties": {
+                "avgRating": {
+                    "type": "number"
+                },
+                "dj": {
+                    "$ref": "#/definitions/Dj"
+                },
+                "logCount": {
+                    "type": "integer"
+                },
+                "recentLogs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ReviewDTO"
+                    }
+                }
+            }
+        },
+        "Event": {
+            "type": "object",
+            "required": [
+                "city",
+                "createdAt",
+                "createdByUserId",
+                "description",
+                "eventDate",
+                "id",
+                "name",
+                "venue"
+            ],
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "createdByUserId": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "eventDate": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "venue": {
+                    "type": "string"
+                }
+            }
+        },
+        "EventDetailResponse": {
+            "type": "object",
+            "required": [
+                "event",
+                "logs"
+            ],
+            "properties": {
+                "event": {
+                    "$ref": "#/definitions/Event"
+                },
+                "logs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ReviewDTO"
+                    }
+                }
+            }
+        },
+        "FeedResponse": {
+            "type": "object",
+            "required": [
+                "followingCount",
+                "items",
+                "nextCursor"
+            ],
+            "properties": {
+                "followingCount": {
+                    "type": "integer"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ReviewDTO"
+                    }
+                },
+                "nextCursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "FollowingStatusResponse": {
+            "type": "object",
+            "required": [
+                "following"
+            ],
+            "properties": {
+                "following": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "LeaderboardEntry": {
+            "type": "object",
+            "required": [
+                "logCount",
+                "user"
+            ],
+            "properties": {
+                "logCount": {
+                    "type": "integer"
+                },
+                "user": {
+                    "$ref": "#/definitions/User"
+                }
+            }
+        },
+        "PaginatedReviews": {
+            "type": "object",
+            "required": [
+                "items",
+                "nextCursor"
+            ],
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ReviewDTO"
+                    }
+                },
+                "nextCursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "PopularResponse": {
+            "type": "object",
+            "required": [
+                "items"
+            ],
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ReviewDTO"
+                    }
+                }
+            }
+        },
+        "Review": {
+            "type": "object",
+            "required": [
+                "createdAt",
+                "crowdVibe",
+                "crowdVibeNote",
+                "djId",
+                "eventId",
+                "id",
+                "ratingHalfStars",
+                "reviewText",
+                "seenAt",
+                "updatedAt",
+                "userId"
+            ],
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "crowdVibe": {
+                    "$ref": "#/definitions/CrowdVibe"
+                },
+                "crowdVibeNote": {
+                    "type": "string"
+                },
+                "djId": {
+                    "type": "string"
+                },
+                "eventId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "ratingHalfStars": {
+                    "type": "integer"
+                },
+                "reviewText": {
+                    "type": "string"
+                },
+                "seenAt": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "ReviewComment": {
+            "type": "object",
+            "required": [
+                "body",
+                "createdAt",
+                "id",
+                "reviewId",
+                "userId"
+            ],
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "reviewId": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/User"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "ReviewDTO": {
+            "type": "object",
+            "required": [
+                "createdAt",
+                "crowdVibe",
+                "crowdVibeNote",
+                "djId",
+                "eventId",
+                "id",
+                "ratingHalfStars",
+                "reviewText",
+                "seenAt",
+                "updatedAt",
+                "userId"
+            ],
+            "properties": {
+                "commentCount": {
+                    "type": "integer"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "crowdVibe": {
+                    "$ref": "#/definitions/CrowdVibe"
+                },
+                "crowdVibeNote": {
+                    "type": "string"
+                },
+                "dj": {
+                    "$ref": "#/definitions/Dj"
+                },
+                "djId": {
+                    "type": "string"
+                },
+                "event": {
+                    "$ref": "#/definitions/Event"
+                },
+                "eventId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isLikedByMe": {
+                    "type": "boolean"
+                },
+                "isPopular": {
+                    "type": "boolean"
+                },
+                "likeCount": {
+                    "type": "integer"
+                },
+                "ratingHalfStars": {
+                    "type": "integer"
+                },
+                "reviewText": {
+                    "type": "string"
+                },
+                "seenAt": {
+                    "type": "string"
+                },
+                "taggedUsers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/User"
+                    }
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/User"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "SpotifyArtist": {
+            "type": "object",
+            "required": [
+                "genres",
+                "imageUrl",
+                "name",
+                "spotifyId"
+            ],
+            "properties": {
+                "genres": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "imageUrl": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "spotifyId": {
+                    "type": "string"
+                }
+            }
+        },
+        "SuccessResponse": {
+            "type": "object",
+            "required": [
+                "success"
+            ],
+            "properties": {
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "TopDj": {
+            "type": "object",
+            "required": [
+                "dj",
+                "logCount"
+            ],
+            "properties": {
+                "dj": {
+                    "$ref": "#/definitions/Dj"
+                },
+                "logCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "TopVenue": {
+            "type": "object",
+            "required": [
+                "logCount",
+                "venue"
+            ],
+            "properties": {
+                "logCount": {
+                    "type": "integer"
+                },
+                "venue": {
+                    "type": "string"
+                }
+            }
+        },
+        "User": {
+            "type": "object",
+            "required": [
+                "avatarUrl",
+                "bio",
+                "createdAt",
+                "displayName",
+                "id",
+                "updatedAt",
+                "username"
+            ],
+            "properties": {
+                "avatarUrl": {
+                    "type": "string"
+                },
+                "bio": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "UserProfileResponse": {
+            "type": "object",
+            "required": [
+                "followerCount",
+                "followingCount",
+                "logCount",
+                "user"
+            ],
+            "properties": {
+                "followerCount": {
+                    "type": "integer"
+                },
+                "followingCount": {
+                    "type": "integer"
+                },
+                "logCount": {
+                    "type": "integer"
+                },
+                "user": {
+                    "$ref": "#/definitions/User"
+                }
+            }
+        },
+        "UserStatsResponse": {
+            "type": "object",
+            "required": [
+                "topDjs",
+                "topVenues",
+                "totalLogs",
+                "uniqueDjs"
+            ],
+            "properties": {
+                "topDjs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/TopDj"
+                    }
+                },
+                "topVenues": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/TopVenue"
+                    }
+                },
+                "totalLogs": {
+                    "type": "integer"
+                },
+                "uniqueDjs": {
+                    "type": "integer"
+                }
+            }
+        },
+        "addCommentRequest": {
+            "type": "object",
+            "required": [
+                "body"
+            ],
+            "properties": {
+                "body": {
+                    "type": "string"
+                }
+            }
+        },
+        "apiError": {
+            "type": "object",
+            "required": [
+                "code",
+                "message"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "createDjRequest": {
+            "type": "object",
+            "required": [
+                "bio",
+                "genres",
+                "imageUrl",
+                "name",
+                "spotifyId"
+            ],
+            "properties": {
+                "bio": {
+                    "type": "string"
+                },
+                "genres": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "imageUrl": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "spotifyId": {
+                    "type": "string"
+                }
+            }
+        },
+        "createEventRequest": {
+            "type": "object",
+            "required": [
+                "city",
+                "description",
+                "eventDate",
+                "name",
+                "venue"
+            ],
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "eventDate": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "venue": {
+                    "type": "string"
+                }
+            }
+        },
+        "createReviewRequest": {
+            "type": "object",
+            "required": [
+                "crowdVibe",
+                "crowdVibeNote",
+                "djId",
+                "eventId",
+                "ratingHalfStars",
+                "reviewText",
+                "seenAt",
+                "taggedUserIds"
+            ],
+            "properties": {
+                "crowdVibe": {
+                    "type": "string"
+                },
+                "crowdVibeNote": {
+                    "type": "string"
+                },
+                "djId": {
+                    "type": "string"
+                },
+                "eventId": {
+                    "type": "string"
+                },
+                "ratingHalfStars": {
+                    "type": "integer"
+                },
+                "reviewText": {
+                    "type": "string"
+                },
+                "seenAt": {
+                    "type": "string"
+                },
+                "taggedUserIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "errorEnvelope": {
+            "type": "object",
+            "required": [
+                "error"
+            ],
+            "properties": {
+                "error": {
+                    "$ref": "#/definitions/apiError"
+                }
+            }
+        },
+        "updateProfileRequest": {
+            "type": "object",
+            "required": [
+                "avatarUrl",
+                "bio",
+                "displayName"
+            ],
+            "properties": {
+                "avatarUrl": {
+                    "type": "string"
+                },
+                "bio": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                }
+            }
+        },
+        "updateReviewRequest": {
+            "type": "object",
+            "required": [
+                "crowdVibe",
+                "crowdVibeNote",
+                "ratingHalfStars",
+                "reviewText",
+                "seenAt",
+                "taggedUserIds"
+            ],
+            "properties": {
+                "crowdVibe": {
+                    "type": "string"
+                },
+                "crowdVibeNote": {
+                    "type": "string"
+                },
+                "ratingHalfStars": {
+                    "type": "integer"
+                },
+                "reviewText": {
+                    "type": "string"
+                },
+                "seenAt": {
+                    "type": "string"
+                },
+                "taggedUserIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Clerk-issued session JWT, e.g. \"Bearer eyJhbGc...\"",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

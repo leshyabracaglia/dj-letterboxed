@@ -25,7 +25,7 @@ func (h *Handlers) hydrateReviews(ctx context.Context, reviews []db.Review, opts
 	}
 
 	if opts.IncludeUser {
-		ids := uniqueStrings(mapField(reviews, func(r db.Review) string { return r.UserID }))
+		ids := queries.DedupeStrings(mapField(reviews, func(r db.Review) string { return r.UserID }))
 		users, err := queries.GetUsersByIDs(ctx, h.Pool, ids)
 		if err != nil {
 			return nil, err
@@ -39,7 +39,7 @@ func (h *Handlers) hydrateReviews(ctx context.Context, reviews []db.Review, opts
 	}
 
 	if opts.IncludeDj {
-		ids := uniqueStrings(mapField(reviews, func(r db.Review) string { return r.DjID }))
+		ids := queries.DedupeStrings(mapField(reviews, func(r db.Review) string { return r.DjID }))
 		djs, err := queries.GetDjsByIDs(ctx, h.Pool, ids)
 		if err != nil {
 			return nil, err
@@ -59,7 +59,7 @@ func (h *Handlers) hydrateReviews(ctx context.Context, reviews []db.Review, opts
 				ids = append(ids, *r.EventID)
 			}
 		}
-		events, err := queries.GetEventsByIDs(ctx, h.Pool, uniqueStrings(ids))
+		events, err := queries.GetEventsByIDs(ctx, h.Pool, queries.DedupeStrings(ids))
 		if err != nil {
 			return nil, err
 		}
@@ -94,19 +94,6 @@ func mapField(reviews []db.Review, f func(db.Review) string) []string {
 	out := make([]string, len(reviews))
 	for i, r := range reviews {
 		out[i] = f(r)
-	}
-	return out
-}
-
-func uniqueStrings(in []string) []string {
-	seen := make(map[string]struct{}, len(in))
-	out := make([]string, 0, len(in))
-	for _, s := range in {
-		if _, ok := seen[s]; ok {
-			continue
-		}
-		seen[s] = struct{}{}
-		out = append(out, s)
 	}
 	return out
 }

@@ -32,11 +32,11 @@ func SearchDjs(ctx context.Context, q DBTX, query string) ([]db.Dj, error) {
 
 	var out []db.Dj
 	for rows.Next() {
-		var d db.Dj
-		if err := rows.Scan(&d.ID, &d.Name, &d.Slug, &d.Bio, &d.Genres, &d.ImageURL, &d.SpotifyID, &d.CreatedByUserID, &d.CreatedAt, &d.UpdatedAt); err != nil {
+		d, err := scanDj(rows)
+		if err != nil {
 			return nil, err
 		}
-		out = append(out, d)
+		out = append(out, *d)
 	}
 	return out, rows.Err()
 }
@@ -72,11 +72,11 @@ func GetDjsByIDs(ctx context.Context, q DBTX, ids []string) (map[string]db.Dj, e
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var d db.Dj
-		if err := rows.Scan(&d.ID, &d.Name, &d.Slug, &d.Bio, &d.Genres, &d.ImageURL, &d.SpotifyID, &d.CreatedByUserID, &d.CreatedAt, &d.UpdatedAt); err != nil {
+		d, err := scanDj(rows)
+		if err != nil {
 			return nil, err
 		}
-		out[d.ID] = d
+		out[d.ID] = *d
 	}
 	return out, rows.Err()
 }
