@@ -6,13 +6,28 @@ import { CommentSection } from "../../components/CommentSection";
 import { CrowdVibeBadge } from "../../components/CrowdVibeBadge";
 import { LikeButton } from "../../components/LikeButton";
 import { RatingStars } from "../../components/RatingStars";
-import { useTRPC } from "../../hooks/trpc";
+import { useApi } from "../../lib/api/client";
+import { queryKeys } from "../../lib/api/queryKeys";
+import type { Dj, Event, Review, User } from "../../lib/api/types";
 import { ROUTES } from "../../lib/routes";
+
+// getById always hydrates these relations, so narrow them to required here.
+type LogDetail = Review & {
+  dj: Dj;
+  event: Event | null;
+  taggedUsers: User[];
+  user: User;
+  likeCount: number;
+  isLikedByMe: boolean;
+};
 
 export default function LogDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const trpc = useTRPC();
-  const { data: log } = useQuery(trpc.reviews.getById.queryOptions({ id: id! }));
+  const api = useApi();
+  const { data: log } = useQuery({
+    queryKey: queryKeys.reviews.byId(id!),
+    queryFn: () => api.get<LogDetail>(`/api/reviews/${id}`),
+  });
 
   if (!log) {
     return (

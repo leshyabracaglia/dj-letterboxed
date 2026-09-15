@@ -1,7 +1,7 @@
 import { Link } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
-import type { Event } from "../lib/db/schema";
+import type { Event } from "../lib/api/types";
 import { ROUTES } from "../lib/routes";
 
 export function EventCard({ event }: { event: Event }) {

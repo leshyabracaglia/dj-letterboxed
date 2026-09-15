@@ -1,19 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 
-import { useTRPC } from "../hooks/trpc";
-import type { Dj } from "../lib/db/schema";
-
-export type SpotifyArtistResult = {
-  spotifyId: string;
-  name: string;
-  imageUrl: string | null;
-  genres: string[];
-};
+import { useApi } from "../lib/api/client";
+import { queryKeys } from "../lib/api/queryKeys";
+import type { Dj, SpotifyArtist } from "../lib/api/types";
 
 export type ArtistPick =
   | { type: "existing"; dj: Dj }
-  | { type: "spotify"; artist: SpotifyArtistResult };
+  | { type: "spotify"; artist: SpotifyArtist };
 
 export function ArtistSearchInput({
   value,
@@ -26,16 +20,18 @@ export function ArtistSearchInput({
   onSelect: (pick: ArtistPick) => void;
   hasSelection: boolean;
 }) {
-  const trpc = useTRPC();
+  const api = useApi();
   const query = value.trim();
   const enabled = query.length > 1 && !hasSelection;
 
   const { data: localResults, isFetching: isLocalFetching } = useQuery({
-    ...trpc.djs.search.queryOptions({ query }),
+    queryKey: queryKeys.djs.search(query),
+    queryFn: () => api.get<Dj[]>("/api/djs/search", { q: query }),
     enabled,
   });
   const { data: spotifyResults, isFetching: isSpotifyFetching } = useQuery({
-    ...trpc.djs.searchSpotify.queryOptions({ query }),
+    queryKey: queryKeys.djs.spotifySearch(query),
+    queryFn: () => api.get<SpotifyArtist[]>("/api/djs/spotify-search", { q: query }),
     enabled,
   });
 

@@ -3,7 +3,9 @@ import { useState } from "react";
 import { FlatList, Pressable, SafeAreaView, Text, View } from "react-native";
 
 import { LogCard } from "../../components/LogCard";
-import { useTRPC } from "../../hooks/trpc";
+import { useApi } from "../../lib/api/client";
+import { queryKeys } from "../../lib/api/queryKeys";
+import type { FeedResponse, LeaderboardEntry, PopularResponse } from "../../lib/api/types";
 
 const TABS = ["following", "popular", "leaderboard"] as const;
 type Tab = (typeof TABS)[number];
@@ -14,7 +16,7 @@ const TAB_LABELS: Record<Tab, string> = {
 };
 
 export default function FeedScreen() {
-  const trpc = useTRPC();
+  const api = useApi();
   const [tab, setTab] = useState<Tab>("following");
 
   const {
@@ -23,12 +25,13 @@ export default function FeedScreen() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useInfiniteQuery(
-    trpc.feed.getActivity.infiniteQueryOptions(
-      { limit: 20 },
-      { getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined },
-    ),
-  );
+  } = useInfiniteQuery({
+    queryKey: queryKeys.feed.activity(),
+    queryFn: ({ pageParam }: { pageParam?: string }) =>
+      api.get<FeedResponse>("/api/feed", { cursor: pageParam, limit: 20 }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+  });
 
   const pages = data?.pages ?? [];
   const items = pages.flatMap((page) => page.items);
@@ -37,12 +40,14 @@ export default function FeedScreen() {
   const effectiveTab: Tab = tab === "following" && noFollowing ? "popular" : tab;
 
   const { data: popularData, isLoading: isPopularLoading } = useQuery({
-    ...trpc.feed.getPopular.queryOptions({ limit: 20 }),
+    queryKey: queryKeys.feed.popular(),
+    queryFn: () => api.get<PopularResponse>("/api/feed/popular", { limit: 20 }),
     enabled: effectiveTab === "popular",
   });
 
   const { data: leaderboard, isLoading: isLeaderboardLoading } = useQuery({
-    ...trpc.users.getLeaderboard.queryOptions(),
+    queryKey: queryKeys.users.leaderboard(),
+    queryFn: () => api.get<LeaderboardEntry[]>("/api/leaderboard"),
     enabled: effectiveTab === "leaderboard",
   });
 

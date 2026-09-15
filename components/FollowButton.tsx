@@ -1,25 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pressable, Text } from "react-native";
 
-import { useTRPC } from "../hooks/trpc";
+import { useApi } from "../lib/api/client";
+import { queryKeys } from "../lib/api/queryKeys";
 
 export function FollowButton({ userId }: { userId: string }) {
-  const trpc = useTRPC();
+  const api = useApi();
   const queryClient = useQueryClient();
 
-  const { data } = useQuery(trpc.follows.isFollowing.queryOptions({ userId }));
+  const { data } = useQuery({
+    queryKey: queryKeys.follows.isFollowing(userId),
+    queryFn: () => api.get<{ following: boolean }>(`/api/follows/is-following/${userId}`),
+  });
 
   const invalidate = () =>
-    queryClient.invalidateQueries({
-      queryKey: trpc.follows.isFollowing.queryKey({ userId }),
-    });
+    queryClient.invalidateQueries({ queryKey: queryKeys.follows.isFollowing(userId) });
 
-  const follow = useMutation(
-    trpc.users.follow.mutationOptions({ onSuccess: invalidate }),
-  );
-  const unfollow = useMutation(
-    trpc.users.unfollow.mutationOptions({ onSuccess: invalidate }),
-  );
+  const follow = useMutation({
+    mutationFn: () => api.post(`/api/follows/${userId}`),
+    onSuccess: invalidate,
+  });
+  const unfollow = useMutation({
+    mutationFn: () => api.del(`/api/follows/${userId}`),
+    onSuccess: invalidate,
+  });
 
   const isFollowing = data?.following ?? false;
   const pending = follow.isPending || unfollow.isPending;
@@ -27,11 +31,7 @@ export function FollowButton({ userId }: { userId: string }) {
   return (
     <Pressable
       disabled={pending}
-      onPress={() =>
-        isFollowing
-          ? unfollow.mutate({ userId })
-          : follow.mutate({ userId })
-      }
+      onPress={() => (isFollowing ? unfollow.mutate() : follow.mutate())}
       className={`rounded-full px-4 py-2 ${isFollowing ? "bg-muted/20" : "bg-ink"}`}
     >
       <Text className={isFollowing ? "text-ink" : "text-paper"}>

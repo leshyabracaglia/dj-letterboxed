@@ -3,12 +3,17 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import { FlatList, SafeAreaView, Text, View } from "react-native";
 
 import { LogCard } from "../../components/LogCard";
-import { useTRPC } from "../../hooks/trpc";
+import { useApi } from "../../lib/api/client";
+import { queryKeys } from "../../lib/api/queryKeys";
+import type { EventDetail } from "../../lib/api/types";
 
 export default function EventScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const trpc = useTRPC();
-  const { data } = useQuery(trpc.events.getById.queryOptions({ id: id! }));
+  const api = useApi();
+  const { data } = useQuery({
+    queryKey: queryKeys.events.byId(id!),
+    queryFn: () => api.get<EventDetail>(`/api/events/${id}`),
+  });
 
   if (!data) {
     return (

@@ -5,7 +5,7 @@
   "devCommand": "node -e \"require('http').createServer((_, res) => res.end()).listen(process.env.PORT)\"",
   "rewrites": [
     {
-      "source": "/((?!api/).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]

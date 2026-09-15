@@ -2,32 +2,39 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
-import { useTRPC } from "../hooks/trpc";
+import { useApi } from "../lib/api/client";
+import { queryKeys } from "../lib/api/queryKeys";
+import type { ReviewComment, User } from "../lib/api/types";
 
 export function CommentSection({ reviewId }: { reviewId: string }) {
-  const trpc = useTRPC();
+  const api = useApi();
   const queryClient = useQueryClient();
   const [body, setBody] = useState("");
 
-  const { data: comments } = useQuery(trpc.reviews.listComments.queryOptions({ reviewId }));
-  const { data: me } = useQuery(trpc.users.me.queryOptions());
+  const { data: comments } = useQuery({
+    queryKey: queryKeys.reviews.comments(reviewId),
+    queryFn: () => api.get<ReviewComment[]>(`/api/reviews/${reviewId}/comments`),
+  });
+  const { data: me } = useQuery({
+    queryKey: queryKeys.users.me(),
+    queryFn: () => api.get<User>("/api/users/me"),
+  });
 
   const invalidate = () =>
-    queryClient.invalidateQueries({
-      queryKey: trpc.reviews.listComments.queryKey({ reviewId }),
-    });
+    queryClient.invalidateQueries({ queryKey: queryKeys.reviews.comments(reviewId) });
 
-  const addComment = useMutation(
-    trpc.reviews.addComment.mutationOptions({
-      onSuccess: () => {
-        setBody("");
-        invalidate();
-      },
-    }),
-  );
-  const deleteComment = useMutation(
-    trpc.reviews.deleteComment.mutationOptions({ onSuccess: invalidate }),
-  );
+  const addComment = useMutation({
+    mutationFn: (input: { body: string }) =>
+      api.post<ReviewComment>(`/api/reviews/${reviewId}/comments`, input),
+    onSuccess: () => {
+      setBody("");
+      invalidate();
+    },
+  });
+  const deleteComment = useMutation({
+    mutationFn: (id: string) => api.del(`/api/comments/${id}`),
+    onSuccess: invalidate,
+  });
 
   return (
     <View className="mt-4">
@@ -36,12 +43,12 @@ export function CommentSection({ reviewId }: { reviewId: string }) {
         <View key={comment.id} className="mb-3 flex-row items-start justify-between">
           <View className="flex-1 pr-2">
             <Text className="text-sm font-medium text-ink">
-              @{comment.user.username}
+              @{comment.user?.username}
             </Text>
             <Text className="text-sm text-ink">{comment.body}</Text>
           </View>
           {me?.id === comment.userId ? (
-            <Pressable onPress={() => deleteComment.mutate({ id: comment.id })}>
+            <Pressable onPress={() => deleteComment.mutate(comment.id)}>
               <Text className="text-xs text-muted">Delete</Text>
             </Pressable>
           ) : null}
@@ -59,7 +66,7 @@ export function CommentSection({ reviewId }: { reviewId: string }) {
         />
         <Pressable
           disabled={!body.trim() || addComment.isPending}
-          onPress={() => addComment.mutate({ reviewId, body: body.trim() })}
+          onPress={() => addComment.mutate({ body: body.trim() })}
           className="rounded-lg bg-ink px-4 py-2"
         >
           <Text className="text-paper">Post</Text>

@@ -3,14 +3,17 @@ import { useState } from "react";
 import { FlatList, SafeAreaView, Text, TextInput, View } from "react-native";
 
 import { DjCard } from "../../components/DjCard";
-import { useTRPC } from "../../hooks/trpc";
+import { useApi } from "../../lib/api/client";
+import { queryKeys } from "../../lib/api/queryKeys";
+import type { Dj } from "../../lib/api/types";
 
 export default function BrowseScreen() {
-  const trpc = useTRPC();
+  const api = useApi();
   const [query, setQuery] = useState("");
 
   const { data } = useQuery({
-    ...trpc.djs.search.queryOptions({ query }),
+    queryKey: queryKeys.djs.search(query),
+    queryFn: () => api.get<Dj[]>("/api/djs/search", { q: query }),
     enabled: query.length > 0,
   });
 

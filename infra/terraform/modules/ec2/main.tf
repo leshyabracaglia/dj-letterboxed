@@ -8,8 +8,12 @@ data "aws_ami" "al2023" {
   owners      = ["amazon"]
 
   filter {
+    # Note the "20" right after "al2023-ami-": this deliberately excludes
+    # the "al2023-ami-minimal-*" variant, which doesn't ship the SSM agent
+    # (learned the hard way - a minimal-variant instance is unreachable by
+    # anything, since this stack has no SSH key/port 22 either).
     name   = "name"
-    values = ["al2023-ami-*-x86_64"]
+    values = ["al2023-ami-20*-x86_64"]
   }
   filter {
     name   = "architecture"

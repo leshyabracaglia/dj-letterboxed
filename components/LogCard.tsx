@@ -1,7 +1,7 @@
 import { Link } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
-import type { Dj, Event, Review, User } from "../lib/db/schema";
+import type { Dj, Event, Review, User } from "../lib/api/types";
 import { ROUTES } from "../lib/routes";
 import { CrowdVibeBadge } from "./CrowdVibeBadge";
 import { RatingStars } from "./RatingStars";

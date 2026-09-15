@@ -4,12 +4,17 @@ import { FlatList, SafeAreaView, Text, View } from "react-native";
 
 import { LogCard } from "../../components/LogCard";
 import { RatingStars } from "../../components/RatingStars";
-import { useTRPC } from "../../hooks/trpc";
+import { useApi } from "../../lib/api/client";
+import { queryKeys } from "../../lib/api/queryKeys";
+import type { DjDetail } from "../../lib/api/types";
 
 export default function DjProfileScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const trpc = useTRPC();
-  const { data } = useQuery(trpc.djs.getBySlug.queryOptions({ slug: slug! }));
+  const api = useApi();
+  const { data } = useQuery({
+    queryKey: queryKeys.djs.bySlug(slug!),
+    queryFn: () => api.get<DjDetail>(`/api/djs/${slug}`),
+  });
 
   if (!data) {
     return (

@@ -15,8 +15,15 @@ import {
 import { ArtistSearchInput, type ArtistPick } from "../../components/ArtistSearchInput";
 import { RatingStars } from "../../components/RatingStars";
 import { TagFriendsPicker } from "../../components/TagFriendsPicker";
-import { useTRPC } from "../../hooks/trpc";
-import type { User } from "../../lib/db/schema";
+import { useApi } from "../../lib/api/client";
+import type {
+  CreateEventInput,
+  CreateReviewInput,
+  Dj,
+  Event,
+  Review,
+  User,
+} from "../../lib/api/types";
 import { ROUTES } from "../../lib/routes";
 
 const VIBES = [
@@ -31,7 +38,7 @@ function todayISODate() {
 }
 
 export default function LogSetScreen() {
-  const trpc = useTRPC();
+  const api = useApi();
 
   const [djName, setDjName] = useState("");
   const [artistPick, setArtistPick] = useState<ArtistPick | null>(null);
@@ -45,9 +52,20 @@ export default function LogSetScreen() {
   const [taggedUsers, setTaggedUsers] = useState<User[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const createDj = useMutation(trpc.djs.create.mutationOptions());
-  const createEvent = useMutation(trpc.events.create.mutationOptions());
-  const createLog = useMutation(trpc.reviews.create.mutationOptions());
+  const createDj = useMutation({
+    mutationFn: (input: {
+      name: string;
+      spotifyId?: string;
+      imageUrl?: string;
+      genres?: string[];
+    }) => api.post<Dj>("/api/djs", input),
+  });
+  const createEvent = useMutation({
+    mutationFn: (input: CreateEventInput) => api.post<Event>("/api/events", input),
+  });
+  const createLog = useMutation({
+    mutationFn: (input: CreateReviewInput) => api.post<Review>("/api/reviews", input),
+  });
 
   const pending = createDj.isPending || createEvent.isPending || createLog.isPending;
 
@@ -84,7 +102,7 @@ export default function LogSetScreen() {
           name: eventName.trim(),
           venue: venue.trim(),
           city: city.trim() || undefined,
-          eventDate: seenAtDate,
+          eventDate: seenAtDate.toISOString(),
         });
         eventId = event.id;
       }
@@ -95,7 +113,7 @@ export default function LogSetScreen() {
         ratingHalfStars: rating,
         reviewText: reviewText.trim() || undefined,
         crowdVibe,
-        seenAt: seenAtDate,
+        seenAt: seenAtDate.toISOString(),
         taggedUserIds: taggedUsers.map((u) => u.id),
       });
 

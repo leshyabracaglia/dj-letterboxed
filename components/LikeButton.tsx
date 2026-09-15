@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pressable, Text } from "react-native";
 
-import { useTRPC } from "../hooks/trpc";
+import { useApi } from "../lib/api/client";
+import { queryKeys } from "../lib/api/queryKeys";
 
 export function LikeButton({
   reviewId,
@@ -12,24 +13,26 @@ export function LikeButton({
   likeCount: number;
   isLiked: boolean;
 }) {
-  const trpc = useTRPC();
+  const api = useApi();
   const queryClient = useQueryClient();
 
   const invalidate = () =>
-    queryClient.invalidateQueries({
-      queryKey: trpc.reviews.getById.queryKey({ id: reviewId }),
-    });
+    queryClient.invalidateQueries({ queryKey: queryKeys.reviews.byId(reviewId) });
 
-  const like = useMutation(trpc.reviews.like.mutationOptions({ onSuccess: invalidate }));
-  const unlike = useMutation(trpc.reviews.unlike.mutationOptions({ onSuccess: invalidate }));
+  const like = useMutation({
+    mutationFn: () => api.post(`/api/reviews/${reviewId}/like`),
+    onSuccess: invalidate,
+  });
+  const unlike = useMutation({
+    mutationFn: () => api.del(`/api/reviews/${reviewId}/like`),
+    onSuccess: invalidate,
+  });
   const pending = like.isPending || unlike.isPending;
 
   return (
     <Pressable
       disabled={pending}
-      onPress={() =>
-        isLiked ? unlike.mutate({ reviewId }) : like.mutate({ reviewId })
-      }
+      onPress={() => (isLiked ? unlike.mutate() : like.mutate())}
       className={`flex-row items-center gap-1 rounded-full px-3 py-1.5 ${
         isLiked ? "bg-accent/15" : "bg-muted/10"
       }`}

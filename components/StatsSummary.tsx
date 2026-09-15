@@ -1,11 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { Text, View } from "react-native";
 
-import { useTRPC } from "../hooks/trpc";
+import { useApi } from "../lib/api/client";
+import { queryKeys } from "../lib/api/queryKeys";
+import type { UserStats } from "../lib/api/types";
 
 export function StatsSummary({ username }: { username: string }) {
-  const trpc = useTRPC();
-  const { data: stats } = useQuery(trpc.users.getStats.queryOptions({ username }));
+  const api = useApi();
+  const { data: stats } = useQuery({
+    queryKey: queryKeys.users.stats(username),
+    queryFn: () => api.get<UserStats>(`/api/users/${username}/stats`),
+  });
 
   if (!stats || stats.totalLogs === 0) return null;
 

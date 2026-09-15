@@ -5,19 +5,26 @@ import { FlatList, SafeAreaView, Text, View } from "react-native";
 import { FollowButton } from "../../components/FollowButton";
 import { LogCard } from "../../components/LogCard";
 import { StatsSummary } from "../../components/StatsSummary";
-import { useTRPC } from "../../hooks/trpc";
+import { useApi } from "../../lib/api/client";
+import { queryKeys } from "../../lib/api/queryKeys";
+import type { Paginated, Review, User, UserProfile } from "../../lib/api/types";
 import { ROUTES } from "../../lib/routes";
 
 export default function UserProfileScreen() {
   const { username } = useLocalSearchParams<{ username: string }>();
-  const trpc = useTRPC();
+  const api = useApi();
 
-  const { data: me } = useQuery(trpc.users.me.queryOptions());
-  const { data: profile } = useQuery(
-    trpc.users.getByUsername.queryOptions({ username: username! }),
-  );
+  const { data: me } = useQuery({
+    queryKey: queryKeys.users.me(),
+    queryFn: () => api.get<User>("/api/users/me"),
+  });
+  const { data: profile } = useQuery({
+    queryKey: queryKeys.users.byUsername(username!),
+    queryFn: () => api.get<UserProfile>(`/api/users/${username}`),
+  });
   const { data: logs } = useQuery({
-    ...trpc.reviews.listByUser.queryOptions({ username: username! }),
+    queryKey: queryKeys.reviews.byUser(username!),
+    queryFn: () => api.get<Paginated<Review>>(`/api/users/${username}/reviews`, { limit: 20 }),
     enabled: !!username,
   });
 

@@ -8,44 +8,42 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Letterboxd for DJ sets: log DJs you've seen live, rate them, write a review, and follow other users to see their sets in a feed.
 
-Stack: Expo (React Native + React Native Web) with Expo Router, NativeWind for styling; tRPC API running as Vercel Edge Functions; Neon Postgres via Drizzle ORM; Clerk for auth.
+Stack: Expo (React Native + React Native Web) with Expo Router, NativeWind for styling; a Go HTTP API deployed on AWS (ECS Fargate previously, currently a single EC2 instance running Docker Compose for cost reasons — see `infra/terraform/README.md`); AWS RDS Postgres; Clerk for auth. The web export still deploys via Vercel (static hosting only — the API used to live there too as tRPC Edge Functions, but moved off after an unfixable Vercel Edge Function bundler bug; see git history around the "move to aws and go backend" commit for the full story).
 
 ## Commands
 
 Setup:
 ```
 npm install
-cp .env.example .env   # fill in DATABASE_URL, CLERK_SECRET_KEY, CLERK_WEBHOOK_SIGNING_SECRET, EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY, EXPO_PUBLIC_API_URL
-npm run db:migrate     # push schema to the database
-npm run db:seed        # optional sample data
+cp .env.example .env   # fill in EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY, EXPO_PUBLIC_API_URL
+cd server && cp .env.example .env   # fill in DATABASE_URL, CLERK_*, SPOTIFY_* — see server/.env.example
 ```
 
 Running locally — the app talks to the API over HTTP, so both need to be up:
 ```
 npm run dev             # runs dev:api and dev:app together via concurrently
-npm run dev:api         # vercel dev, API on :3000
+npm run dev:api         # docker compose up for server/ (Postgres + Go API), API on :8080
 npm run dev:app         # expo start — press w for web, i for iOS simulator
 ```
 
-Database (Drizzle):
+First-time local DB setup (against the docker-compose Postgres, entirely separate from the production RDS instance):
 ```
-npm run db:generate   # generate a migration from schema.ts changes
-npm run db:migrate    # apply migrations
-npm run db:studio     # browse the DB with Drizzle Studio
+npm run db:migrate   # applies server/migrations/*.sql via golang-migrate
+npm run db:seed      # ported fixture data (2 users, 3 djs, 1 event, reviews/likes/comments)
 ```
 
-Type checking: `npx tsc --noEmit` (there is no lint script or test runner configured in this repo).
+Type checking: `npx tsc --noEmit` (client). Server: `cd server && go build ./... && go vet ./... && go test ./...` (there is no lint script or test runner configured for the client).
 
 ## Architecture
 
-**Routing**: `app/` is Expo Router file-based routing. `(auth)` and `(tabs)` are route groups; `app/_layout.tsx` is the root layout and wraps everything in `ClerkProvider` → `QueryClientProvider` → `TRPCProvider`. All in-app links and navigation must go through the `ROUTES` constant in `lib/routes.ts` — never hardcode a path string in `Link href`, `router.push`/`replace`, or `Redirect href`. Static routes are plain `Href` values (`ROUTES.FEED`, `ROUTES.SIGN_IN`); dynamic routes are functions that build the `Href` from an id/slug (`ROUTES.DJ(slug)`, `ROUTES.USER(username)`). When a new route is added under `app/`, add a corresponding entry to `ROUTES` in the same change.
+**Routing**: `app/` is Expo Router file-based routing. `(auth)` and `(tabs)` are route groups; `app/_layout.tsx` is the root layout and wraps everything in `ClerkProvider` → `QueryClientProvider`. All in-app links and navigation must go through the `ROUTES` constant in `lib/routes.ts` — never hardcode a path string in `Link href`, `router.push`/`replace`, or `Redirect href`. Static routes are plain `Href` values (`ROUTES.FEED`, `ROUTES.SIGN_IN`); dynamic routes are functions that build the `Href` from an id/slug (`ROUTES.DJ(slug)`, `ROUTES.USER(username)`). When a new route is added under `app/`, add a corresponding entry to `ROUTES` in the same change.
 
-**API**: tRPC routers live in `lib/server/routers/` (one file per domain: `djs`, `events`, `feed`, `follows`, `logs`, `users`) and are combined into `appRouter` in `lib/server/routers/_app.ts`. The single Vercel Edge Function handler at `api/trpc/[trpc].ts` serves all of them via `fetchRequestHandler`; there's no separate route per procedure.
+**API**: the Go service in `server/` (see `server/README` references in `infra/terraform/README.md` for deploy details). Handlers live in `server/internal/httpapi/`, one file per domain (`djs`, `events`, `follows`, `reviews`, `users`, `feed`, plus `webhooks` for the Clerk sync endpoint), wired up in `server/internal/httpapi/router.go`. Business logic that doesn't belong in a handler (feed ranking/interleave, review-tag replace semantics, Spotify client, slugify) lives in `server/internal/domain/`; DB access is hand-written SQL in `server/internal/db/queries/` against `pgx`/`pgxpool` (no ORM). This is a plain REST API — no tRPC, no code-generated client; request/response shapes are hand-mirrored on the client in `lib/api/types.ts`.
 
-**Auth flow** (`lib/server/trpc.ts`): the client attaches a Clerk-issued bearer JWT on every request (`hooks/trpc.ts`, via `getToken()` from `@clerk/expo`). `createContext` verifies that JWT server-side with `@clerk/backend`. `protectedProcedure` then resolves the verified Clerk ID to a row in the local `users` table — and **lazily creates one with a fallback username if it doesn't exist yet**, in case the Clerk webhook hasn't landed. The webhook at `api/webhooks/clerk.ts` (svix-verified, edge runtime) is the primary sync path for `user.created`/`user.updated`/`user.deleted`; the lazy-create in `protectedProcedure` is just a race-condition fallback, not the main path — don't remove one without considering the other.
+**Auth flow** (`server/internal/httpapi/middleware.go` + `server/internal/auth/clerk.go`): the client attaches a Clerk-issued bearer JWT on every request (`lib/api/client.ts`'s `useApi()`, via `getToken()` from `@clerk/expo`). The Go service verifies that JWT itself against Clerk's public JWKS (no Clerk SDK needed for this). `RequireAuth` then resolves the verified Clerk ID to a row in the local `users` table — and **lazily creates one with a fallback username if it doesn't exist yet**, in case the Clerk webhook hasn't landed. The webhook handler (`server/internal/httpapi/webhooks_handlers.go`, svix-verified) is the primary sync path for `user.created`/`user.updated`/`user.deleted`; the lazy-create in `RequireAuth` is just a race-condition fallback, not the main path — don't remove one without considering the other.
 
-**Data model** (`lib/db/schema.ts`, Drizzle + Neon serverless client in `lib/db/client.ts`): `users`, `djs`, `events`, `logs`, `follows`. `logs` is the core review entity — one user's log of one DJ (optionally tied to an `event`) — with `ratingHalfStars` stored as an integer 1–10 (half-star increments; UI divides by 2 for a 0.5–5.0 star display). `follows` has no surrogate key, just a composite PK on `(followerId, followingId)`. Migrations are generated into `drizzle/migrations/` and must be applied with `db:migrate`; schema changes always go through `db:generate` rather than hand-written SQL.
+**Data model** (`server/migrations/*.sql`, plain Postgres DDL applied via `golang-migrate`): `users`, `djs`, `events`, `reviews`, `review_likes`, `review_comments`, `review_tags`, `follows`. `reviews` is the core entity — one user's log of one DJ (optionally tied to an `event`) — with `rating_half_stars` stored as an integer 1–10 (half-star increments; UI divides by 2 for a 0.5–5.0 star display). `follows` has no surrogate key, just a composite PK on `(follower_id, following_id)`. Schema changes: hand-write a new numbered `.up.sql`/`.down.sql` pair in `server/migrations/` (Drizzle/drizzle-kit generation was retired along with the old Node API — there's no schema-diffing tool in this repo anymore).
 
-**Client data fetching**: `hooks/trpc.ts` wires `@trpc/tanstack-react-query`. `useCreateTRPCClient` builds the tRPC client per-render-tree (memoized on `getToken`) so the auth header is always current; it points at `EXPO_PUBLIC_API_URL` (falls back to `http://localhost:3000`), not a relative path — this matters because the Expo client and the API are logically separate origins even though production serves both from one Vercel project.
+**Client data fetching**: `lib/api/client.ts`'s `useApi()` hook returns a small `{get, post, patch, del}` client bound to the current Clerk token, pointed at `EXPO_PUBLIC_API_URL` (falls back to `http://localhost:8080`). Each screen calls it directly with `@tanstack/react-query`'s `useQuery`/`useMutation`/`useInfiniteQuery`, using the key factories in `lib/api/queryKeys.ts` (no tRPC — keys are hand-assigned, not auto-derived). Response shapes are typed in `lib/api/types.ts`, hand-mirrored from the Go handlers' JSON output; dates arrive as RFC3339 strings, not `Date` objects (screens already wrap them in `new Date(...)` where displayed).
 
-**Deployment**: one Vercel project. `vercel.json` builds the Expo web export (`expo export -p web`) into `dist/` and rewrites all non-`/api` paths to `index.html`; `/api/*` is served by the Edge Functions in `api/`. Both `api/trpc/[trpc].ts` and `api/webhooks/clerk.ts` declare `export const config = { runtime: "edge" }`. iOS/Android are separate EAS builds pointed at the deployed `EXPO_PUBLIC_API_URL`.
+**Deployment**: Vercel builds the Expo web export (`expo export -p web`, see `vercel.json`) into `dist/` — no `/api/*` on Vercel anymore, just the static export. The Go API + Postgres run on AWS, provisioned via Terraform in `infra/terraform/` — see `infra/terraform/README.md` for the current architecture (cost-minimized: one EC2 instance + RDS, no ALB/ECS/Aurora) and the two-phase apply workflow. iOS/Android are separate EAS builds pointed at the deployed `EXPO_PUBLIC_API_URL` (`https://api.beatboxd.com`).

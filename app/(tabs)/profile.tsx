@@ -5,16 +5,23 @@ import { FlatList, Pressable, SafeAreaView, Text, View } from "react-native";
 
 import { LogCard } from "../../components/LogCard";
 import { StatsSummary } from "../../components/StatsSummary";
-import { useTRPC } from "../../hooks/trpc";
+import { useApi } from "../../lib/api/client";
+import { queryKeys } from "../../lib/api/queryKeys";
+import type { Paginated, Review, User } from "../../lib/api/types";
 import { ROUTES } from "../../lib/routes";
 
 export default function ProfileScreen() {
-  const trpc = useTRPC();
+  const api = useApi();
   const { signOut } = useAuth();
 
-  const { data: me } = useQuery(trpc.users.me.queryOptions());
+  const { data: me } = useQuery({
+    queryKey: queryKeys.users.me(),
+    queryFn: () => api.get<User>("/api/users/me"),
+  });
   const { data } = useQuery({
-    ...trpc.reviews.listByUser.queryOptions({ username: me?.username ?? "" }),
+    queryKey: queryKeys.reviews.byUser(me?.username ?? ""),
+    queryFn: () =>
+      api.get<Paginated<Review>>(`/api/users/${me?.username}/reviews`, { limit: 20 }),
     enabled: !!me?.username,
   });
 

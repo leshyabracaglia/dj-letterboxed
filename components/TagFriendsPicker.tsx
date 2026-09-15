@@ -2,8 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
-import { useTRPC } from "../hooks/trpc";
-import type { User } from "../lib/db/schema";
+import { useApi } from "../lib/api/client";
+import { queryKeys } from "../lib/api/queryKeys";
+import type { User } from "../lib/api/types";
 
 export function TagFriendsPicker({
   taggedUsers,
@@ -14,12 +15,14 @@ export function TagFriendsPicker({
   onAdd: (user: User) => void;
   onRemove: (userId: string) => void;
 }) {
-  const trpc = useTRPC();
+  const api = useApi();
   const [query, setQuery] = useState("");
+  const trimmed = query.trim();
 
   const { data: results } = useQuery({
-    ...trpc.users.search.queryOptions({ query }),
-    enabled: query.trim().length > 1,
+    queryKey: queryKeys.users.search(trimmed),
+    queryFn: () => api.get<User[]>("/api/users/search", { q: trimmed }),
+    enabled: trimmed.length > 1,
   });
 
   const taggedIds = new Set(taggedUsers.map((u) => u.id));
@@ -45,7 +48,7 @@ export function TagFriendsPicker({
         onChangeText={setQuery}
         className="rounded-lg border border-muted/30 bg-white px-4 py-3"
       />
-      {query.trim().length > 1 && results && results.length > 0 ? (
+      {trimmed.length > 1 && results && results.length > 0 ? (
         <View className="mt-1 overflow-hidden rounded-lg border border-muted/30 bg-white">
           {results
             .filter((u) => !taggedIds.has(u.id))
