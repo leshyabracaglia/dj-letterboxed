@@ -4,6 +4,7 @@ import { FlatList, SafeAreaView, Text, View } from "react-native";
 
 import { FollowButton } from "../../components/FollowButton";
 import { LogCard } from "../../components/LogCard";
+import { StatsSummary } from "../../components/StatsSummary";
 import { useTRPC } from "../../hooks/trpc";
 import { ROUTES } from "../../lib/routes";
 
@@ -55,6 +56,7 @@ export default function UserProfileScreen() {
             <Text className="text-muted">{profile.followingCount} following</Text>
           </Link>
         </View>
+        <StatsSummary username={profile.user.username} />
       </View>
       <FlatList
         contentContainerStyle={{ padding: 16 }}

@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { FlatList, Pressable, SafeAreaView, Text, View } from "react-native";
 
 import { LogCard } from "../../components/LogCard";
+import { StatsSummary } from "../../components/StatsSummary";
 import { useTRPC } from "../../hooks/trpc";
 import { ROUTES } from "../../lib/routes";
 
@@ -27,16 +28,25 @@ export default function ProfileScreen() {
             </Text>
             {me?.username ? <Text className="text-muted">@{me.username}</Text> : null}
           </View>
-          <Pressable
-            onPress={async () => {
-              await signOut();
-              router.replace(ROUTES.SIGN_IN);
-            }}
-            className="rounded-full border border-muted/30 px-3 py-2"
-          >
-            <Text className="text-ink">Sign out</Text>
-          </Pressable>
+          <View className="flex-row gap-2">
+            <Pressable
+              onPress={() => router.push(ROUTES.SETTINGS)}
+              className="rounded-full border border-muted/30 px-3 py-2"
+            >
+              <Text className="text-ink">Settings</Text>
+            </Pressable>
+            <Pressable
+              onPress={async () => {
+                await signOut();
+                router.replace(ROUTES.SIGN_IN);
+              }}
+              className="rounded-full border border-muted/30 px-3 py-2"
+            >
+              <Text className="text-ink">Sign out</Text>
+            </Pressable>
+          </View>
         </View>
+        {me?.username ? <StatsSummary username={me.username} /> : null}
       </View>
       <FlatList
         contentContainerStyle={{ padding: 16 }}

@@ -68,3 +68,15 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
 
   return next({ ctx: { ...ctx, user } });
 });
+
+// For publicProcedure handlers that want to personalize a response (e.g. "did I like this?")
+// when the caller happens to be signed in, without requiring auth like protectedProcedure does.
+export async function resolveOptionalUserId(ctx: Context): Promise<string | undefined> {
+  if (!ctx.clerkUserId) return undefined;
+  const [user] = await ctx.db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.clerkId, ctx.clerkUserId))
+    .limit(1);
+  return user?.id;
+}

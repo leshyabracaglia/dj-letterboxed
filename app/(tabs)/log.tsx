@@ -12,8 +12,11 @@ import {
   View,
 } from "react-native";
 
+import { ArtistSearchInput, type ArtistPick } from "../../components/ArtistSearchInput";
 import { RatingStars } from "../../components/RatingStars";
+import { TagFriendsPicker } from "../../components/TagFriendsPicker";
 import { useTRPC } from "../../hooks/trpc";
+import type { User } from "../../lib/db/schema";
 import { ROUTES } from "../../lib/routes";
 
 const VIBES = [
@@ -31,6 +34,7 @@ export default function LogSetScreen() {
   const trpc = useTRPC();
 
   const [djName, setDjName] = useState("");
+  const [artistPick, setArtistPick] = useState<ArtistPick | null>(null);
   const [eventName, setEventName] = useState("");
   const [venue, setVenue] = useState("");
   const [city, setCity] = useState("");
@@ -38,6 +42,7 @@ export default function LogSetScreen() {
   const [rating, setRating] = useState<number | undefined>(undefined);
   const [crowdVibe, setCrowdVibe] = useState<(typeof VIBES)[number]["value"] | undefined>();
   const [reviewText, setReviewText] = useState("");
+  const [taggedUsers, setTaggedUsers] = useState<User[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const createDj = useMutation(trpc.djs.create.mutationOptions());
@@ -59,7 +64,19 @@ export default function LogSetScreen() {
     }
 
     try {
-      const dj = await createDj.mutateAsync({ name: djName.trim() });
+      const dj =
+        artistPick?.type === "existing"
+          ? artistPick.dj
+          : await createDj.mutateAsync(
+              artistPick?.type === "spotify"
+                ? {
+                    name: artistPick.artist.name,
+                    spotifyId: artistPick.artist.spotifyId,
+                    imageUrl: artistPick.artist.imageUrl ?? undefined,
+                    genres: artistPick.artist.genres,
+                  }
+                : { name: djName.trim() },
+            );
 
       let eventId: string | undefined;
       if (eventName.trim() && venue.trim()) {
@@ -79,6 +96,7 @@ export default function LogSetScreen() {
         reviewText: reviewText.trim() || undefined,
         crowdVibe,
         seenAt: seenAtDate,
+        taggedUserIds: taggedUsers.map((u) => u.id),
       });
 
       router.replace(ROUTES.PROFILE);
@@ -97,12 +115,20 @@ export default function LogSetScreen() {
           <Text className="mb-4 text-2xl font-bold text-ink">Log a set</Text>
 
           <Text className="mb-1 text-sm font-medium text-muted">DJ</Text>
-          <TextInput
-            placeholder="Who did you see?"
-            value={djName}
-            onChangeText={setDjName}
-            className="mb-4 rounded-lg border border-muted/30 bg-white px-4 py-3"
-          />
+          <View className="mb-4">
+            <ArtistSearchInput
+              value={djName}
+              hasSelection={artistPick !== null}
+              onChangeText={(text) => {
+                setDjName(text);
+                setArtistPick(null);
+              }}
+              onSelect={(pick) => {
+                setArtistPick(pick);
+                setDjName(pick.type === "existing" ? pick.dj.name : pick.artist.name);
+              }}
+            />
+          </View>
 
           <Text className="mb-1 text-sm font-medium text-muted">Event (optional)</Text>
           <TextInput
@@ -163,6 +189,17 @@ export default function LogSetScreen() {
             numberOfLines={4}
             className="mb-4 min-h-24 rounded-lg border border-muted/30 bg-white px-4 py-3"
           />
+
+          <Text className="mb-1 text-sm font-medium text-muted">Tag friends (optional)</Text>
+          <View className="mb-4">
+            <TagFriendsPicker
+              taggedUsers={taggedUsers}
+              onAdd={(user) => setTaggedUsers((prev) => [...prev, user])}
+              onRemove={(userId) =>
+                setTaggedUsers((prev) => prev.filter((u) => u.id !== userId))
+              }
+            />
+          </View>
 
           {error ? <Text className="mb-3 text-accent">{error}</Text> : null}
 

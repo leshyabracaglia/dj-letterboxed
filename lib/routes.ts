@@ -13,6 +13,7 @@ export const ROUTES = {
   BROWSE: "/(tabs)/browse" as Href,
   LOG: "/(tabs)/log" as Href,
   PROFILE: "/(tabs)/profile" as Href,
+  SETTINGS: "/settings" as Href,
   DJ: (slug: string): Href => `/dj/${slug}` as Href,
   EVENT: (id: string): Href => `/event/${id}` as Href,
   LOG_DETAIL: (id: string): Href => `/log/${id}` as Href,

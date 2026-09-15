@@ -3,6 +3,7 @@ import { avg, count, desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 
 import { djs, reviews } from "../../db/schema";
+import { searchArtists } from "../spotify";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
 
 function slugify(name: string) {
@@ -54,9 +55,22 @@ export const djsRouter = router({
         name: z.string().min(1).max(128),
         bio: z.string().max(1000).optional(),
         genres: z.array(z.string()).optional(),
+        spotifyId: z.string().optional(),
+        imageUrl: z.string().url().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.spotifyId) {
+        const [existingBySpotifyId] = await ctx.db
+          .select()
+          .from(djs)
+          .where(eq(djs.spotifyId, input.spotifyId))
+          .limit(1);
+        if (existingBySpotifyId) {
+          return existingBySpotifyId;
+        }
+      }
+
       const slug = slugify(input.name);
 
       const [existing] = await ctx.db.select().from(djs).where(eq(djs.slug, slug)).limit(1);
@@ -71,9 +85,22 @@ export const djsRouter = router({
           slug,
           bio: input.bio,
           genres: input.genres,
+          spotifyId: input.spotifyId,
+          imageUrl: input.imageUrl,
           createdByUserId: ctx.user.id,
         })
         .returning();
       return created;
+    }),
+
+  searchSpotify: publicProcedure
+    .input(z.object({ query: z.string().min(1) }))
+    .query(async ({ input }) => {
+      try {
+        return await searchArtists(input.query);
+      } catch (err) {
+        console.error("[djs.searchSpotify] Spotify search failed:", err);
+        return [];
+      }
     }),
 });

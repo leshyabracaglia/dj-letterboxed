@@ -15,6 +15,13 @@
       "when": 1789059007803,
       "tag": "0001_rename_logs_to_reviews_add_likes_comments",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789064385900,
+      "tag": "0002_panoramic_liz_osborn",
+      "breakpoints": true
     }
   ]
 }

@@ -1,11 +1,21 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { FlatList, SafeAreaView, Text, View } from "react-native";
+import { useState } from "react";
+import { FlatList, Pressable, SafeAreaView, Text, View } from "react-native";
 
 import { LogCard } from "../../components/LogCard";
 import { useTRPC } from "../../hooks/trpc";
 
+const TABS = ["following", "popular", "leaderboard"] as const;
+type Tab = (typeof TABS)[number];
+const TAB_LABELS: Record<Tab, string> = {
+  following: "Following",
+  popular: "Popular",
+  leaderboard: "Leaderboard",
+};
+
 export default function FeedScreen() {
   const trpc = useTRPC();
+  const [tab, setTab] = useState<Tab>("following");
 
   const {
     data,
@@ -23,38 +33,81 @@ export default function FeedScreen() {
   const pages = data?.pages ?? [];
   const items = pages.flatMap((page) => page.items);
   const followingCount = pages[0]?.followingCount ?? 0;
-  const showPopularSection = !isLoading && followingCount === 0;
+  const noFollowing = !isLoading && followingCount === 0;
+  const effectiveTab: Tab = tab === "following" && noFollowing ? "popular" : tab;
 
   const { data: popularData, isLoading: isPopularLoading } = useQuery({
     ...trpc.feed.getPopular.queryOptions({ limit: 20 }),
-    enabled: showPopularSection,
+    enabled: effectiveTab === "popular",
+  });
+
+  const { data: leaderboard, isLoading: isLeaderboardLoading } = useQuery({
+    ...trpc.users.getLeaderboard.queryOptions(),
+    enabled: effectiveTab === "leaderboard",
   });
 
   return (
     <SafeAreaView className="flex-1 bg-paper">
       <View className="px-4 pb-2 pt-4">
-        <Text className="text-2xl font-bold text-ink">Feed</Text>
+        <Text className="mb-3 text-2xl font-bold text-ink">Feed</Text>
+        <View className="flex-row gap-2">
+          {TABS.map((t) => (
+            <Pressable
+              key={t}
+              onPress={() => setTab(t)}
+              className={`rounded-full px-3 py-1.5 ${
+                effectiveTab === t ? "bg-ink" : "bg-white border border-muted/30"
+              }`}
+            >
+              <Text className={effectiveTab === t ? "text-paper" : "text-ink"}>
+                {TAB_LABELS[t]}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
-      {showPopularSection ? (
+
+      {effectiveTab === "popular" ? (
         <FlatList
           contentContainerStyle={{ padding: 16 }}
           data={popularData?.items ?? []}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <LogCard log={item} />}
           ListHeaderComponent={
-            <>
+            noFollowing ? (
               <Text className="mb-4 text-center text-muted">
                 Follow some people to see their logs here.
               </Text>
-              <Text className="mb-2 text-lg font-semibold text-ink">
-                Popular reviews
-              </Text>
-            </>
+            ) : null
           }
           ListEmptyComponent={
             !isPopularLoading ? (
               <Text className="mt-4 text-center text-muted">
                 No reviews yet — be the first to log a set.
+              </Text>
+            ) : null
+          }
+        />
+      ) : effectiveTab === "leaderboard" ? (
+        <FlatList
+          contentContainerStyle={{ padding: 16 }}
+          data={leaderboard ?? []}
+          keyExtractor={(row) => row.user.id}
+          renderItem={({ item, index }) => (
+            <View className="mb-2 flex-row items-center justify-between rounded-xl border border-muted/20 bg-white p-4">
+              <View className="flex-row items-center gap-3">
+                <Text className="w-6 text-center font-semibold text-muted">{index + 1}</Text>
+                <Text className="text-ink">
+                  {item.user.displayName ?? item.user.username}
+                </Text>
+              </View>
+              <Text className="text-muted">{item.logCount} shows</Text>
+            </View>
+          )}
+          ListEmptyComponent={
+            !isLeaderboardLoading ? (
+              <Text className="mt-10 text-center text-muted">
+                Follow some people to see a leaderboard.
               </Text>
             ) : null
           }

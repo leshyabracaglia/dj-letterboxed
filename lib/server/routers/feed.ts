@@ -3,22 +3,24 @@ import { z } from "zod";
 
 import type { db as Db } from "../../db/client";
 import { follows, reviewComments, reviewLikes, reviews } from "../../db/schema";
+import { attachEngagement, type Engagement } from "../reviewEngagement";
 import { protectedProcedure, router } from "../trpc";
 
 const POPULAR_INTERLEAVE_EVERY = 4;
 
 async function fetchPopularReviews(
   db: typeof Db,
-  { limit, offset = 0, excludeIds = [] }: { limit: number; offset?: number; excludeIds?: string[] },
+  {
+    limit,
+    offset = 0,
+    excludeIds = [],
+    currentUserId,
+  }: { limit: number; offset?: number; excludeIds?: string[]; currentUserId?: string },
 ) {
   if (limit <= 0) return [];
 
-  const scoreRows = await db
-    .select({
-      id: reviews.id,
-      likeCount: sql<number>`count(distinct ${reviewLikes.userId})`,
-      commentCount: sql<number>`count(distinct ${reviewComments.id})`,
-    })
+  const rankedRows = await db
+    .select({ id: reviews.id })
     .from(reviews)
     .leftJoin(reviewLikes, eq(reviewLikes.reviewId, reviews.id))
     .leftJoin(reviewComments, eq(reviewComments.reviewId, reviews.id))
@@ -31,23 +33,22 @@ async function fetchPopularReviews(
     .limit(limit)
     .offset(offset);
 
-  if (scoreRows.length === 0) return [];
+  if (rankedRows.length === 0) return [];
 
-  const ids = scoreRows.map((r) => r.id);
-  const scoreById = new Map(
-    scoreRows.map((r) => [r.id, { likeCount: Number(r.likeCount), commentCount: Number(r.commentCount) }]),
-  );
-
-  const fullReviews = await db.query.reviews.findMany({
-    where: inArray(reviews.id, ids),
-    with: { user: true, dj: true, event: true },
-  });
+  const ids = rankedRows.map((r) => r.id);
+  const [fullReviews, engagementById] = await Promise.all([
+    db.query.reviews.findMany({
+      where: inArray(reviews.id, ids),
+      with: { user: true, dj: true, event: true },
+    }),
+    attachEngagement(db, ids, currentUserId),
+  ]);
   const byId = new Map(fullReviews.map((r) => [r.id, r]));
 
   return ids
     .map((id) => byId.get(id))
     .filter((r): r is NonNullable<typeof r> => Boolean(r))
-    .map((r) => ({ ...r, ...scoreById.get(r.id)!, isPopular: true as const }));
+    .map((r) => ({ ...r, ...engagementById[r.id], isPopular: true as const }));
 }
 
 function encodeCursor(cursor: { createdAt: string; popularOffset: number }) {
@@ -99,17 +100,25 @@ export const feedRouter = router({
         with: { user: true, dj: true, event: true },
       });
 
-      const popularSlots = Math.floor(followedItems.length / POPULAR_INTERLEAVE_EVERY);
-      const popularItems = await fetchPopularReviews(ctx.db, {
-        limit: popularSlots,
-        offset: popularOffset,
-        excludeIds: followedItems.map((i) => i.id),
-      });
+      const [popularItems, followedEngagement] = await Promise.all([
+        fetchPopularReviews(ctx.db, {
+          limit: Math.floor(followedItems.length / POPULAR_INTERLEAVE_EVERY),
+          offset: popularOffset,
+          excludeIds: followedItems.map((i) => i.id),
+          currentUserId: ctx.user.id,
+        }),
+        attachEngagement(
+          ctx.db,
+          followedItems.map((i) => i.id),
+          ctx.user.id,
+        ),
+      ]);
 
-      const items: Array<(typeof followedItems)[number] & { isPopular?: boolean }> = [];
+      const items: Array<(typeof followedItems)[number] & Engagement & { isPopular?: boolean }> =
+        [];
       let popularIdx = 0;
       followedItems.forEach((item, idx) => {
-        items.push({ ...item, isPopular: false });
+        items.push({ ...item, ...followedEngagement[item.id], isPopular: false });
         if ((idx + 1) % POPULAR_INTERLEAVE_EVERY === 0 && popularIdx < popularItems.length) {
           items.push(popularItems[popularIdx]);
           popularIdx++;
@@ -130,7 +139,10 @@ export const feedRouter = router({
   getPopular: protectedProcedure
     .input(z.object({ limit: z.number().int().min(1).max(50).default(20) }))
     .query(async ({ ctx, input }) => {
-      const items = await fetchPopularReviews(ctx.db, { limit: input.limit });
+      const items = await fetchPopularReviews(ctx.db, {
+        limit: input.limit,
+        currentUserId: ctx.user.id,
+      });
       return { items };
     }),
 });

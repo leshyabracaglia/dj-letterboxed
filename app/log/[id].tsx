@@ -2,7 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, Stack, useLocalSearchParams } from "expo-router";
 import { SafeAreaView, ScrollView, Text, View } from "react-native";
 
+import { CommentSection } from "../../components/CommentSection";
 import { CrowdVibeBadge } from "../../components/CrowdVibeBadge";
+import { LikeButton } from "../../components/LikeButton";
 import { RatingStars } from "../../components/RatingStars";
 import { useTRPC } from "../../hooks/trpc";
 import { ROUTES } from "../../lib/routes";
@@ -51,11 +53,28 @@ export default function LogDetailScreen() {
           <Text className="mt-4 text-base text-ink">{log.reviewText}</Text>
         ) : null}
 
+        {log.taggedUsers.length > 0 ? (
+          <Text className="mt-3 text-sm text-muted">
+            With{" "}
+            {log.taggedUsers.map((u) => `@${u.username}`).join(", ")}
+          </Text>
+        ) : null}
+
+        <View className="mt-4">
+          <LikeButton
+            reviewId={log.id}
+            likeCount={log.likeCount}
+            isLiked={log.isLikedByMe}
+          />
+        </View>
+
         <Link href={ROUTES.USER(log.user.username)}>
           <Text className="mt-6 text-muted">
             Logged by @{log.user.username}
           </Text>
         </Link>
+
+        <CommentSection reviewId={log.id} />
       </ScrollView>
     </SafeAreaView>
   );

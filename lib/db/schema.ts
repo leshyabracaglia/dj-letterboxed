@@ -36,6 +36,7 @@ export const djs = pgTable("djs", {
   bio: text("bio"),
   genres: text("genres").array(),
   imageUrl: text("image_url"),
+  spotifyId: varchar("spotify_id", { length: 64 }).unique(),
   createdByUserId: uuid("created_by_user_id").references(() => users.id, {
     onDelete: "set null",
   }),
@@ -113,6 +114,22 @@ export const reviewComments = pgTable("review_comments", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const reviewTags = pgTable(
+  "review_tags",
+  {
+    reviewId: uuid("review_id")
+      .notNull()
+      .references(() => reviews.id, { onDelete: "cascade" }),
+    taggedUserId: uuid("tagged_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.reviewId, t.taggedUserId] }),
+  }),
+);
+
 export const follows = pgTable(
   "follows",
   {
@@ -133,6 +150,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   reviews: many(reviews),
   reviewLikes: many(reviewLikes),
   reviewComments: many(reviewComments),
+  reviewTags: many(reviewTags),
   djsCreated: many(djs),
   eventsCreated: many(events),
   followers: many(follows, { relationName: "following" }),
@@ -161,6 +179,7 @@ export const reviewsRelations = relations(reviews, ({ one, many }) => ({
   event: one(events, { fields: [reviews.eventId], references: [events.id] }),
   likes: many(reviewLikes),
   comments: many(reviewComments),
+  tags: many(reviewTags),
 }));
 
 export const reviewLikesRelations = relations(reviewLikes, ({ one }) => ({
@@ -171,6 +190,11 @@ export const reviewLikesRelations = relations(reviewLikes, ({ one }) => ({
 export const reviewCommentsRelations = relations(reviewComments, ({ one }) => ({
   review: one(reviews, { fields: [reviewComments.reviewId], references: [reviews.id] }),
   user: one(users, { fields: [reviewComments.userId], references: [users.id] }),
+}));
+
+export const reviewTagsRelations = relations(reviewTags, ({ one }) => ({
+  review: one(reviews, { fields: [reviewTags.reviewId], references: [reviews.id] }),
+  taggedUser: one(users, { fields: [reviewTags.taggedUserId], references: [users.id] }),
 }));
 
 export const followsRelations = relations(follows, ({ one }) => ({
@@ -192,4 +216,5 @@ export type Event = typeof events.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
 export type ReviewLike = typeof reviewLikes.$inferSelect;
 export type ReviewComment = typeof reviewComments.$inferSelect;
+export type ReviewTag = typeof reviewTags.$inferSelect;
 export type Follow = typeof follows.$inferSelect;
