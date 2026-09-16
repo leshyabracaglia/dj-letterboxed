@@ -1,10 +1,13 @@
+import { useAuth } from "@clerk/expo";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { router } from "expo-router";
 import { Pressable } from "react-native";
 import { Text } from "./Text";
 
 import { useApi } from "../lib/api/client";
 import { queryKeys } from "../lib/api/queryKeys";
 import type { Review } from "../lib/api/types";
+import { ROUTES } from "../lib/routes";
 
 export function LikeButton({
   reviewId,
@@ -15,6 +18,7 @@ export function LikeButton({
   likeCount: number;
   isLiked: boolean;
 }) {
+  const { isSignedIn } = useAuth();
   const api = useApi();
   const queryClient = useQueryClient();
   const reviewKey = queryKeys.reviews.byId(reviewId);
@@ -57,7 +61,9 @@ export function LikeButton({
   return (
     <Pressable
       disabled={pending}
-      onPress={() => (isLiked ? unlike.mutate() : like.mutate())}
+      onPress={() =>
+        isSignedIn ? (isLiked ? unlike.mutate() : like.mutate()) : router.push(ROUTES.SIGN_IN)
+      }
       className={`flex-row items-center gap-1 rounded-full px-3 py-1.5 active:opacity-80 ${
         isLiked ? "bg-accent/15" : "bg-muted/10"
       }`}

@@ -5,16 +5,74 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { isClerkAPIResponseError, useUser } from "@clerk/expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
+import { useColorScheme } from "nativewind";
 import { useEffect, useState } from "react";
 import { Alert, Platform, Pressable, TextInput, View } from "react-native";
 
 import { Avatar } from "../components/Avatar";
+import { MetalButton } from "../components/MetalButton";
 import { Text } from "../components/Text";
 import { useApi } from "../lib/api/client";
 import { queryKeys } from "../lib/api/queryKeys";
 import type { UpdateProfileInput, User } from "../lib/api/types";
 import { pickAndUploadAvatar } from "../lib/avatarUpload";
 import { ROUTES } from "../lib/routes";
+import {
+  getStoredThemePreference,
+  resolveColorScheme,
+  setStoredThemePreference,
+  type ThemePreference,
+} from "../lib/theme-storage";
+
+const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
+  { value: "system", label: "System" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+];
+
+function AppearanceSettings() {
+  const { setColorScheme } = useColorScheme();
+  const [preference, setPreference] = useState<ThemePreference>("system");
+
+  useEffect(() => {
+    getStoredThemePreference().then((pref) => {
+      if (pref) setPreference(pref);
+    });
+  }, []);
+
+  const choose = (value: ThemePreference) => {
+    setPreference(value);
+    setColorScheme(resolveColorScheme(value));
+    setStoredThemePreference(value);
+  };
+
+  return (
+    <View className="mt-6 border-t border-primary/15 pt-4">
+      <Text className="mb-2 text-xl font-display text-ink dark:text-paper">Appearance</Text>
+      <View className="flex-row gap-2">
+        {THEME_OPTIONS.map((opt) => (
+          <Pressable
+            key={opt.value}
+            onPress={() => choose(opt.value)}
+            className={`flex-1 items-center rounded-xl border py-2 ${
+              preference === opt.value ? "border-primary bg-primary" : "border-primary/20"
+            }`}
+          >
+            <Text
+              className={
+                preference === opt.value
+                  ? "font-semibold text-paper"
+                  : "text-ink dark:text-paper"
+              }
+            >
+              {opt.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 const USERNAME_RE = /^[a-z0-9_]{3,32}$/;
 
@@ -90,7 +148,7 @@ function EditProfile() {
 
   return (
     <View>
-      <Text className="mb-4 text-lg font-display text-ink dark:text-paper">Edit profile</Text>
+      <Text className="mb-4 text-xl font-display text-ink dark:text-paper">Edit profile</Text>
       <Pressable onPress={onPickPhoto} disabled={uploadingPhoto} className="mb-4 items-center">
         <Avatar uri={avatarUrl} name={displayUsername || "?"} size={72} />
         <Text className="mt-2 text-sm text-muted">
@@ -103,10 +161,10 @@ function EditProfile() {
         placeholder="Username"
         value={username}
         onChangeText={setUsername}
-        className="mb-1 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
+        className="mb-1 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
       {username.length > 0 && !usernameValid ? (
-        <Text className="mb-3 text-xs text-danger">
+        <Text className="mb-3 text-xs text-danger dark:text-danger-dark">
           3-32 characters: lowercase letters, numbers, underscores.
         </Text>
       ) : (
@@ -118,19 +176,21 @@ function EditProfile() {
         onChangeText={setBio}
         multiline
         numberOfLines={3}
-        className="mb-4 min-h-20 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
+        className="mb-4 min-h-20 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
-      {error ? <Text className="mb-2 text-danger">{error}</Text> : null}
-      {success ? <Text className="mb-2 text-emerald-700">Profile updated.</Text> : null}
-      <Pressable
+      {error ? <Text className="mb-2 text-danger dark:text-danger-dark">{error}</Text> : null}
+      {success ? (
+        <Text className="mb-2 text-success dark:text-success-dark">Profile updated.</Text>
+      ) : null}
+      <MetalButton
         disabled={save.isPending || !usernameValid}
         onPress={onSave}
-        className="rounded-xl bg-primary py-3 active:opacity-90"
+        className="rounded-xl py-3"
       >
         <Text className="text-center font-semibold text-paper">
           {save.isPending ? "Saving..." : "Save profile"}
         </Text>
-      </Pressable>
+      </MetalButton>
     </View>
   );
 }
@@ -202,42 +262,46 @@ function AccountSettings() {
 
   return (
     <View className="mt-6 border-t border-primary/15 pt-4">
-      <Text className="mb-2 text-lg font-display text-ink dark:text-paper">Change password</Text>
+      <Text className="mb-2 text-xl font-display text-ink dark:text-paper">Change password</Text>
       <TextInput
         secureTextEntry
         placeholder="Current password"
         value={currentPassword}
         onChangeText={setCurrentPassword}
-        className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
+        className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
       <TextInput
         secureTextEntry
         placeholder="New password"
         value={newPassword}
         onChangeText={setNewPassword}
-        className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
+        className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
-      {passwordError ? <Text className="mb-2 text-danger">{passwordError}</Text> : null}
-      {passwordSuccess ? (
-        <Text className="mb-2 text-emerald-700">Password updated.</Text>
+      {passwordError ? (
+        <Text className="mb-2 text-danger dark:text-danger-dark">{passwordError}</Text>
       ) : null}
-      <Pressable
+      {passwordSuccess ? (
+        <Text className="mb-2 text-success dark:text-success-dark">Password updated.</Text>
+      ) : null}
+      <MetalButton
         disabled={passwordPending}
         onPress={onChangePassword}
-        className="rounded-xl bg-primary py-3 active:opacity-90"
+        className="rounded-xl py-3"
       >
         <Text className="text-center font-semibold text-paper">
           {passwordPending ? "Saving..." : "Update password"}
         </Text>
-      </Pressable>
+      </MetalButton>
 
-      <Text className="mb-2 mt-8 text-lg font-display text-danger">Danger zone</Text>
+      <Text className="mb-2 mt-8 text-xl font-display text-danger dark:text-danger-dark">
+        Danger zone
+      </Text>
       <Pressable
         disabled={deletePending}
         onPress={onDeletePress}
-        className="rounded-xl border border-danger py-3 active:opacity-80"
+        className="rounded-xl border border-danger py-3 active:opacity-80 dark:border-danger-dark"
       >
-        <Text className="text-center font-semibold text-danger">
+        <Text className="text-center font-semibold text-danger dark:text-danger-dark">
           {deletePending ? "Deleting..." : "Delete account"}
         </Text>
       </Pressable>
@@ -249,8 +313,9 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
       <Stack.Screen options={{ title: "Settings" }} />
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 24 }}>
         <EditProfile />
+        <AppearanceSettings />
         <AccountSettings />
       </ScrollView>
     </SafeAreaView>

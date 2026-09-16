@@ -47,11 +47,11 @@ func GetUserByUsername(ctx context.Context, q DBTX, username string) (*db.User, 
 // CreateUser inserts a new user directly (used by the seed script; the app
 // itself only ever creates users via CreateUserFallback or
 // UpsertUserFromClerk).
-func CreateUser(ctx context.Context, q DBTX, clerkID, username string, displayName, bio *string) (*db.User, error) {
+func CreateUser(ctx context.Context, q DBTX, clerkID, username string, displayName, bio, avatarURL *string) (*db.User, error) {
 	row := q.QueryRow(ctx, `
-		INSERT INTO users (clerk_id, username, display_name, bio)
-		VALUES ($1, $2, $3, $4)
-		RETURNING `+userCols, clerkID, username, displayName, bio)
+		INSERT INTO users (clerk_id, username, display_name, bio, avatar_url)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING `+userCols, clerkID, username, displayName, bio, avatarURL)
 	return scanUser(row)
 }
 

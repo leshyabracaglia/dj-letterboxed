@@ -19,11 +19,15 @@ export function StatsSummary({ username }: { username: string }) {
     <View className="mt-3 border-t border-primary/15 pt-3">
       <View className="flex-row gap-6">
         <View>
-          <Text className="text-lg font-bold text-primary dark:text-primary-dark">{stats.totalLogs}</Text>
+          <Text className="font-numeric text-3xl text-primary dark:text-primary-dark">
+            {stats.totalLogs}
+          </Text>
           <Text className="text-xs text-muted">shows</Text>
         </View>
         <View>
-          <Text className="text-lg font-bold text-primary dark:text-primary-dark">{stats.uniqueDjs}</Text>
+          <Text className="font-numeric text-3xl text-primary dark:text-primary-dark">
+            {stats.uniqueDjs}
+          </Text>
           <Text className="text-xs text-muted">DJs</Text>
         </View>
       </View>
@@ -33,7 +37,7 @@ export function StatsSummary({ username }: { username: string }) {
           <Text className="mb-1 text-sm font-semibold text-ink dark:text-paper">Top DJs</Text>
           {stats.topDjs.map((row) => (
             <Text key={row.dj.id} className="text-sm text-muted">
-              {row.dj.name} · {row.logCount}
+              {row.dj.name} · <Text className="font-numeric text-base text-muted">{row.logCount}</Text>
             </Text>
           ))}
         </View>
@@ -44,7 +48,7 @@ export function StatsSummary({ username }: { username: string }) {
           <Text className="mb-1 text-sm font-semibold text-ink dark:text-paper">Top venues</Text>
           {stats.topVenues.map((row) => (
             <Text key={row.venue} className="text-sm text-muted">
-              {row.venue} · {row.logCount}
+              {row.venue} · <Text className="font-numeric text-base text-muted">{row.logCount}</Text>
             </Text>
           ))}
         </View>

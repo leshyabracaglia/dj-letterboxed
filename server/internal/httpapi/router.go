@@ -66,6 +66,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/events/{id}", h.GetEventByID)
 			r.Get("/reviews/{id}", h.GetReviewByID)
 			r.Get("/users/{username}/reviews", h.ListReviewsByUser)
+			r.Get("/feed/popular", h.GetPopular)
 		})
 
 		// Protected (auth required)
@@ -92,7 +93,6 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/leaderboard", h.GetLeaderboard)
 
 			r.Get("/feed", h.GetActivity)
-			r.Get("/feed/popular", h.GetPopular)
 		})
 	})
 

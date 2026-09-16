@@ -793,12 +793,6 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/PopularResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errorEnvelope'
-      security:
-      - BearerAuth: []
       summary: Most-liked-and-commented reviews, ranked
       tags:
       - feed

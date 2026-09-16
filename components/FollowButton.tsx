@@ -1,16 +1,20 @@
+import { useAuth } from "@clerk/expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { router } from "expo-router";
 import { Pressable } from "react-native";
 import { Text } from "./Text";
 
 import { useApi } from "../lib/api/client";
 import { queryKeys } from "../lib/api/queryKeys";
 import type { UserProfile } from "../lib/api/types";
+import { ROUTES } from "../lib/routes";
 
 type FollowingSnapshot = { following: boolean } | undefined;
 
 /** `username` is optional so this still works anywhere we only have a userId;
  * pass it when available so the profile's follower count updates in step. */
 export function FollowButton({ userId, username }: { userId: string; username?: string }) {
+  const { isSignedIn } = useAuth();
   const api = useApi();
   const queryClient = useQueryClient();
   const followingKey = queryKeys.follows.isFollowing(userId);
@@ -19,6 +23,7 @@ export function FollowButton({ userId, username }: { userId: string; username?: 
   const { data } = useQuery({
     queryKey: followingKey,
     queryFn: () => api.get<{ following: boolean }>(`/follows/is-following/${userId}`),
+    enabled: isSignedIn,
   });
 
   const applyOptimistic = async (following: boolean) => {
@@ -72,7 +77,13 @@ export function FollowButton({ userId, username }: { userId: string; username?: 
   return (
     <Pressable
       disabled={pending}
-      onPress={() => (isFollowing ? unfollow.mutate() : follow.mutate())}
+      onPress={() =>
+        isSignedIn
+          ? isFollowing
+            ? unfollow.mutate()
+            : follow.mutate()
+          : router.push(ROUTES.SIGN_IN)
+      }
       className={`rounded-full px-4 py-2 active:opacity-80 ${isFollowing ? "bg-muted/20" : "bg-primary"}`}
     >
       <Text className={isFollowing ? "text-ink dark:text-paper" : "text-paper"}>

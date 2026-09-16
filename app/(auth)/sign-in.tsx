@@ -1,7 +1,8 @@
 import { useSignIn } from "@clerk/expo";
 import { Link, router } from "expo-router";
 import { useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { TextInput, View } from "react-native";
+import { MetalButton } from "../../components/MetalButton";
 import { Text } from "../../components/Text";
 
 import { ROUTES } from "../../lib/routes";
@@ -66,7 +67,7 @@ export default function SignInScreen() {
   if (needsVerification) {
     return (
       <View className="flex-1 items-center justify-center bg-paper dark:bg-ink px-6">
-        <Text className="mb-8 text-3xl font-display text-ink dark:text-paper">Verify it&apos;s you</Text>
+        <Text className="mb-8 text-4xl font-display text-ink dark:text-paper">Verify it&apos;s you</Text>
         <Text className="mb-4 text-center text-muted">
           We sent a code to {email} to confirm this new device.
         </Text>
@@ -74,55 +75,55 @@ export default function SignInScreen() {
           placeholder="Verification code"
           value={code}
           onChangeText={setCode}
-          className="mb-4 w-full max-w-sm rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
+          className="mb-4 w-full max-w-sm rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
         />
-        {error ? <Text className="mb-3 text-danger">{error}</Text> : null}
-        <Pressable
+        {error ? <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text> : null}
+        <MetalButton
           onPress={onVerify}
           disabled={fetchStatus === "fetching"}
-          className="w-full max-w-sm rounded-xl bg-primary py-3 active:opacity-90"
+          className="w-full max-w-sm rounded-xl py-3"
         >
           <Text className="text-center font-semibold text-paper">Verify</Text>
-        </Pressable>
+        </MetalButton>
       </View>
     );
   }
 
   return (
     <View className="flex-1 items-center justify-center bg-paper dark:bg-ink px-6">
-      <Text className="mb-8 text-3xl font-display text-ink dark:text-paper">Welcome back</Text>
+      <Text className="mb-8 text-4xl font-display text-ink dark:text-paper">Welcome back</Text>
       <TextInput
         autoCapitalize="none"
         keyboardType="email-address"
         placeholder="Email"
         value={email}
         onChangeText={setEmail}
-        className="mb-3 w-full max-w-sm rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
+        className="mb-3 w-full max-w-sm rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
       <TextInput
         secureTextEntry
         placeholder="Password"
         value={password}
         onChangeText={setPassword}
-        className="mb-4 w-full max-w-sm rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
+        className="mb-4 w-full max-w-sm rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
       {errors.fields.identifier ? (
-        <Text className="mb-3 text-danger">{errors.fields.identifier.message}</Text>
+        <Text className="mb-3 text-danger dark:text-danger-dark">{errors.fields.identifier.message}</Text>
       ) : null}
       {errors.fields.password ? (
-        <Text className="mb-3 text-danger">{errors.fields.password.message}</Text>
+        <Text className="mb-3 text-danger dark:text-danger-dark">{errors.fields.password.message}</Text>
       ) : null}
-      {error ? <Text className="mb-3 text-danger">{error}</Text> : null}
-      <Pressable
+      {error ? <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text> : null}
+      <MetalButton
         onPress={onSubmit}
         disabled={fetchStatus === "fetching"}
-        className="w-full max-w-sm rounded-xl bg-primary py-3 active:opacity-90"
+        className="w-full max-w-sm rounded-xl py-3"
       >
         <Text className="text-center font-semibold text-paper">Sign in</Text>
-      </Pressable>
+      </MetalButton>
       <View className="mt-10">
         <Link href={ROUTES.SIGN_UP}>
-          <Text className="text-muted">Don&apos;t have an account? Sign up</Text>
+          <Text className="text-primary dark:text-primary-dark">Don&apos;t have an account? Sign up</Text>
         </Link>
       </View>
     </View>

@@ -1,4 +1,4 @@
-.PHONY: run build test vet migrate-up migrate-down seed compose-up compose-down openapi openapi-check
+.PHONY: run build test vet migrate-up migrate-down seed reset-db compose-up compose-down openapi openapi-check
 
 DATABASE_URL ?= postgres://beatboxd:beatboxd@localhost:5433/beatboxd?sslmode=disable
 
@@ -22,6 +22,11 @@ migrate-down:
 
 seed:
 	DATABASE_URL=$(DATABASE_URL) go run ./cmd/seed
+
+# Drops all local dev tables (down), reapplies every migration (up), and
+# reloads the fixture data. Only ever targets DATABASE_URL (defaults to the
+# docker-compose Postgres on :5433) - never point this at the RDS instance.
+reset-db: migrate-down migrate-up seed
 
 compose-up:
 	docker compose up -d --build

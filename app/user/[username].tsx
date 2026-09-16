@@ -1,3 +1,4 @@
+import { useAuth } from "@clerk/expo";
 import { useQuery } from "@tanstack/react-query";
 import { Link, Stack, useLocalSearchParams } from "expo-router";
 import { FlatList, View } from "react-native";
@@ -18,11 +19,13 @@ import { ROUTES } from "../../lib/routes";
 
 export default function UserProfileScreen() {
   const { username } = useLocalSearchParams<{ username: string }>();
+  const { isSignedIn } = useAuth();
   const api = useApi();
 
   const { data: me } = useQuery({
     queryKey: queryKeys.users.me(),
     queryFn: () => api.get<User>("/users/me"),
+    enabled: isSignedIn,
   });
   const { data: profile } = useUserProfile(username);
   const { data: logs } = useQuery({
@@ -40,7 +43,7 @@ export default function UserProfileScreen() {
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
       <Stack.Screen options={{ title: `@${profile.user.username}` }} />
-      <View className="border-b border-primary/15 px-4 py-4">
+      <View className="border-b border-primary/15 px-4 pb-4 pt-6">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-3">
             <Avatar
@@ -63,12 +66,20 @@ export default function UserProfileScreen() {
           <Text className="mt-2 text-ink dark:text-paper">{profile.user.bio}</Text>
         ) : null}
         <View className="mt-3 flex-row gap-4">
-          <Text className="text-muted">{profile.logCount} logs</Text>
+          <Text className="text-muted">
+            <Text className="font-numeric text-2xl text-ink dark:text-paper mt-1">{profile.logCount}</Text> log{profile.logCount === 1 ? "" : "s"}
+          </Text>
           <Link href={ROUTES.USER_FOLLOWERS(profile.user.username)}>
-            <Text className="text-muted">{profile.followerCount} followers</Text>
+            <Text className="text-muted">
+              <Text className="font-numeric text-2xl text-ink dark:text-paper mt-1">{profile.followerCount}</Text>{" "}
+              follower{profile.followerCount === 1 ? "" : "s"}
+            </Text>
           </Link>
           <Link href={ROUTES.USER_FOLLOWING(profile.user.username)}>
-            <Text className="text-muted">{profile.followingCount} following</Text>
+            <Text className="text-muted">
+              <Text className="font-numeric text-2xl text-ink dark:text-paper mt-1">{profile.followingCount}</Text>{" "}
+              following{profile.followingCount === 1 ? "" : "s"}
+            </Text>
           </Link>
         </View>
         <StatsSummary username={profile.user.username} />

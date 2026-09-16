@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "../../components/Text";
 
 import { Avatar } from "../../components/Avatar";
+import { MetalButton } from "../../components/MetalButton";
 import { useApi } from "../../lib/api/client";
 import { queryKeys } from "../../lib/api/queryKeys";
 import type { UpdateProfileInput, User } from "../../lib/api/types";
@@ -89,7 +90,7 @@ export default function OnboardingScreen() {
           contentContainerStyle={{ flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 24 }}
           keyboardShouldPersistTaps="handled"
         >
-          <Text className="mb-2 text-3xl font-display text-ink dark:text-paper">Set up your profile</Text>
+          <Text className="mb-2 text-4xl font-display text-ink dark:text-paper">Set up your profile</Text>
           <Text className="mb-8 text-center text-muted">
             Choose a username so people can find you. A photo is optional.
           </Text>
@@ -110,10 +111,10 @@ export default function OnboardingScreen() {
               onChangeText={setUsername}
               returnKeyType="done"
               onSubmitEditing={() => Keyboard.dismiss()}
-              className="mb-1 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
+              className="mb-1 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
             />
             {username.length > 0 && !usernameValid ? (
-              <Text className="mb-3 text-xs text-danger">
+              <Text className="mb-3 text-xs text-danger dark:text-danger-dark">
                 3-32 characters: lowercase letters, numbers, underscores.
               </Text>
             ) : (
@@ -127,20 +128,20 @@ export default function OnboardingScreen() {
               multiline
               numberOfLines={3}
               blurOnSubmit
-              className="mb-4 min-h-20 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
+              className="mb-4 min-h-20 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
             />
 
-            {error ? <Text className="mb-3 text-danger">{error}</Text> : null}
+            {error ? <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text> : null}
 
-            <Pressable
+            <MetalButton
               onPress={onSubmit}
               disabled={submit.isPending || !usernameValid}
-              className="w-full rounded-xl bg-primary py-3 active:opacity-90"
+              className="w-full rounded-xl py-3"
             >
               <Text className="text-center font-semibold text-paper">
                 {submit.isPending ? "Saving..." : "Continue"}
               </Text>
-            </Pressable>
+            </MetalButton>
 
             <Pressable
               onPress={async () => {

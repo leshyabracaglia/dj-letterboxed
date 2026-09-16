@@ -125,17 +125,11 @@ func (h *Handlers) GetActivity(w http.ResponseWriter, r *http.Request) {
 //	@Produce	json
 //	@Param		limit	query		int	false	"page size, 1-50, default 20"
 //	@Success	200		{object}	PopularResponse
-//	@Failure	401		{object}	errorEnvelope
-//	@Security	BearerAuth
 //	@Router		/api/feed/popular [get]
 func (h *Handlers) GetPopular(w http.ResponseWriter, r *http.Request) {
-	user, ok := mustUser(w, r)
-	if !ok {
-		return
-	}
 	limit := queryLimit(r, 20, 50)
 
-	items, err := h.fetchPopularReviews(r.Context(), limit, 0, nil, &user.ID)
+	items, err := h.fetchPopularReviews(r.Context(), limit, 0, nil, optionalUserID(r))
 	if err != nil {
 		InternalError(w, err)
 		return

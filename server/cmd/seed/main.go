@@ -35,30 +35,34 @@ func run() error {
 
 	fmt.Println("Seeding dev data...")
 
-	alice, err := queries.CreateUser(ctx, pool, "seed_alice", "alice", strPtr("Alice"), strPtr("Techno head, always front row."))
+	// alice has an avatar; bob deliberately doesn't, to exercise the
+	// no-avatar (initials) fallback in the Avatar component locally.
+	alice, err := queries.CreateUser(ctx, pool, "seed_alice", "alice", strPtr("Alice"), strPtr("Techno head, always front row."), strPtr("https://i.pravatar.cc/300?img=47"))
 	if err != nil {
 		return err
 	}
-	bob, err := queries.CreateUser(ctx, pool, "seed_bob", "bob", strPtr("Bob"), strPtr("House music, warehouse parties."))
+	bob, err := queries.CreateUser(ctx, pool, "seed_bob", "bob", strPtr("Bob"), strPtr("House music, warehouse parties."), nil)
 	if err != nil {
 		return err
 	}
 
-	dj1, err := queries.CreateDj(ctx, pool, "Nova Reyes", "nova-reyes", strPtr("Melodic techno producer and DJ."), []string{"techno", "melodic techno"}, nil, nil, alice.ID)
+	// Dixon and Adam Ten have images; Yamagucci deliberately doesn't, to
+	// exercise the no-image DJ fallback locally too.
+	dj1, err := queries.CreateDj(ctx, pool, "Dixon", "dixon", strPtr("Innervisions co-founder, deep and melodic house."), []string{"house", "melodic house"}, nil, strPtr("https://picsum.photos/seed/dixon-dj/600/600"), alice.ID)
 	if err != nil {
 		return err
 	}
-	dj2, err := queries.CreateDj(ctx, pool, "Deep Current", "deep-current", strPtr("Deep house selector."), []string{"house", "deep house"}, nil, nil, bob.ID)
+	dj2, err := queries.CreateDj(ctx, pool, "Adam Ten", "adam-ten", strPtr("Melodic house and techno producer."), []string{"house", "melodic techno"}, nil, strPtr("https://picsum.photos/seed/adam-ten-dj/600/600"), bob.ID)
 	if err != nil {
 		return err
 	}
-	dj3, err := queries.CreateDj(ctx, pool, "Static Bloom", "static-bloom", strPtr("Breaks and bass, no filler."), []string{"breaks", "bass"}, nil, nil, alice.ID)
+	dj3, err := queries.CreateDj(ctx, pool, "Yamagucci", "yamagucci", strPtr("Tech house selector, no filler."), []string{"tech house", "house"}, nil, nil, alice.ID)
 	if err != nil {
 		return err
 	}
 
 	eventDate := mustParse("2026-06-14T23:00:00Z")
-	event1, err := queries.CreateEvent(ctx, pool, "Midnight Frequencies", "The Foundry", strPtr("Brooklyn, NY"), eventDate, nil, alice.ID)
+	event1, err := queries.CreateEvent(ctx, pool, "Innervisions", "The Foundry", strPtr("Brooklyn, NY"), eventDate, nil, alice.ID)
 	if err != nil {
 		return err
 	}
@@ -83,6 +87,7 @@ func run() error {
 		RatingHalfStars: int16Ptr(7),
 		ReviewText:      strPtr("Solid deep house groove, warmed up the room well."),
 		CrowdVibe:       &good,
+		CrowdVibeNote:   strPtr("Chill but engaged, more head-nodding than jumping."),
 		SeenAt:          mustParse("2026-05-01T22:00:00Z"),
 	}); err != nil {
 		return err
@@ -91,7 +96,7 @@ func run() error {
 	review3, err := queries.CreateReview(ctx, pool, queries.CreateReviewParams{
 		UserID: bob.ID, DjID: dj3.ID,
 		RatingHalfStars: int16Ptr(8),
-		ReviewText:      strPtr("Static Bloom's low end was unreal, floor was shaking all night."),
+		ReviewText:      strPtr("Yamagucci's low end was unreal, floor was shaking all night."),
 		CrowdVibe:       &electric,
 		SeenAt:          mustParse("2026-04-10T22:00:00Z"),
 	})

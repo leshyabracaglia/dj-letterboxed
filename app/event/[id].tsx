@@ -20,7 +20,7 @@ export default function EventScreen() {
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
       <Stack.Screen options={{ title: data.event.name }} />
-      <View className="border-b border-accent/15 px-4 py-4">
+      <View className="border-b border-accent/15 px-4 pb-4 pt-6">
         <Text className="text-2xl font-bold text-ink dark:text-paper">{data.event.name}</Text>
         <Text className="mt-1 text-muted">
           {data.event.venue}

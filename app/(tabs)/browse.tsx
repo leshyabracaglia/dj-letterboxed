@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { FlatList, TextInput, View } from "react-native";
+import { FlatList, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Text } from "../../components/Text";
 
+import { AmbientBackground } from "../../components/AmbientBackground";
 import { DjCard } from "../../components/DjCard";
 import { EmptyState } from "../../components/EmptyState";
+import { ScreenHeader } from "../../components/ScreenHeader";
 import { useApi } from "../../lib/api/client";
 import { queryKeys } from "../../lib/api/queryKeys";
 import type { Dj } from "../../lib/api/types";
@@ -22,15 +23,15 @@ export default function BrowseScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
-      <View className="px-4 pb-2 pt-4">
-        <Text className="mb-3 text-2xl font-display text-ink dark:text-paper">Browse DJs</Text>
+      <AmbientBackground />
+      <ScreenHeader title="Browse DJs">
         <TextInput
           placeholder="Search DJs..."
           value={query}
           onChangeText={setQuery}
-          className="rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
+          className="rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
         />
-      </View>
+      </ScreenHeader>
       <FlatList
         contentContainerStyle={{ padding: 16 }}
         data={data ?? []}

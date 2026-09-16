@@ -18,44 +18,52 @@ export function ReviewCard({
   return (
     <Card href={ROUTES.LOG_DETAIL(log.id)}>
       {log.isPopular ? (
-        <View className="mb-2 self-start rounded-full bg-amber-100 px-2 py-0.5">
-          <Text className="text-xs font-semibold text-amber-700">🔥 Popular</Text>
+        <View className="mb-2 self-start rounded-full bg-accent-tint px-2 py-0.5 dark:bg-accent/15">
+          <Text className="text-xs font-semibold text-accent-text dark:text-accent-dark">
+            🔥 Popular
+          </Text>
         </View>
       ) : null}
-      <View className="flex-row items-center justify-between">
-        <Text className="text-base font-semibold text-ink dark:text-paper">{log.dj?.name ?? "Unknown DJ"}</Text>
-        <RatingStars value={log.ratingHalfStars} size={14} />
-      </View>
-      {log.user ? (
-        <Pressable
-          className="mt-1 flex-row items-center gap-1.5 self-start"
-          hitSlop={4}
-          onPress={(e) => {
-            // Card wraps this whole row in its own Link, so stop the press
-            // from bubbling up and navigating to the log detail instead.
-            e.stopPropagation();
-            router.push(ROUTES.USER(log.user!.username));
-          }}
-        >
-          <Avatar uri={log.user.avatarUrl} name={log.user.displayName ?? log.user.username} size={16} />
-          <Text className="text-xs text-muted">
-            logged by {log.user.displayName ?? log.user.username}
-          </Text>
-        </Pressable>
-      ) : null}
-      {log.event ? (
-        <Text className="mt-1 text-sm text-muted">
-          {log.event.name} · {log.event.venue}
-        </Text>
-      ) : null}
-      <Text className="mt-1 text-xs text-muted">{formatDate(log.seenAt)}</Text>
-      {log.reviewText ? (
-        <Text className="mt-2 text-sm text-ink dark:text-paper" numberOfLines={3}>
-          {log.reviewText}
-        </Text>
-      ) : null}
-      <View className="mt-2">
-        <CrowdVibeBadge vibe={log.crowdVibe} />
+      <View className="flex-row gap-3">
+        <Avatar uri={log.dj?.imageUrl} name={log.dj?.name ?? "?"} size={40} />
+        <View className="flex-1">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-base font-semibold text-ink dark:text-paper">
+              {log.dj?.name ?? "Unknown DJ"}
+            </Text>
+            <RatingStars value={log.ratingHalfStars} size={14} />
+          </View>
+          {log.user ? (
+            <Pressable
+              className="mt-1 self-start"
+              hitSlop={4}
+              onPress={(e) => {
+                // Card wraps this whole row in its own Link, so stop the press
+                // from bubbling up and navigating to the log detail instead.
+                e.stopPropagation();
+                router.push(ROUTES.USER(log.user!.username));
+              }}
+            >
+              <Text className="text-xs text-muted">
+                logged by {log.user.displayName ?? log.user.username}
+              </Text>
+            </Pressable>
+          ) : null}
+          {log.event ? (
+            <Text className="mt-1 text-sm text-muted">
+              {log.event.name} · {log.event.venue}
+            </Text>
+          ) : null}
+          <Text className="mt-1 text-xs text-muted">{formatDate(log.seenAt)}</Text>
+          {log.reviewText ? (
+            <Text className="mt-2 text-sm text-ink dark:text-paper" numberOfLines={3}>
+              {log.reviewText}
+            </Text>
+          ) : null}
+          <View className="mt-2">
+            <CrowdVibeBadge vibe={log.crowdVibe} />
+          </View>
+        </View>
       </View>
     </Card>
   );

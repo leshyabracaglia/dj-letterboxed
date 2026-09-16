@@ -6,7 +6,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "../../components/Text";
 
 import { ArtistSearchInput, type ArtistPick } from "../../components/ArtistSearchInput";
+import { MetalButton } from "../../components/MetalButton";
 import { RatingStars } from "../../components/RatingStars";
+import { ScreenHeader } from "../../components/ScreenHeader";
 import { TagFriendsPicker } from "../../components/TagFriendsPicker";
 import { useApi } from "../../lib/api/client";
 import { queryKeys } from "../../lib/api/queryKeys";
@@ -43,6 +45,7 @@ export default function LogSetScreen() {
 
   const [djName, setDjName] = useState("");
   const [artistPick, setArtistPick] = useState<ArtistPick | null>(null);
+  const [djBio, setDjBio] = useState("");
   const [eventName, setEventName] = useState("");
   const [venue, setVenue] = useState("");
   const [city, setCity] = useState("");
@@ -56,6 +59,7 @@ export default function LogSetScreen() {
   const createDj = useMutation({
     mutationFn: (input: {
       name: string;
+      bio?: string;
       spotifyId?: string;
       imageUrl?: string;
       genres?: string[];
@@ -90,11 +94,12 @@ export default function LogSetScreen() {
               artistPick?.type === "spotify"
                 ? {
                     name: artistPick.artist.name,
+                    bio: djBio.trim() || undefined,
                     spotifyId: artistPick.artist.spotifyId,
                     imageUrl: artistPick.artist.imageUrl ?? undefined,
                     genres: artistPick.artist.genres,
                   }
-                : { name: djName.trim() },
+                : { name: djName.trim(), bio: djBio.trim() || undefined },
             );
 
       let event: Event | undefined;
@@ -152,13 +157,12 @@ export default function LogSetScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
+      <ScreenHeader title="Log a Set" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1"
       >
         <ScrollView contentContainerStyle={{ padding: 16 }}>
-          <Text className="mb-4 text-2xl font-bold text-ink dark:text-paper">Log a set</Text>
-
           <Text className="mb-1 text-sm font-medium text-muted">DJ</Text>
           <View className="mb-4">
             <ArtistSearchInput
@@ -175,24 +179,40 @@ export default function LogSetScreen() {
             />
           </View>
 
+          {djName.trim() && artistPick?.type !== "existing" ? (
+            <View className="mb-4">
+              <Text className="mb-1 text-sm font-medium text-muted">
+                Quick bio for {djName.trim()} (optional)
+              </Text>
+              <TextInput
+                placeholder="A sentence or two about them"
+                value={djBio}
+                onChangeText={setDjBio}
+                multiline
+                numberOfLines={2}
+                className="min-h-16 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
+              />
+            </View>
+          ) : null}
+
           <Text className="mb-1 text-sm font-medium text-muted">Event (optional)</Text>
           <TextInput
             placeholder="Event name"
             value={eventName}
             onChangeText={setEventName}
-            className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
+            className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
           />
           <TextInput
             placeholder="Venue"
             value={venue}
             onChangeText={setVenue}
-            className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
+            className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
           />
           <TextInput
             placeholder="City"
             value={city}
             onChangeText={setCity}
-            className="mb-4 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
+            className="mb-4 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
           />
 
           <Text className="mb-1 text-sm font-medium text-muted">Date you saw them</Text>
@@ -200,7 +220,7 @@ export default function LogSetScreen() {
             placeholder="YYYY-MM-DD"
             value={seenAt}
             onChangeText={setSeenAt}
-            className="mb-4 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
+            className="mb-4 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
           />
 
           <Text className="mb-1 text-sm font-medium text-muted">Rating</Text>
@@ -232,7 +252,7 @@ export default function LogSetScreen() {
             onChangeText={setReviewText}
             multiline
             numberOfLines={4}
-            className="mb-4 min-h-24 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
+            className="mb-4 min-h-24 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
           />
 
           <Text className="mb-1 text-sm font-medium text-muted">Tag friends (optional)</Text>
@@ -246,17 +266,13 @@ export default function LogSetScreen() {
             />
           </View>
 
-          {error ? <Text className="mb-3 text-danger">{error}</Text> : null}
+          {error ? <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text> : null}
 
-          <Pressable
-            disabled={pending}
-            onPress={onSubmit}
-            className="rounded-xl bg-primary py-3 active:opacity-90"
-          >
+          <MetalButton disabled={pending} onPress={onSubmit} className="rounded-xl py-3">
             <Text className="text-center font-semibold text-paper">
               {pending ? "Saving..." : "Save log"}
             </Text>
-          </Pressable>
+          </MetalButton>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

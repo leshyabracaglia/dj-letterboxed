@@ -533,15 +533,6 @@ export interface paths {
                         "application/json": components["schemas"]["PopularResponse"];
                     };
                 };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["errorEnvelope"];
-                    };
-                };
             };
         };
         put?: never;

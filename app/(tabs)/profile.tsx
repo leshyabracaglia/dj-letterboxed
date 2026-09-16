@@ -31,10 +31,10 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
-      <View className="px-4 pb-2 pt-4">
+      <View className="px-4 pb-2 pt-6">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-3">
-            <Avatar uri={me?.avatarUrl} name={me?.displayName ?? me?.username ?? "?"} size={48} />
+            <Avatar uri={me?.avatarUrl} name={me?.displayName ?? me?.username ?? "?"} size={72} />
             <View>
               <Text className="text-2xl font-bold text-ink dark:text-paper">
                 {me?.displayName ?? me?.username ?? "Your profile"}

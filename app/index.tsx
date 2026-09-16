@@ -1,14 +1,9 @@
-import { useAuth } from "@clerk/expo";
 import { Redirect } from "expo-router";
 
 import { ROUTES } from "../lib/routes";
 
+// Feed itself handles both the signed-in (following/popular/leaderboard) and
+// signed-out (popular only) cases, so home just lands there.
 export default function Index() {
-  const { isSignedIn, isLoaded } = useAuth();
-
-  if (!isLoaded) {
-    return null;
-  }
-
-  return <Redirect href={isSignedIn ? ROUTES.FEED : ROUTES.SIGN_IN} />;
+  return <Redirect href={ROUTES.FEED} />;
 }

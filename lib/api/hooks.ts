@@ -35,7 +35,7 @@ export function useEventDetail(id: string | undefined) {
   });
 }
 
-export function useFeed() {
+export function useFeed(enabled: boolean = true) {
   const api = useApi();
   return useInfiniteQuery({
     queryKey: queryKeys.feed.activity(),
@@ -43,6 +43,7 @@ export function useFeed() {
       api.get<FeedResponse>("/feed", { cursor: pageParam, limit: 20 }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    enabled,
   });
 }
 

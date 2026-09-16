@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@clerk/expo";
 import { useQuery } from "@tanstack/react-query";
-import { Redirect } from "expo-router";
+import { Redirect, useSegments } from "expo-router";
 import { Tabs } from "expo-router/js-tabs";
+import { useColorScheme } from "nativewind";
 import { ColorValue, Platform } from "react-native";
 
 import { WebTabBar } from "../../components/WebTabBar";
@@ -28,7 +29,14 @@ function TabIcon({
 
 export default function TabsLayout() {
   const { isSignedIn, isLoaded } = useAuth();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const api = useApi();
+  const segments = useSegments();
+  // Browse (DJ search) and Feed (falls back to Popular without a following
+  // graph) work without an account; Log and Profile redirect to sign-in.
+  const activeTab = segments[segments.length - 1];
+  const isPublicTab = activeTab === "browse" || activeTab === "feed";
 
   const { data: me } = useQuery({
     queryKey: queryKeys.users.me(),
@@ -40,11 +48,11 @@ export default function TabsLayout() {
     return null;
   }
 
-  if (!isSignedIn) {
+  if (!isSignedIn && !isPublicTab) {
     return <Redirect href={ROUTES.SIGN_IN} />;
   }
 
-  if (needsOnboarding(me?.username)) {
+  if (isSignedIn && needsOnboarding(me?.username)) {
     return <Redirect href={ROUTES.ONBOARDING} />;
   }
 
@@ -56,8 +64,13 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarPosition: Platform.OS === "web" ? "top" : "bottom",
-        tabBarActiveTintColor: "#884ACF",
+        tabBarActiveTintColor: isDark ? "#BA95E4" : "#7131B9",
         tabBarInactiveTintColor: "#8a8a99",
+        tabBarStyle: {
+          backgroundColor: isDark ? "#1A1624" : "#F6F6F9",
+          borderTopColor: isDark ? "rgba(246,246,249,0.1)" : "rgba(18,18,26,0.1)",
+        },
+        tabBarLabelStyle: { fontFamily: "Roboto_500Medium" },
       }}
     >
       <Tabs.Screen

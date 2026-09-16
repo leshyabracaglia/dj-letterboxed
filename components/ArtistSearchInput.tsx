@@ -49,10 +49,10 @@ export function ArtistSearchInput({
         placeholder="Who did you see?"
         value={value}
         onChangeText={onChangeText}
-        className="rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
+        className="rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
       {showDropdown ? (
-        <View className="mt-1 overflow-hidden rounded-xl border border-primary/20 bg-white dark:bg-surface-dark">
+        <View className="mt-1 overflow-hidden rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary">
           {isLocalFetching || isSpotifyFetching ? (
             <View className="px-4 py-2">
               <ActivityIndicator size="small" />

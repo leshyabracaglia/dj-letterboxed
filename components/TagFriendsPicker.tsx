@@ -7,6 +7,7 @@ import { useApi } from "../lib/api/client";
 import { queryKeys } from "../lib/api/queryKeys";
 import type { User } from "../lib/api/types";
 import { Avatar } from "./Avatar";
+import { MetalButton } from "./MetalButton";
 
 export function TagFriendsPicker({
   taggedUsers,
@@ -34,14 +35,14 @@ export function TagFriendsPicker({
       {taggedUsers.length > 0 ? (
         <View className="mb-2 flex-row flex-wrap gap-2">
           {taggedUsers.map((u) => (
-            <Pressable
+            <MetalButton
               key={u.id}
               onPress={() => onRemove(u.id)}
-              className="flex-row items-center gap-1.5 rounded-full bg-primary px-3 py-1.5"
+              className="flex-row items-center gap-1.5 rounded-full px-3 py-1.5"
             >
               <Avatar uri={u.avatarUrl} name={u.displayName ?? u.username} size={16} />
               <Text className="text-paper">@{u.username} ✕</Text>
-            </Pressable>
+            </MetalButton>
           ))}
         </View>
       ) : null}
@@ -49,10 +50,10 @@ export function TagFriendsPicker({
         placeholder="Tag friends who were there"
         value={query}
         onChangeText={setQuery}
-        className="rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-3"
+        className="rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
       {trimmed.length > 1 && results && results.length > 0 ? (
-        <View className="mt-1 overflow-hidden rounded-xl border border-primary/20 bg-white dark:bg-surface-dark">
+        <View className="mt-1 overflow-hidden rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary">
           {results
             .filter((u) => !taggedIds.has(u.id))
             .map((u) => (

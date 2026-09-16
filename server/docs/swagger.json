@@ -412,11 +412,6 @@
         },
         "/api/feed/popular": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "produces": [
                     "application/json"
                 ],
@@ -437,12 +432,6 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/PopularResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errorEnvelope"
                         }
                     }
                 }

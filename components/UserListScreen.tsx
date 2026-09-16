@@ -37,7 +37,7 @@ export function UserListScreen({ mode }: { mode: "followers" | "following" }) {
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
       <Stack.Screen options={{ title }} />
       <FlatList
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={{ padding: 16, paddingTop: 24 }}
         data={list ?? []}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (

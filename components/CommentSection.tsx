@@ -1,4 +1,6 @@
+import { useAuth } from "@clerk/expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "expo-router";
 import { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { Text } from "./Text";
@@ -6,9 +8,12 @@ import { Text } from "./Text";
 import { useApi } from "../lib/api/client";
 import { queryKeys } from "../lib/api/queryKeys";
 import type { ReviewComment, User } from "../lib/api/types";
+import { ROUTES } from "../lib/routes";
 import { Avatar } from "./Avatar";
+import { MetalButton } from "./MetalButton";
 
 export function CommentSection({ reviewId }: { reviewId: string }) {
+  const { isSignedIn } = useAuth();
   const api = useApi();
   const queryClient = useQueryClient();
   const [body, setBody] = useState("");
@@ -20,6 +25,7 @@ export function CommentSection({ reviewId }: { reviewId: string }) {
   const { data: me } = useQuery({
     queryKey: queryKeys.users.me(),
     queryFn: () => api.get<User>("/users/me"),
+    enabled: isSignedIn,
   });
 
   const commentsKey = queryKeys.reviews.comments(reviewId);
@@ -70,7 +76,7 @@ export function CommentSection({ reviewId }: { reviewId: string }) {
 
   return (
     <View className="mt-4">
-      <Text className="mb-2 text-lg font-display text-ink dark:text-paper">Comments</Text>
+      <Text className="mb-2 text-xl font-display text-ink dark:text-paper">Comments</Text>
       {(comments ?? []).map((comment) => (
         <View key={comment.id} className="mb-3 flex-row items-start justify-between">
           <View className="flex-1 flex-row items-start gap-2 pr-2">
@@ -94,21 +100,27 @@ export function CommentSection({ reviewId }: { reviewId: string }) {
       {(comments ?? []).length === 0 ? (
         <Text className="mb-3 text-sm text-muted">No comments yet.</Text>
       ) : null}
-      <View className="flex-row items-center gap-2">
-        <TextInput
-          placeholder="Add a comment..."
-          value={body}
-          onChangeText={setBody}
-          className="flex-1 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark px-4 py-2"
-        />
-        <Pressable
-          disabled={!body.trim() || addComment.isPending}
-          onPress={() => addComment.mutate({ body: body.trim() })}
-          className="rounded-lg bg-primary px-4 py-2"
-        >
-          <Text className="text-paper">Post</Text>
-        </Pressable>
-      </View>
+      {isSignedIn ? (
+        <View className="flex-row items-center gap-2">
+          <TextInput
+            placeholder="Add a comment..."
+            value={body}
+            onChangeText={setBody}
+            className="flex-1 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-2 text-ink dark:text-paper placeholder:text-muted"
+          />
+          <MetalButton
+            disabled={!body.trim() || addComment.isPending}
+            onPress={() => addComment.mutate({ body: body.trim() })}
+            className="rounded-lg px-4 py-2"
+          >
+            <Text className="text-paper">Post</Text>
+          </MetalButton>
+        </View>
+      ) : (
+        <Link href={ROUTES.SIGN_IN}>
+          <Text className="text-primary dark:text-primary-dark">Sign in to comment</Text>
+        </Link>
+      )}
     </View>
   );
 }
