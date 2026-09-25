@@ -1,14 +1,11 @@
 import { router } from "expo-router";
 import { Pressable, View } from "react-native";
-import { Text } from "./Text";
+import { Avatar, Card, RatingStars, Text } from "./ui";
 
 import type { Dj, Event, Review, User } from "../lib/api/types";
 import { formatDate } from "../lib/format";
 import { ROUTES } from "../lib/routes";
-import { Avatar } from "./Avatar";
-import { Card } from "./Card";
 import { CrowdVibeBadge } from "./CrowdVibeBadge";
-import { RatingStars } from "./RatingStars";
 
 export function ReviewCard({
   log,
@@ -31,7 +28,7 @@ export function ReviewCard({
             <Text className="text-base font-semibold text-ink dark:text-paper">
               {log.dj?.name ?? "Unknown DJ"}
             </Text>
-            <RatingStars value={log.ratingHalfStars} size={14} />
+            <RatingStars value={log.rating} size={14} />
           </View>
           {log.user ? (
             <Pressable

@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 import { Appearance, Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { TopNav } from "../components/TopNav";
+import { WebNav } from "../components/WebNav";
 import { tokenCache } from "../lib/clerk-token-cache";
 import { getStoredThemePreference, resolveColorScheme } from "../lib/theme-storage";
 
@@ -76,7 +76,7 @@ export default function RootLayout() {
               // Web gets the same persistent top nav as the tabs group
               // instead of a per-page native title bar with a back button —
               // native keeps the standard themed header, back chevron and all.
-              header: Platform.OS === "web" ? () => <TopNav /> : undefined,
+              header: Platform.OS === "web" ? () => <WebNav /> : undefined,
               headerStyle: { backgroundColor: isDark ? "#000000" : "#F6F6F9" },
               headerTintColor: isDark ? "#F6F6F9" : "#000000",
               headerTitleStyle: { fontFamily: "Roboto_700Bold" },

@@ -72,11 +72,11 @@ func run() error {
 
 	review1, err := queries.CreateReview(ctx, pool, queries.CreateReviewParams{
 		UserID: alice.ID, DjID: dj1.ID, EventID: &event1.ID,
-		RatingHalfStars: int16Ptr(9),
-		ReviewText:      strPtr("Absolutely electric set, the buildup into the last hour was insane."),
-		CrowdVibe:       &electric,
-		CrowdVibeNote:   strPtr("Packed floor, everyone locked in."),
-		SeenAt:          event1.EventDate,
+		Rating:        int16Ptr(5),
+		ReviewText:    strPtr("Absolutely electric set, the buildup into the last hour was insane."),
+		CrowdVibe:     &electric,
+		CrowdVibeNote: strPtr("Packed floor, everyone locked in."),
+		SeenAt:        event1.EventDate,
 	})
 	if err != nil {
 		return err
@@ -84,21 +84,21 @@ func run() error {
 
 	if _, err := queries.CreateReview(ctx, pool, queries.CreateReviewParams{
 		UserID: bob.ID, DjID: dj2.ID,
-		RatingHalfStars: int16Ptr(7),
-		ReviewText:      strPtr("Solid deep house groove, warmed up the room well."),
-		CrowdVibe:       &good,
-		CrowdVibeNote:   strPtr("Chill but engaged, more head-nodding than jumping."),
-		SeenAt:          mustParse("2026-05-01T22:00:00Z"),
+		Rating:        int16Ptr(4),
+		ReviewText:    strPtr("Solid deep house groove, warmed up the room well."),
+		CrowdVibe:     &good,
+		CrowdVibeNote: strPtr("Chill but engaged, more head-nodding than jumping."),
+		SeenAt:        mustParse("2026-05-01T22:00:00Z"),
 	}); err != nil {
 		return err
 	}
 
 	review3, err := queries.CreateReview(ctx, pool, queries.CreateReviewParams{
 		UserID: bob.ID, DjID: dj3.ID,
-		RatingHalfStars: int16Ptr(8),
-		ReviewText:      strPtr("Yamagucci's low end was unreal, floor was shaking all night."),
-		CrowdVibe:       &electric,
-		SeenAt:          mustParse("2026-04-10T22:00:00Z"),
+		Rating:     int16Ptr(4),
+		ReviewText: strPtr("Yamagucci's low end was unreal, floor was shaking all night."),
+		CrowdVibe:  &electric,
+		SeenAt:     mustParse("2026-04-10T22:00:00Z"),
 	})
 	if err != nil {
 		return err

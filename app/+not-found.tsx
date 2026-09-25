@@ -1,17 +1,16 @@
 import { Link, Stack } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Text } from "../components/Text";
 
+import { Page, Text } from "../components/ui";
 import { ROUTES } from "../lib/routes";
 
 export default function NotFoundScreen() {
   return (
-    <SafeAreaView className="flex-1 items-center justify-center bg-paper dark:bg-ink px-6">
+    <Page className="items-center justify-center px-6">
       <Stack.Screen options={{ title: "Not found" }} />
       <Text className="mb-3 text-xl font-semibold text-ink dark:text-paper">This page doesn't exist.</Text>
       <Link href={ROUTES.HOME}>
         <Text className="text-primary dark:text-primary-dark">Go back home</Text>
       </Link>
-    </SafeAreaView>
+    </Page>
   );
 }

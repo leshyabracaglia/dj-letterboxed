@@ -1,7 +1,26 @@
 import { useAuth } from "@clerk/expo";
+import Constants from "expo-constants";
 import { useMemo } from "react";
+import { Platform } from "react-native";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080";
+// In dev, point at the local API on whatever machine is serving the bundle, so
+// a changed LAN IP (new wifi) never needs a .env edit. Web uses the page's own
+// host; native uses the Metro host the device connected to. Production builds
+// (and dev on a tunnel, where there's no reachable LAN host) fall back to
+// EXPO_PUBLIC_API_URL.
+function resolveApiUrl() {
+  const configured = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080";
+  if (!__DEV__) return configured;
+
+  const host =
+    Platform.OS === "web"
+      ? globalThis.location?.hostname
+      : Constants.expoConfig?.hostUri?.split(":")[0];
+  if (!host || host.endsWith(".exp.direct")) return configured;
+  return `http://${host}:8080`;
+}
+
+const API_URL = resolveApiUrl();
 
 export class ApiError extends Error {
   code: string;

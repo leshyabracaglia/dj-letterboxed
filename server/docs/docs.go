@@ -1032,6 +1032,62 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/users/me/favorites": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Replace the caller's showcased favorite reviews (0-3, ordered, #1 first) - reviews must be the caller's own",
+                "parameters": [
+                    {
+                        "description": "ordered review ids, at most 3, no duplicates",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/setFavoritesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/FavoriteReviewsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/api/users/search": {
             "get": {
                 "produces": [
@@ -1159,6 +1215,40 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/users/{username}/favorites": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get a user's showcased favorite reviews (top 3, ordered, #1 first)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "username",
+                        "name": "username",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/FavoriteReviewsResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/api/users/{username}/reviews": {
             "get": {
                 "produces": [
@@ -1228,6 +1318,71 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/UserStatsResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/venues/search": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "venues"
+                ],
+                "summary": "Search venues by name (derived from events.venue, grouped)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search query",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/VenueSummary"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/venues/{venue}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "venues"
+                ],
+                "summary": "Get a venue by exact name, with its events",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "venue name",
+                        "name": "venue",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/VenueDetailResponse"
                         }
                     },
                     "404": {
@@ -1389,6 +1544,20 @@ const docTemplate = `{
                 }
             }
         },
+        "FavoriteReviewsResponse": {
+            "type": "object",
+            "required": [
+                "items"
+            ],
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ReviewDTO"
+                    }
+                }
+            }
+        },
         "FeedResponse": {
             "type": "object",
             "required": [
@@ -1478,7 +1647,7 @@ const docTemplate = `{
                 "djId",
                 "eventId",
                 "id",
-                "ratingHalfStars",
+                "rating",
                 "reviewText",
                 "seenAt",
                 "updatedAt",
@@ -1503,7 +1672,7 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "ratingHalfStars": {
+                "rating": {
                     "type": "integer"
                 },
                 "reviewText": {
@@ -1559,7 +1728,7 @@ const docTemplate = `{
                 "djId",
                 "eventId",
                 "id",
-                "ratingHalfStars",
+                "rating",
                 "reviewText",
                 "seenAt",
                 "taggedUsers",
@@ -1603,7 +1772,7 @@ const docTemplate = `{
                 "likeCount": {
                     "type": "integer"
                 },
-                "ratingHalfStars": {
+                "rating": {
                     "type": "integer"
                 },
                 "reviewText": {
@@ -1783,6 +1952,51 @@ const docTemplate = `{
                 }
             }
         },
+        "VenueDetailResponse": {
+            "type": "object",
+            "required": [
+                "city",
+                "eventCount",
+                "events",
+                "venue"
+            ],
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "eventCount": {
+                    "type": "integer"
+                },
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Event"
+                    }
+                },
+                "venue": {
+                    "type": "string"
+                }
+            }
+        },
+        "VenueSummary": {
+            "type": "object",
+            "required": [
+                "city",
+                "eventCount",
+                "venue"
+            ],
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "eventCount": {
+                    "type": "integer"
+                },
+                "venue": {
+                    "type": "string"
+                }
+            }
+        },
         "addCommentRequest": {
             "type": "object",
             "required": [
@@ -1873,7 +2087,7 @@ const docTemplate = `{
                 "crowdVibeNote",
                 "djId",
                 "eventId",
-                "ratingHalfStars",
+                "rating",
                 "reviewText",
                 "seenAt",
                 "taggedUserIds"
@@ -1891,7 +2105,7 @@ const docTemplate = `{
                 "eventId": {
                     "type": "string"
                 },
-                "ratingHalfStars": {
+                "rating": {
                     "type": "integer"
                 },
                 "reviewText": {
@@ -1916,6 +2130,20 @@ const docTemplate = `{
             "properties": {
                 "error": {
                     "$ref": "#/definitions/apiError"
+                }
+            }
+        },
+        "setFavoritesRequest": {
+            "type": "object",
+            "required": [
+                "reviewIds"
+            ],
+            "properties": {
+                "reviewIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -1947,7 +2175,7 @@ const docTemplate = `{
             "required": [
                 "crowdVibe",
                 "crowdVibeNote",
-                "ratingHalfStars",
+                "rating",
                 "reviewText",
                 "seenAt",
                 "taggedUserIds"
@@ -1959,7 +2187,7 @@ const docTemplate = `{
                 "crowdVibeNote": {
                     "type": "string"
                 },
-                "ratingHalfStars": {
+                "rating": {
                     "type": "integer"
                 },
                 "reviewText": {

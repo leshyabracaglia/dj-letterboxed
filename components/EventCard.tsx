@@ -1,8 +1,7 @@
 import type { Event } from "../lib/api/types";
 import { formatDateTime } from "../lib/format";
 import { ROUTES } from "../lib/routes";
-import { Card } from "./Card";
-import { Text } from "./Text";
+import { Card, Text } from "./ui";
 
 export function EventCard({ event }: { event: Event }) {
   return (

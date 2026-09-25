@@ -1,16 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, Stack, useLocalSearchParams } from "expo-router";
 import { FlatList, Pressable, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Text } from "./Text";
 
+import { Avatar, EmptyState, Page, Text, usePageContentStyle } from "./ui";
 import { useApi } from "../lib/api/client";
 import { useUserProfile } from "../lib/api/hooks";
 import { queryKeys } from "../lib/api/queryKeys";
 import type { User } from "../lib/api/types";
 import { ROUTES } from "../lib/routes";
-import { Avatar } from "./Avatar";
-import { EmptyState } from "./EmptyState";
 
 const COPY = {
   followers: { title: "Followers", empty: "No followers yet." },
@@ -20,6 +17,7 @@ const COPY = {
 export function UserListScreen({ mode }: { mode: "followers" | "following" }) {
   const { username } = useLocalSearchParams<{ username: string }>();
   const api = useApi();
+  const contentStyle = usePageContentStyle();
 
   const { data: profile } = useUserProfile(username);
   const { data: list } = useQuery({
@@ -34,10 +32,10 @@ export function UserListScreen({ mode }: { mode: "followers" | "following" }) {
   const { title, empty } = COPY[mode];
 
   return (
-    <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
+    <Page>
       <Stack.Screen options={{ title }} />
       <FlatList
-        contentContainerStyle={{ padding: 16, paddingTop: 24 }}
+        contentContainerStyle={[contentStyle, { paddingTop: 24 }]}
         data={list ?? []}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
@@ -53,6 +51,6 @@ export function UserListScreen({ mode }: { mode: "followers" | "following" }) {
         )}
         ListEmptyComponent={<EmptyState message={empty} />}
       />
-    </SafeAreaView>
+    </Page>
   );
 }

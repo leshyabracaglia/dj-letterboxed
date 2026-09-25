@@ -4,10 +4,10 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Text } from "../../components/Text";
 
-import { Avatar } from "../../components/Avatar";
-import { MetalButton } from "../../components/MetalButton";
+
+import { Avatar, Button, Text } from "../../components/ui";
+
 import { useApi } from "../../lib/api/client";
 import { queryKeys } from "../../lib/api/queryKeys";
 import type { UpdateProfileInput, User } from "../../lib/api/types";
@@ -133,15 +133,15 @@ export default function OnboardingScreen() {
 
             {error ? <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text> : null}
 
-            <MetalButton
+            <Button
               onPress={onSubmit}
               disabled={submit.isPending || !usernameValid}
-              className="w-full rounded-xl py-3"
+              className="w-full py-3"
             >
               <Text className="text-center font-semibold text-paper">
                 {submit.isPending ? "Saving..." : "Continue"}
               </Text>
-            </MetalButton>
+            </Button>
 
             <Pressable
               onPress={async () => {

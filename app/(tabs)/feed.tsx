@@ -1,26 +1,27 @@
 import { useAuth } from "@clerk/expo";
 import { useState } from "react";
 import { FlatList, Pressable, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Text } from "../../components/Text";
 
-import { AmbientBackground } from "../../components/AmbientBackground";
-import { EmptyState } from "../../components/EmptyState";
+import { EmptyState, Page, Text, usePageContentStyle } from "../../components/ui";
 import { ReviewCard } from "../../components/ReviewCard";
-import { ScreenHeader } from "../../components/ScreenHeader";
-import { useFeed, useLeaderboard, usePopularFeed } from "../../lib/api/hooks";
+import { useFeed, usePopularFeed } from "../../lib/api/hooks";
 
-const TABS = ["following", "popular", "leaderboard"] as const;
-type Tab = (typeof TABS)[number];
-const TAB_LABELS: Record<Tab, string> = {
-  following: "Following",
-  popular: "Popular",
-  leaderboard: "Leaderboard",
+const FEED_TABS = {
+  FOLLOWING: "following",
+  POPULAR: "popular",
+} as const;
+
+type IFeedTab = (typeof FEED_TABS)[keyof typeof FEED_TABS];
+
+const FEED_TAB_LABELS: Record<IFeedTab, string> = {
+  [FEED_TABS.FOLLOWING]: "Following",
+  [FEED_TABS.POPULAR]: "Popular",
 };
 
 export default function FeedScreen() {
   const { isSignedIn } = useAuth();
-  const [tab, setTab] = useState<Tab>("following");
+  const [tab, setTab] = useState<IFeedTab>(FEED_TABS.FOLLOWING);
+  const contentStyle = usePageContentStyle();
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useFeed(
     !!isSignedIn,
@@ -30,27 +31,24 @@ export default function FeedScreen() {
   const items = pages.flatMap((page) => page.items);
   const followingCount = pages[0]?.followingCount ?? 0;
   const noFollowing = !isSignedIn || (!isLoading && followingCount === 0);
-  const effectiveTab: Tab = !isSignedIn
-    ? "popular"
-    : tab === "following" && noFollowing
-      ? "popular"
+  const effectiveTab: IFeedTab = !isSignedIn
+    ? FEED_TABS.POPULAR
+    : tab === FEED_TABS.FOLLOWING && noFollowing
+      ? FEED_TABS.POPULAR
       : tab;
 
   const { data: popularData, isLoading: isPopularLoading } = usePopularFeed(
-    effectiveTab === "popular",
-  );
-
-  const { data: leaderboard, isLoading: isLeaderboardLoading } = useLeaderboard(
-    !!isSignedIn && effectiveTab === "leaderboard",
+    effectiveTab === FEED_TABS.POPULAR,
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
-      <AmbientBackground />
-      <ScreenHeader title="Feed">
-        {isSignedIn ? (
+    <Page
+      ambient
+      title="Feed"
+      header={
+        isSignedIn ? (
           <View className="flex-row gap-2">
-            {TABS.map((t) => (
+            {Object.values(FEED_TABS).map((t) => (
               <Pressable
                 key={t}
                 onPress={() => setTab(t)}
@@ -59,17 +57,17 @@ export default function FeedScreen() {
                 }`}
               >
                 <Text className={effectiveTab === t ? "text-paper" : "text-ink dark:text-paper"}>
-                  {TAB_LABELS[t]}
+                  {FEED_TAB_LABELS[t]}
                 </Text>
               </Pressable>
             ))}
           </View>
-        ) : null}
-      </ScreenHeader>
-
+        ) : null
+      }
+    >
       {effectiveTab === "popular" ? (
         <FlatList
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={contentStyle}
           data={popularData?.items ?? []}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <ReviewCard log={item} />}
@@ -91,38 +89,9 @@ export default function FeedScreen() {
             ) : null
           }
         />
-      ) : effectiveTab === "leaderboard" ? (
-        <FlatList
-          contentContainerStyle={{ padding: 16 }}
-          data={leaderboard ?? []}
-          keyExtractor={(row) => row.user.id}
-          renderItem={({ item, index }) => {
-            const rankBg =
-              index === 0 ? "bg-accent" : index === 1 ? "bg-primary" : "bg-muted/15";
-            const rankText = index < 2 ? "text-white" : "text-muted";
-            return (
-              <View className="mb-2 flex-row items-center justify-between rounded-2xl border border-primary/15 bg-white dark:bg-surface-dark p-4 shadow-sm">
-                <View className="flex-row items-center gap-3">
-                  <View className={`h-7 w-7 items-center justify-center rounded-full ${rankBg}`}>
-                    <Text className={`font-bold ${rankText}`}>{index + 1}</Text>
-                  </View>
-                  <Text className="text-ink dark:text-paper">
-                    {item.user.displayName ?? item.user.username}
-                  </Text>
-                </View>
-                <Text className="text-muted">{item.logCount} shows</Text>
-              </View>
-            );
-          }}
-          ListEmptyComponent={
-            !isLeaderboardLoading ? (
-              <EmptyState message="Follow some people to see a leaderboard." />
-            ) : null
-          }
-        />
       ) : (
         <FlatList
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={contentStyle}
           data={items}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <ReviewCard log={item} />}
@@ -144,6 +113,6 @@ export default function FeedScreen() {
           }
         />
       )}
-    </SafeAreaView>
+    </Page>
   );
 }

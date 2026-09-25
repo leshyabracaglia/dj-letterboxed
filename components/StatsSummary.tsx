@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { View } from "react-native";
-import { Text } from "./Text";
+import { Text } from "./ui";
 
 import { useApi } from "../lib/api/client";
 import { queryKeys } from "../lib/api/queryKeys";

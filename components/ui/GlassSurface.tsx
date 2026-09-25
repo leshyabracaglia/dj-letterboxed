@@ -2,13 +2,27 @@ import { BlurView } from "expo-blur";
 import { GlassView, isGlassEffectAPIAvailable } from "expo-glass-effect";
 import { cssInterop, useColorScheme } from "nativewind";
 import type { ReactNode } from "react";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View, type ViewStyle } from "react-native";
 
 cssInterop(GlassView, { className: "style" });
 
+// Web-only CSS properties react-native-web passes straight through; cast
+// because RN's ViewStyle doesn't declare backdropFilter/backgroundImage.
+const WEB_GLASS_LIGHT = {
+  backdropFilter: "blur(20px) saturate(180%)",
+  backgroundImage: "linear-gradient(135deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 55%)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.06)",
+} as ViewStyle;
+
+const WEB_GLASS_DARK = {
+  backdropFilter: "blur(20px) saturate(180%)",
+  backgroundImage: "linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 50%)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,0,0,0.5)",
+} as ViewStyle;
+
 // Real iOS 26 Liquid Glass where the OS actually provides it — false on
 // web, Android, and pre-26 iOS, where GlassView's own fallback is just a
-// plain <View> (no effect at all), so we still need a manual blur for those.
+// plain <View> (no effect at all), so those need their own fallbacks below.
 const hasNativeGlass = isGlassEffectAPIAvailable();
 
 // expo-blur's BlurView always applies its own computed backgroundColor last
@@ -32,6 +46,20 @@ export function GlassSurface({
       <GlassView glassEffectStyle="regular" colorScheme={isDark ? "dark" : "light"} className={className}>
         {children}
       </GlassView>
+    );
+  }
+
+  // Web: plain CSS frosted glass. saturate() makes whatever's behind glow
+  // through instead of just going gray, the inset shadows are the light-
+  // catching top edge / darker bottom edge of a thick pane, and the
+  // gradient is a soft static sheen from the top-left. Layered on top of
+  // the bg-* tint from className (background-image paints over
+  // background-color, so they don't fight).
+  if (Platform.OS === "web") {
+    return (
+      <View className={className} style={isDark ? WEB_GLASS_DARK : WEB_GLASS_LIGHT}>
+        {children}
+      </View>
     );
   }
 

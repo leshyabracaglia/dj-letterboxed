@@ -71,6 +71,13 @@ type EventDetailResponse struct {
 	Logs  []ReviewDTO `json:"logs"`
 }
 
+type VenueDetailResponse struct {
+	Venue      string     `json:"venue"`
+	City       *string    `json:"city"`
+	EventCount int64      `json:"eventCount"`
+	Events     []db.Event `json:"events"`
+}
+
 type UserProfileResponse struct {
 	User           db.User `json:"user"`
 	LogCount       int64   `json:"logCount"`
@@ -101,4 +108,8 @@ type SuccessResponse struct {
 
 type FollowingStatusResponse struct {
 	Following bool `json:"following"`
+}
+
+type FavoriteReviewsResponse struct {
+	Items []ReviewDTO `json:"items"`
 }

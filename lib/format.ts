@@ -1,6 +1,7 @@
-// ratingHalfStars is stored in half-star units (1-10); divide by 2 for the 0.5-5.0 display scale.
-export function formatStars(halfStars: number | null | undefined): string {
-  return halfStars ? (halfStars / 2).toFixed(1) : "—";
+// rating is whole stars (1-5); averages keep one decimal.
+export function formatRating(rating: number | null | undefined): string {
+  if (!rating) return "—";
+  return Number.isInteger(rating) ? String(rating) : rating.toFixed(1);
 }
 
 // Date-only: for when something was logged/seen, where the exact time isn't meaningful.

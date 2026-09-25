@@ -2,8 +2,7 @@ import { useSignUp } from "@clerk/expo";
 import { Link, router } from "expo-router";
 import { useState } from "react";
 import { TextInput, View } from "react-native";
-import { MetalButton } from "../../components/MetalButton";
-import { Text } from "../../components/Text";
+import { Button, Text } from "../../components/ui";
 
 import { ROUTES } from "../../lib/routes";
 
@@ -61,13 +60,13 @@ export default function SignUpScreen() {
           className="mb-4 w-full max-w-sm rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
         />
         {error ? <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text> : null}
-        <MetalButton
+        <Button
           onPress={onVerify}
           disabled={fetchStatus === "fetching"}
-          className="w-full max-w-sm rounded-xl py-3"
+          className="w-full max-w-sm py-3"
         >
           <Text className="text-center font-semibold text-paper">Verify</Text>
-        </MetalButton>
+        </Button>
       </View>
     );
   }
@@ -98,13 +97,13 @@ export default function SignUpScreen() {
       ) : null}
       {error ? <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text> : null}
       <View nativeID="clerk-captcha" />
-      <MetalButton
+      <Button
         onPress={onSubmit}
         disabled={fetchStatus === "fetching"}
-        className="w-full max-w-sm rounded-xl py-3"
+        className="w-full max-w-sm py-3"
       >
         <Text className="text-center font-semibold text-paper">Sign up</Text>
-      </MetalButton>
+      </Button>
       <View className="mt-10">
         <Link href={ROUTES.SIGN_IN}>
           <Text className="text-primary dark:text-primary-dark">Already have an account? Sign in</Text>

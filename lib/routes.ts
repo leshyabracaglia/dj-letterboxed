@@ -17,6 +17,7 @@ export const ROUTES = {
   SETTINGS: "/settings" as Href,
   DJ: (slug: string): Href => `/dj/${slug}` as Href,
   EVENT: (id: string): Href => `/event/${id}` as Href,
+  VENUE: (venue: string): Href => `/venue/${encodeURIComponent(venue)}` as Href,
   LOG_DETAIL: (id: string): Href => `/log/${id}` as Href,
   USER: (username: string): Href => `/user/${username}` as Href,
   USER_FOLLOWERS: (username: string): Href => `/user/${username}/followers` as Href,

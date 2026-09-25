@@ -12,14 +12,18 @@ export const queryKeys = {
     search: (q: string) => ["events", "search", q] as const,
     byId: (id: string) => ["events", id] as const,
   },
+  venues: {
+    search: (q: string) => ["venues", "search", q] as const,
+    byName: (venue: string) => ["venues", venue] as const,
+  },
   users: {
     me: () => ["users", "me"] as const,
     search: (q: string) => ["users", "search", q] as const,
     byUsername: (username: string) => ["users", username] as const,
     stats: (username: string) => ["users", username, "stats"] as const,
-    leaderboard: () => ["leaderboard"] as const,
     followers: (userId: string) => ["users", userId, "followers"] as const,
     following: (userId: string) => ["users", userId, "following"] as const,
+    favorites: (username: string) => ["users", username, "favorites"] as const,
   },
   follows: {
     isFollowing: (userId: string) => ["follows", "is-following", userId] as const,

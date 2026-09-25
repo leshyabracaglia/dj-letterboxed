@@ -1,6 +1,5 @@
 import { Stack } from "expo-router";
 import { ScrollView } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { isClerkAPIResponseError, useUser } from "@clerk/expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,9 +8,7 @@ import { useColorScheme } from "nativewind";
 import { useEffect, useState } from "react";
 import { Alert, Platform, Pressable, TextInput, View } from "react-native";
 
-import { Avatar } from "../components/Avatar";
-import { MetalButton } from "../components/MetalButton";
-import { Text } from "../components/Text";
+import { Avatar, Button, Page, Text, usePageContentStyle } from "../components/ui";
 import { useApi } from "../lib/api/client";
 import { queryKeys } from "../lib/api/queryKeys";
 import type { UpdateProfileInput, User } from "../lib/api/types";
@@ -182,15 +179,15 @@ function EditProfile() {
       {success ? (
         <Text className="mb-2 text-success dark:text-success-dark">Profile updated.</Text>
       ) : null}
-      <MetalButton
+      <Button
         disabled={save.isPending || !usernameValid}
         onPress={onSave}
-        className="rounded-xl py-3"
+        className="py-3"
       >
         <Text className="text-center font-semibold text-paper">
           {save.isPending ? "Saving..." : "Save profile"}
         </Text>
-      </MetalButton>
+      </Button>
     </View>
   );
 }
@@ -283,15 +280,15 @@ function AccountSettings() {
       {passwordSuccess ? (
         <Text className="mb-2 text-success dark:text-success-dark">Password updated.</Text>
       ) : null}
-      <MetalButton
+      <Button
         disabled={passwordPending}
         onPress={onChangePassword}
-        className="rounded-xl py-3"
+        className="py-3"
       >
         <Text className="text-center font-semibold text-paper">
           {passwordPending ? "Saving..." : "Update password"}
         </Text>
-      </MetalButton>
+      </Button>
 
       <Text className="mb-2 mt-8 text-xl font-display text-danger dark:text-danger-dark">
         Danger zone
@@ -310,14 +307,15 @@ function AccountSettings() {
 }
 
 export default function SettingsScreen() {
+  const contentStyle = usePageContentStyle();
   return (
-    <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
+    <Page>
       <Stack.Screen options={{ title: "Settings" }} />
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 24 }}>
+      <ScrollView contentContainerStyle={[contentStyle, { paddingTop: 24 }]}>
         <EditProfile />
         <AppearanceSettings />
         <AccountSettings />
       </ScrollView>
-    </SafeAreaView>
+    </Page>
   );
 }

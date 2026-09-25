@@ -56,17 +56,17 @@ type Event struct {
 }
 
 type Review struct {
-	ID              string     `json:"id"`
-	UserID          string     `json:"userId"`
-	DjID            string     `json:"djId"`
-	EventID         *string    `json:"eventId"`
-	RatingHalfStars *int16     `json:"ratingHalfStars"`
-	ReviewText      *string    `json:"reviewText"`
-	CrowdVibe       *CrowdVibe `json:"crowdVibe"`
-	CrowdVibeNote   *string    `json:"crowdVibeNote"`
-	SeenAt          time.Time  `json:"seenAt"`
-	CreatedAt       time.Time  `json:"createdAt"`
-	UpdatedAt       time.Time  `json:"updatedAt"`
+	ID            string     `json:"id"`
+	UserID        string     `json:"userId"`
+	DjID          string     `json:"djId"`
+	EventID       *string    `json:"eventId"`
+	Rating        *int16     `json:"rating"`
+	ReviewText    *string    `json:"reviewText"`
+	CrowdVibe     *CrowdVibe `json:"crowdVibe"`
+	CrowdVibeNote *string    `json:"crowdVibeNote"`
+	SeenAt        time.Time  `json:"seenAt"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	UpdatedAt     time.Time  `json:"updatedAt"`
 }
 
 type ReviewComment struct {

@@ -6,7 +6,7 @@ import { Tabs } from "expo-router/js-tabs";
 import { useColorScheme } from "nativewind";
 import { ColorValue, Platform } from "react-native";
 
-import { WebTabBar } from "../../components/WebTabBar";
+import { WebNav } from "../../components/WebNav";
 import { useApi } from "../../lib/api/client";
 import { queryKeys } from "../../lib/api/queryKeys";
 import type { User } from "../../lib/api/types";
@@ -60,7 +60,7 @@ export default function TabsLayout() {
     <Tabs
       initialRouteName="feed"
       // Bottom tabs read as a mobile pattern; on web, a horizontal navbar reads better.
-      tabBar={Platform.OS === "web" ? (props) => <WebTabBar {...props} /> : undefined}
+      tabBar={Platform.OS === "web" ? () => <WebNav /> : undefined}
       screenOptions={{
         headerShown: false,
         tabBarPosition: Platform.OS === "web" ? "top" : "bottom",

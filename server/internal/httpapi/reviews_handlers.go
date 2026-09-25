@@ -13,22 +13,22 @@ import (
 )
 
 type createReviewRequest struct {
-	DjID            string    `json:"djId"`
-	EventID         *string   `json:"eventId"`
-	RatingHalfStars *int16    `json:"ratingHalfStars"`
-	ReviewText      *string   `json:"reviewText"`
-	CrowdVibe       *string   `json:"crowdVibe"`
-	CrowdVibeNote   *string   `json:"crowdVibeNote"`
-	SeenAt          string    `json:"seenAt"`
-	TaggedUserIDs   *[]string `json:"taggedUserIds"`
+	DjID          string    `json:"djId"`
+	EventID       *string   `json:"eventId"`
+	Rating        *int16    `json:"rating"`
+	ReviewText    *string   `json:"reviewText"`
+	CrowdVibe     *string   `json:"crowdVibe"`
+	CrowdVibeNote *string   `json:"crowdVibeNote"`
+	SeenAt        string    `json:"seenAt"`
+	TaggedUserIDs *[]string `json:"taggedUserIds"`
 }
 
 // validateReviewFields checks the review fields shared by create and
 // update. Each is optional (nil = "not provided"/"leave unset"), but if
 // present must satisfy these constraints.
 func validateReviewFields(rating *int16, reviewText, crowdVibeNote, crowdVibe *string) (vibe *db.CrowdVibe, errMsg string) {
-	if rating != nil && (*rating < 1 || *rating > 10) {
-		return nil, "ratingHalfStars must be 1-10"
+	if rating != nil && (*rating < 1 || *rating > 5) {
+		return nil, "rating must be 1-5"
 	}
 	if reviewText != nil && len(*reviewText) > 5000 {
 		return nil, "reviewText too long"
@@ -54,7 +54,7 @@ func (req createReviewRequest) validate() (seenAt time.Time, vibe *db.CrowdVibe,
 	if err != nil {
 		return time.Time{}, nil, "seenAt must be an RFC3339 timestamp"
 	}
-	vibe, errMsg = validateReviewFields(req.RatingHalfStars, req.ReviewText, req.CrowdVibeNote, req.CrowdVibe)
+	vibe, errMsg = validateReviewFields(req.Rating, req.ReviewText, req.CrowdVibeNote, req.CrowdVibe)
 	if errMsg != "" {
 		return time.Time{}, nil, errMsg
 	}
@@ -99,7 +99,7 @@ func (h *Handlers) CreateReview(w http.ResponseWriter, r *http.Request) {
 
 	review, err := queries.CreateReview(r.Context(), tx, queries.CreateReviewParams{
 		UserID: user.ID, DjID: req.DjID, EventID: req.EventID,
-		RatingHalfStars: req.RatingHalfStars, ReviewText: req.ReviewText,
+		Rating: req.Rating, ReviewText: req.ReviewText,
 		CrowdVibe: vibe, CrowdVibeNote: req.CrowdVibeNote, SeenAt: seenAt,
 	})
 	if err != nil {
@@ -123,12 +123,12 @@ func (h *Handlers) CreateReview(w http.ResponseWriter, r *http.Request) {
 }
 
 type updateReviewRequest struct {
-	RatingHalfStars *int16    `json:"ratingHalfStars"`
-	ReviewText      *string   `json:"reviewText"`
-	CrowdVibe       *string   `json:"crowdVibe"`
-	CrowdVibeNote   *string   `json:"crowdVibeNote"`
-	SeenAt          *string   `json:"seenAt"`
-	TaggedUserIDs   *[]string `json:"taggedUserIds"`
+	Rating        *int16    `json:"rating"`
+	ReviewText    *string   `json:"reviewText"`
+	CrowdVibe     *string   `json:"crowdVibe"`
+	CrowdVibeNote *string   `json:"crowdVibeNote"`
+	SeenAt        *string   `json:"seenAt"`
+	TaggedUserIDs *[]string `json:"taggedUserIds"`
 }
 
 // requireOwnedReview loads a review and 404s (never 403) if it doesn't
@@ -177,7 +177,7 @@ func (h *Handlers) UpdateReview(w http.ResponseWriter, r *http.Request) {
 		BadRequest(w, "invalid request body")
 		return
 	}
-	vibe, errMsg := validateReviewFields(req.RatingHalfStars, req.ReviewText, req.CrowdVibeNote, req.CrowdVibe)
+	vibe, errMsg := validateReviewFields(req.Rating, req.ReviewText, req.CrowdVibeNote, req.CrowdVibe)
 	if errMsg != "" {
 		BadRequest(w, errMsg)
 		return
@@ -200,7 +200,7 @@ func (h *Handlers) UpdateReview(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(r.Context())
 
 	updated, err := queries.UpdateReview(r.Context(), tx, queries.UpdateReviewParams{
-		ID: id, RatingHalfStars: req.RatingHalfStars, ReviewText: req.ReviewText,
+		ID: id, Rating: req.Rating, ReviewText: req.ReviewText,
 		CrowdVibe: vibe, CrowdVibeNote: req.CrowdVibeNote, SeenAt: seenAt,
 	})
 	if err != nil {

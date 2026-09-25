@@ -106,6 +106,15 @@ definitions:
     - event
     - logs
     type: object
+  FavoriteReviewsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/ReviewDTO'
+        type: array
+    required:
+    - items
+    type: object
   FeedResponse:
     properties:
       followingCount:
@@ -173,7 +182,7 @@ definitions:
         type: string
       id:
         type: string
-      ratingHalfStars:
+      rating:
         type: integer
       reviewText:
         type: string
@@ -190,7 +199,7 @@ definitions:
     - djId
     - eventId
     - id
-    - ratingHalfStars
+    - rating
     - reviewText
     - seenAt
     - updatedAt
@@ -243,7 +252,7 @@ definitions:
         type: boolean
       likeCount:
         type: integer
-      ratingHalfStars:
+      rating:
         type: integer
       reviewText:
         type: string
@@ -266,7 +275,7 @@ definitions:
     - djId
     - eventId
     - id
-    - ratingHalfStars
+    - rating
     - reviewText
     - seenAt
     - taggedUsers
@@ -379,6 +388,37 @@ definitions:
     - totalLogs
     - uniqueDjs
     type: object
+  VenueDetailResponse:
+    properties:
+      city:
+        type: string
+      eventCount:
+        type: integer
+      events:
+        items:
+          $ref: '#/definitions/Event'
+        type: array
+      venue:
+        type: string
+    required:
+    - city
+    - eventCount
+    - events
+    - venue
+    type: object
+  VenueSummary:
+    properties:
+      city:
+        type: string
+      eventCount:
+        type: integer
+      venue:
+        type: string
+    required:
+    - city
+    - eventCount
+    - venue
+    type: object
   addCommentRequest:
     properties:
       body:
@@ -446,7 +486,7 @@ definitions:
         type: string
       eventId:
         type: string
-      ratingHalfStars:
+      rating:
         type: integer
       reviewText:
         type: string
@@ -461,7 +501,7 @@ definitions:
     - crowdVibeNote
     - djId
     - eventId
-    - ratingHalfStars
+    - rating
     - reviewText
     - seenAt
     - taggedUserIds
@@ -472,6 +512,15 @@ definitions:
         $ref: '#/definitions/apiError'
     required:
     - error
+    type: object
+  setFavoritesRequest:
+    properties:
+      reviewIds:
+        items:
+          type: string
+        type: array
+    required:
+    - reviewIds
     type: object
   updateProfileRequest:
     properties:
@@ -495,7 +544,7 @@ definitions:
         type: string
       crowdVibeNote:
         type: string
-      ratingHalfStars:
+      rating:
         type: integer
       reviewText:
         type: string
@@ -508,7 +557,7 @@ definitions:
     required:
     - crowdVibe
     - crowdVibeNote
-    - ratingHalfStars
+    - rating
     - reviewText
     - seenAt
     - taggedUserIds
@@ -1174,6 +1223,28 @@ paths:
       summary: Get a user's profile by username, with follow/log counts
       tags:
       - users
+  /api/users/{username}/favorites:
+    get:
+      parameters:
+      - description: username
+        in: path
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/FavoriteReviewsResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: 'Get a user''s showcased favorite reviews (top 3, ordered, #1 first)'
+      tags:
+      - users
   /api/users/{username}/reviews:
     get:
       parameters:
@@ -1278,6 +1349,42 @@ paths:
       summary: Update the caller's own profile
       tags:
       - users
+  /api/users/me/favorites:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: ordered review ids, at most 3, no duplicates
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/setFavoritesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/FavoriteReviewsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 'Replace the caller''s showcased favorite reviews (0-3, ordered, #1
+        first) - reviews must be the caller''s own'
+      tags:
+      - users
   /api/users/search:
     get:
       parameters:
@@ -1298,6 +1405,48 @@ paths:
       summary: Search users by username or display name
       tags:
       - users
+  /api/venues/{venue}:
+    get:
+      parameters:
+      - description: venue name
+        in: path
+        name: venue
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/VenueDetailResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: Get a venue by exact name, with its events
+      tags:
+      - venues
+  /api/venues/search:
+    get:
+      parameters:
+      - description: search query
+        in: query
+        name: q
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/VenueSummary'
+            type: array
+      summary: Search venues by name (derived from events.venue, grouped)
+      tags:
+      - venues
 securityDefinitions:
   BearerAuth:
     description: Clerk-issued session JWT, e.g. "Bearer eyJhbGc..."

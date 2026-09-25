@@ -5,10 +5,11 @@ import { queryKeys } from "./queryKeys";
 import type {
   DjDetail,
   EventDetail,
+  FavoriteReviewsResponse,
   FeedResponse,
-  LeaderboardEntry,
   PopularResponse,
   UserProfile,
+  VenueDetail,
 } from "./types";
 
 export function useUserProfile(username: string | undefined) {
@@ -35,6 +36,24 @@ export function useEventDetail(id: string | undefined) {
   });
 }
 
+export function useVenueDetail(venue: string | undefined) {
+  const api = useApi();
+  return useQuery({
+    queryKey: queryKeys.venues.byName(venue!),
+    queryFn: () => api.get<VenueDetail>(`/venues/${encodeURIComponent(venue!)}`),
+    enabled: venue !== undefined,
+  });
+}
+
+export function useFavoriteReviews(username: string | undefined) {
+  const api = useApi();
+  return useQuery({
+    queryKey: queryKeys.users.favorites(username!),
+    queryFn: () => api.get<FavoriteReviewsResponse>(`/users/${username}/favorites`),
+    enabled: username !== undefined,
+  });
+}
+
 export function useFeed(enabled: boolean = true) {
   const api = useApi();
   return useInfiniteQuery({
@@ -52,15 +71,6 @@ export function usePopularFeed(enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.feed.popular(),
     queryFn: () => api.get<PopularResponse>("/feed/popular", { limit: 20 }),
-    enabled,
-  });
-}
-
-export function useLeaderboard(enabled: boolean) {
-  const api = useApi();
-  return useQuery({
-    queryKey: queryKeys.users.leaderboard(),
-    queryFn: () => api.get<LeaderboardEntry[]>("/leaderboard"),
     enabled,
   });
 }

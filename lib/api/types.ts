@@ -31,11 +31,14 @@ export type Paginated<T> = {
 
 export type DjDetail = Schemas["DjDetailResponse"];
 export type EventDetail = Schemas["EventDetailResponse"];
+export type VenueSummary = Schemas["VenueSummary"];
+export type VenueDetail = Schemas["VenueDetailResponse"];
 export type UserProfile = Schemas["UserProfileResponse"];
 export type UserStats = Schemas["UserStatsResponse"];
 export type LeaderboardEntry = Schemas["LeaderboardEntry"];
 export type FeedResponse = Schemas["FeedResponse"];
 export type PopularResponse = Schemas["PopularResponse"];
+export type FavoriteReviewsResponse = Schemas["FavoriteReviewsResponse"];
 
 // Request bodies
 
@@ -58,7 +61,7 @@ export type CreateEventInput = {
 export type CreateReviewInput = {
   djId: string;
   eventId?: string;
-  ratingHalfStars?: number;
+  rating?: number;
   reviewText?: string;
   crowdVibe?: CrowdVibe;
   crowdVibeNote?: string;
@@ -75,4 +78,11 @@ export type UpdateProfileInput = {
   displayName?: string;
   bio?: string;
   avatarUrl?: string;
+};
+
+/** Ordered review ids to showcase on the caller's profile, #1 favorite
+ * first - at most 3, no duplicates, each must be a review the caller owns.
+ * Always a full replace (an empty array clears the showcase). */
+export type SetFavoritesInput = {
+  reviewIds: string[];
 };

@@ -1190,6 +1190,74 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/users/me/favorites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Replace the caller's showcased favorite reviews (0-3, ordered, #1 first) - reviews must be the caller's own */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description ordered review ids, at most 3, no duplicates */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["setFavoritesRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FavoriteReviewsResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/users/search": {
         parameters: {
             query?: never;
@@ -1355,6 +1423,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users/{username}/favorites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a user's showcased favorite reviews (top 3, ordered, #1 first) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description username */
+                    username: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FavoriteReviewsResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/{username}/reviews": {
         parameters: {
             query?: never;
@@ -1456,6 +1572,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/venues/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search venues by name (derived from events.venue, grouped) */
+        get: {
+            parameters: {
+                query: {
+                    /** @description search query */
+                    q: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VenueSummary"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/venues/{venue}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a venue by exact name, with its events */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description venue name */
+                    venue: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VenueDetailResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1494,6 +1697,9 @@ export interface components {
             event: components["schemas"]["Event"];
             logs: components["schemas"]["ReviewDTO"][];
         };
+        FavoriteReviewsResponse: {
+            items: components["schemas"]["ReviewDTO"][];
+        };
         FeedResponse: {
             followingCount: number;
             items: components["schemas"]["ReviewDTO"][];
@@ -1520,7 +1726,7 @@ export interface components {
             djId: string;
             eventId: string;
             id: string;
-            ratingHalfStars: number;
+            rating: number;
             reviewText: string;
             seenAt: string;
             updatedAt: string;
@@ -1547,7 +1753,7 @@ export interface components {
             isLikedByMe?: boolean;
             isPopular?: boolean;
             likeCount?: number;
-            ratingHalfStars: number;
+            rating: number;
             reviewText: string;
             seenAt: string;
             taggedUsers: components["schemas"]["User"][];
@@ -1593,6 +1799,17 @@ export interface components {
             totalLogs: number;
             uniqueDjs: number;
         };
+        VenueDetailResponse: {
+            city: string;
+            eventCount: number;
+            events: components["schemas"]["Event"][];
+            venue: string;
+        };
+        VenueSummary: {
+            city: string;
+            eventCount: number;
+            venue: string;
+        };
         addCommentRequest: {
             body: string;
         };
@@ -1619,13 +1836,16 @@ export interface components {
             crowdVibeNote: string;
             djId: string;
             eventId: string;
-            ratingHalfStars: number;
+            rating: number;
             reviewText: string;
             seenAt: string;
             taggedUserIds: string[];
         };
         errorEnvelope: {
             error: components["schemas"]["apiError"];
+        };
+        setFavoritesRequest: {
+            reviewIds: string[];
         };
         updateProfileRequest: {
             avatarUrl: string;
@@ -1636,7 +1856,7 @@ export interface components {
         updateReviewRequest: {
             crowdVibe: string;
             crowdVibeNote: string;
-            ratingHalfStars: number;
+            rating: number;
             reviewText: string;
             seenAt: string;
             taggedUserIds: string[];

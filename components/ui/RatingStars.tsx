@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, View } from "react-native";
 
-// `value` and `onChange` are in half-star units (1-10). Read-only when
-// `onChange` is omitted.
+// `value` is a 1-5 star rating. Read-only when `onChange` is omitted; a
+// non-integer `value` (e.g. an averaged rating) is rounded to the nearest
+// whole star for display.
 export function RatingStars({
   value,
   onChange,
@@ -12,14 +13,13 @@ export function RatingStars({
   onChange?: (value: number) => void;
   size?: number;
 }) {
-  const filled = value ?? 0;
+  const filled = Math.round(value ?? 0);
 
   return (
     <View className="flex-row">
       {Array.from({ length: 5 }).map((_, i) => {
-        const starValue = (i + 1) * 2;
-        const halfValue = starValue - 1;
-        const iconName = filled >= starValue ? "star" : filled >= halfValue ? "star-half" : "star-outline";
+        const starValue = i + 1;
+        const iconName = filled >= starValue ? "star" : "star-outline";
 
         const star = <Ionicons name={iconName} size={size} color="#884ACF" />;
 

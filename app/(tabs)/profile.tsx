@@ -2,11 +2,16 @@ import { useAuth } from "@clerk/expo";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { FlatList, Pressable, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Text } from "../../components/Text";
 
-import { Avatar } from "../../components/Avatar";
-import { EmptyState } from "../../components/EmptyState";
+import {
+  Avatar,
+  EmptyState,
+  Page,
+  PageHeader,
+  Text,
+  usePageContentStyle,
+} from "../../components/ui";
+import { FavoritesShowcase } from "../../components/FavoritesShowcase";
 import { ReviewCard } from "../../components/ReviewCard";
 import { StatsSummary } from "../../components/StatsSummary";
 import { useApi } from "../../lib/api/client";
@@ -17,6 +22,7 @@ import { ROUTES } from "../../lib/routes";
 export default function ProfileScreen() {
   const api = useApi();
   const { signOut } = useAuth();
+  const contentStyle = usePageContentStyle();
 
   const { data: me } = useQuery({
     queryKey: queryKeys.users.me(),
@@ -30,8 +36,8 @@ export default function ProfileScreen() {
   });
 
   return (
-    <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
-      <View className="px-4 pb-2 pt-6">
+    <Page>
+      <PageHeader>
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-3">
             <Avatar uri={me?.avatarUrl} name={me?.displayName ?? me?.username ?? "?"} size={72} />
@@ -62,14 +68,17 @@ export default function ProfileScreen() {
         </View>
         {me?.bio ? <Text className="mt-2 text-ink dark:text-paper">{me.bio}</Text> : null}
         {me?.username ? <StatsSummary username={me.username} /> : null}
-      </View>
+        {me?.username ? (
+          <FavoritesShowcase username={me.username} isSelf ownReviews={data?.items ?? []} />
+        ) : null}
+      </PageHeader>
       <FlatList
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={contentStyle}
         data={data?.items ?? []}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <ReviewCard log={{ ...item, user: me }} />}
         ListEmptyComponent={<EmptyState message="You haven't logged any sets yet." />}
       />
-    </SafeAreaView>
+    </Page>
   );
 }

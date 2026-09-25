@@ -89,7 +89,7 @@ type DjAggregate struct {
 func GetDjAggregate(ctx context.Context, q DBTX, djID string) (*DjAggregate, error) {
 	var agg DjAggregate
 	err := q.QueryRow(ctx, `
-		SELECT AVG(rating_half_stars)::float8, COUNT(*)
+		SELECT AVG(rating)::float8, COUNT(*)
 		FROM reviews WHERE dj_id = $1`, djID).Scan(&agg.AvgRating, &agg.LogCount)
 	if err != nil {
 		return nil, err

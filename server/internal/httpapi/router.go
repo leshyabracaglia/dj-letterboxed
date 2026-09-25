@@ -49,6 +49,8 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/djs/search", h.SearchDjs)
 			r.Get("/djs/spotify-search", h.SearchSpotify)
 			r.Get("/events/search", h.SearchEvents)
+			r.Get("/venues/search", h.SearchVenues)
+			r.Get("/venues/{venue}", h.GetVenueByName)
 			r.Get("/users/search", h.SearchUsers)
 			r.Get("/users/{username}", h.GetUserByUsername)
 			r.Get("/users/{username}/stats", h.GetUserStats)
@@ -66,6 +68,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/events/{id}", h.GetEventByID)
 			r.Get("/reviews/{id}", h.GetReviewByID)
 			r.Get("/users/{username}/reviews", h.ListReviewsByUser)
+			r.Get("/users/{username}/favorites", h.GetFavoriteReviews)
 			r.Get("/feed/popular", h.GetPopular)
 		})
 
@@ -90,6 +93,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 
 			r.Get("/users/me", h.Me)
 			r.Patch("/users/me", h.UpdateProfile)
+			r.Patch("/users/me/favorites", h.SetFavoriteReviews)
 			r.Get("/leaderboard", h.GetLeaderboard)
 
 			r.Get("/feed", h.GetActivity)
