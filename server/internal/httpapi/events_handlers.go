@@ -55,18 +55,18 @@ func (h *Handlers) GetEventByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logs, err := queries.ListReviewsByEvent(r.Context(), h.Pool, event.ID)
+	reviews, err := queries.ListReviewsByEvent(r.Context(), h.Pool, event.ID)
 	if err != nil {
 		InternalError(w, err)
 		return
 	}
-	dtos, err := h.hydrateReviews(r.Context(), logs, hydrateOpts{IncludeUser: true, IncludeDj: true})
+	dtos, err := h.hydrateReviews(r.Context(), reviews, hydrateOpts{IncludeUser: true, IncludeDj: true})
 	if err != nil {
 		InternalError(w, err)
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, EventDetailResponse{Event: *event, Logs: dtos})
+	WriteJSON(w, http.StatusOK, EventDetailResponse{Event: *event, Reviews: dtos})
 }
 
 type createEventRequest struct {

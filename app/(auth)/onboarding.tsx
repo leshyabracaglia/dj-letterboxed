@@ -1,5 +1,4 @@
 import { useAuth, useUser } from "@clerk/expo";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
@@ -8,24 +7,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar, Button, Text } from "../../components/ui";
 
-import { useApi } from "../../lib/api/client";
-import { queryKeys } from "../../lib/api/queryKeys";
-import type { UpdateProfileInput, User } from "../../lib/api/types";
+import { useCurrentUser, useUpdateProfile } from "../../lib/auth";
 import { pickAndUploadAvatar } from "../../lib/avatarUpload";
 import { ROUTES } from "../../lib/routes";
 
 const USERNAME_RE = /^[a-z0-9_]{3,32}$/;
 
 export default function OnboardingScreen() {
-  const api = useApi();
-  const queryClient = useQueryClient();
   const { user: clerkUser } = useUser();
   const { signOut } = useAuth();
 
-  const { data: me } = useQuery({
-    queryKey: queryKeys.users.me(),
-    queryFn: () => api.get<User>("/users/me"),
-  });
+  const { me } = useCurrentUser();
 
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
@@ -50,23 +42,11 @@ export default function OnboardingScreen() {
     }
   };
 
-  const submit = useMutation({
-    mutationFn: (input: UpdateProfileInput) => api.patch<User>("/users/me", input),
-    onSuccess: (updated) => {
-      // Seed the cache synchronously with the response before navigating -
-      // (tabs)/_layout's onboarding gate reads this query on mount, and an
-      // async invalidateQueries() wouldn't resolve in time, bouncing us
-      // straight back here with the stale (still-fallback) username.
-      queryClient.setQueryData(queryKeys.users.me(), updated);
-      router.replace(ROUTES.FEED);
-    },
-    onError: (err: any) => {
-      setError(
-        err?.code === "USERNAME_TAKEN"
-          ? "That username is already taken."
-          : (err?.message ?? "Could not save your profile."),
-      );
-    },
+  // useUpdateProfile seeds the current-user cache before this onSuccess runs,
+  // so the tabs layout's onboarding gate sees the new username immediately.
+  const submit = useUpdateProfile({
+    onSuccess: () => router.replace(ROUTES.FEED),
+    onError: setError,
   });
 
   const onSubmit = () => {

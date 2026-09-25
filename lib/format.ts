@@ -4,7 +4,7 @@ export function formatRating(rating: number | null | undefined): string {
   return Number.isInteger(rating) ? String(rating) : rating.toFixed(1);
 }
 
-// Date-only: for when something was logged/seen, where the exact time isn't meaningful.
+// Date-only: for when something was reviewed/seen, where the exact time isn't meaningful.
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }

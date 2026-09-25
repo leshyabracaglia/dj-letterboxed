@@ -1,7 +1,7 @@
 import type { Href } from "expo-router";
 import { Link } from "expo-router";
 import type { ReactNode } from "react";
-import { Pressable } from "react-native";
+import { Pressable, View } from "react-native";
 
 import { GlassSurface } from "./GlassSurface";
 
@@ -25,16 +25,21 @@ export function Card({
   tint = "neutral",
   children,
 }: {
-  href: Href;
+  // Omit for a non-interactive card (e.g. a loading skeleton in the same frame).
+  href?: Href;
   tint?: keyof typeof TINTS;
   children: ReactNode;
 }) {
+  const surface = (
+    <GlassSurface className={`rounded-2xl border p-4 ${TINTS[tint]}`}>{children}</GlassSurface>
+  );
+  if (!href) {
+    return <View className="mb-3 overflow-hidden rounded-2xl shadow-sm">{surface}</View>;
+  }
   return (
     <Link href={href} asChild>
       <Pressable className="mb-3 overflow-hidden rounded-2xl shadow-sm active:opacity-90">
-        <GlassSurface className={`rounded-2xl border p-4 ${TINTS[tint]}`}>
-          {children}
-          </GlassSurface>
+        {surface}
       </Pressable>
     </Link>
   );

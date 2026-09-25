@@ -5,7 +5,7 @@ import {
   EmptyState,
   Page,
   PageHeader,
-  ScreenLoading,
+  Skeleton,
   Text,
   usePageContentStyle,
 } from "../../components/ui";
@@ -25,6 +25,29 @@ function VenueEventRow({ event }: { event: Event }) {
   );
 }
 
+function VenueSkeleton() {
+  const contentStyle = usePageContentStyle();
+  return (
+    <Page>
+      <PageHeader border="accent">
+        <Skeleton className="h-7 w-48" />
+        <Skeleton className="mt-2 h-4 w-36" />
+      </PageHeader>
+      <View style={contentStyle}>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <View
+            key={i}
+            className="mb-3 rounded-2xl border border-accent/15 bg-white p-4 dark:bg-surface-dark"
+          >
+            <Skeleton className="h-5 w-44" />
+            <Skeleton className="mt-2 h-3 w-28" />
+          </View>
+        ))}
+      </View>
+    </Page>
+  );
+}
+
 export default function VenueScreen() {
   // expo-router's LocationProvider already runs every param through
   // decodeURIComponent before it reaches here - don't decode again.
@@ -33,7 +56,7 @@ export default function VenueScreen() {
   const contentStyle = usePageContentStyle();
 
   if (!data) {
-    return <ScreenLoading />;
+    return <VenueSkeleton />;
   }
 
   return (
@@ -43,7 +66,7 @@ export default function VenueScreen() {
         <Text className="text-2xl font-bold text-ink dark:text-paper">{data.venue}</Text>
         <Text className="mt-1 text-muted">
           {data.city ? `${data.city} · ` : ""}
-          {data.eventCount} {data.eventCount === 1 ? "event" : "events"} logged
+          {data.eventCount} {data.eventCount === 1 ? "event" : "events"} reviewed
         </Text>
       </PageHeader>
       <FlatList
@@ -51,7 +74,7 @@ export default function VenueScreen() {
         data={data.events}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <VenueEventRow event={item} />}
-        ListEmptyComponent={<EmptyState message="No events logged at this venue yet." />}
+        ListEmptyComponent={<EmptyState message="No events reviewed at this venue yet." />}
       />
     </Page>
   );

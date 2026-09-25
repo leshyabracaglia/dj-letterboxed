@@ -82,15 +82,15 @@ func GetDjsByIDs(ctx context.Context, q DBTX, ids []string) (map[string]db.Dj, e
 }
 
 type DjAggregate struct {
-	AvgRating *float64 `json:"avgRating"`
-	LogCount  int64    `json:"logCount"`
+	AvgRating   *float64 `json:"avgRating"`
+	ReviewCount int64    `json:"reviewCount"`
 }
 
 func GetDjAggregate(ctx context.Context, q DBTX, djID string) (*DjAggregate, error) {
 	var agg DjAggregate
 	err := q.QueryRow(ctx, `
 		SELECT AVG(rating)::float8, COUNT(*)
-		FROM reviews WHERE dj_id = $1`, djID).Scan(&agg.AvgRating, &agg.LogCount)
+		FROM reviews WHERE dj_id = $1`, djID).Scan(&agg.AvgRating, &agg.ReviewCount)
 	if err != nil {
 		return nil, err
 	}

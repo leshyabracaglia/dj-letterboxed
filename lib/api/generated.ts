@@ -734,7 +734,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Log a set: create a review of a DJ (optionally tied to an event) */
+        /** Create a review of a DJ (optionally tied to an event) */
         post: {
             parameters: {
                 query?: never;
@@ -1382,7 +1382,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a user's profile by username, with follow/log counts */
+        /** Get a user's profile by username, with follow/review counts */
         get: {
             parameters: {
                 query?: never;
@@ -1531,7 +1531,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a user's log stats: totals, top DJs, top venues */
+        /** Get a user's review stats: totals, top DJs, top venues */
         get: {
             parameters: {
                 query?: never;
@@ -1680,8 +1680,8 @@ export interface components {
         DjDetailResponse: {
             avgRating: number;
             dj: components["schemas"]["Dj"];
-            logCount: number;
-            recentLogs: components["schemas"]["ReviewDTO"][];
+            recentReviews: components["schemas"]["ReviewDTO"][];
+            reviewCount: number;
         };
         Event: {
             city: string;
@@ -1695,7 +1695,7 @@ export interface components {
         };
         EventDetailResponse: {
             event: components["schemas"]["Event"];
-            logs: components["schemas"]["ReviewDTO"][];
+            reviews: components["schemas"]["ReviewDTO"][];
         };
         FavoriteReviewsResponse: {
             items: components["schemas"]["ReviewDTO"][];
@@ -1709,7 +1709,7 @@ export interface components {
             following: boolean;
         };
         LeaderboardEntry: {
-            logCount: number;
+            reviewCount: number;
             user: components["schemas"]["User"];
         };
         PaginatedReviews: {
@@ -1772,10 +1772,10 @@ export interface components {
         };
         TopDj: {
             dj: components["schemas"]["Dj"];
-            logCount: number;
+            reviewCount: number;
         };
         TopVenue: {
-            logCount: number;
+            reviewCount: number;
             venue: string;
         };
         User: {
@@ -1790,13 +1790,13 @@ export interface components {
         UserProfileResponse: {
             followerCount: number;
             followingCount: number;
-            logCount: number;
+            reviewCount: number;
             user: components["schemas"]["User"];
         };
         UserStatsResponse: {
             topDjs: components["schemas"]["TopDj"][];
             topVenues: components["schemas"]["TopVenue"][];
-            totalLogs: number;
+            totalReviews: number;
             uniqueDjs: number;
         };
         VenueDetailResponse: {

@@ -8,13 +8,35 @@ import {
   Page,
   PageHeader,
   RatingStars,
-  ScreenLoading,
+  Skeleton,
   Text,
   usePageContentStyle,
 } from "../../components/ui";
-import { ReviewCard } from "../../components/ReviewCard";
+import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
 import { useDjDetail } from "../../lib/api/hooks";
 import { formatRating } from "../../lib/format";
+
+function DjProfileSkeleton() {
+  const contentStyle = usePageContentStyle();
+  return (
+    <Page>
+      <PageHeader border="primary">
+        <View className="flex-row items-center gap-3">
+          <Skeleton className="h-16 w-16 rounded-full" />
+          <View className="flex-1">
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="mt-2 h-4 w-40" />
+          </View>
+        </View>
+        <Skeleton className="mt-3 h-4 w-full" />
+        <Skeleton className="mt-1.5 h-4 w-3/4" />
+      </PageHeader>
+      <View style={contentStyle}>
+        <ReviewCardSkeleton count={3} />
+      </View>
+    </Page>
+  );
+}
 
 export default function DjProfileScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -22,7 +44,7 @@ export default function DjProfileScreen() {
   const contentStyle = usePageContentStyle();
 
   if (!data) {
-    return <ScreenLoading />;
+    return <DjProfileSkeleton />;
   }
 
   const avgRating = data.avgRating ? Number(data.avgRating) : null;
@@ -41,7 +63,7 @@ export default function DjProfileScreen() {
                 <Text className="font-numeric text-base text-ink dark:text-paper">
                   {formatRating(avgRating)}
                 </Text>{" "}
-                (<Text className="font-numeric text-base text-ink dark:text-paper">{data.logCount}</Text> logs)
+                (<Text className="font-numeric text-base text-ink dark:text-paper">{data.reviewCount}</Text> reviews)
               </Text>
             </View>
           </View>
@@ -55,10 +77,10 @@ export default function DjProfileScreen() {
       </PageHeader>
       <FlatList
         contentContainerStyle={contentStyle}
-        data={data.recentLogs}
+        data={data.recentReviews}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <ReviewCard log={{ ...item, dj: data.dj }} />}
-        ListEmptyComponent={<EmptyState message="No logs yet for this DJ." />}
+        renderItem={({ item }) => <ReviewCard review={{ ...item, dj: data.dj }} />}
+        ListEmptyComponent={<EmptyState message="No reviews yet for this DJ." />}
       />
     </Page>
   );

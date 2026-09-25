@@ -161,20 +161,20 @@ func UpdateUserProfile(ctx context.Context, q DBTX, id string, username, display
 }
 
 type LeaderboardEntry struct {
-	User     db.User `json:"user"`
-	LogCount int64   `json:"logCount"`
+	User        db.User `json:"user"`
+	ReviewCount int64   `json:"reviewCount"`
 }
 
 // GetLeaderboard scopes to the caller and everyone they follow.
 func GetLeaderboard(ctx context.Context, q DBTX, userIDs []string) ([]LeaderboardEntry, error) {
 	rows, err := q.Query(ctx, `
 		SELECT u.id, u.clerk_id, u.username, u.display_name, u.bio, u.avatar_url, u.created_at, u.updated_at,
-			COUNT(r.id) AS log_count
+			COUNT(r.id) AS review_count
 		FROM users u
 		LEFT JOIN reviews r ON r.user_id = u.id
 		WHERE u.id = ANY($1)
 		GROUP BY u.id
-		ORDER BY log_count DESC`, userIDs)
+		ORDER BY review_count DESC`, userIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +183,7 @@ func GetLeaderboard(ctx context.Context, q DBTX, userIDs []string) ([]Leaderboar
 	var out []LeaderboardEntry
 	for rows.Next() {
 		var e LeaderboardEntry
-		if err := rows.Scan(&e.User.ID, &e.User.ClerkID, &e.User.Username, &e.User.DisplayName, &e.User.Bio, &e.User.AvatarURL, &e.User.CreatedAt, &e.User.UpdatedAt, &e.LogCount); err != nil {
+		if err := rows.Scan(&e.User.ID, &e.User.ClerkID, &e.User.Username, &e.User.DisplayName, &e.User.Bio, &e.User.AvatarURL, &e.User.CreatedAt, &e.User.UpdatedAt, &e.ReviewCount); err != nil {
 			return nil, err
 		}
 		out = append(out, e)

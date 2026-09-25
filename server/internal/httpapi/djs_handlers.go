@@ -74,10 +74,10 @@ func (h *Handlers) GetDjBySlug(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteJSON(w, http.StatusOK, DjDetailResponse{
-		Dj:         *dj,
-		AvgRating:  agg.AvgRating,
-		LogCount:   agg.LogCount,
-		RecentLogs: recentDTOs,
+		Dj:            *dj,
+		AvgRating:     agg.AvgRating,
+		ReviewCount:   agg.ReviewCount,
+		RecentReviews: recentDTOs,
 	})
 }
 

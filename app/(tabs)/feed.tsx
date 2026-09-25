@@ -3,7 +3,7 @@ import { useState } from "react";
 import { FlatList, Pressable, View } from "react-native";
 
 import { EmptyState, Page, Text, usePageContentStyle } from "../../components/ui";
-import { ReviewCard } from "../../components/ReviewCard";
+import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
 import { useFeed, usePopularFeed } from "../../lib/api/hooks";
 
 const FEED_TABS = {
@@ -70,23 +70,25 @@ export default function FeedScreen() {
           contentContainerStyle={contentStyle}
           data={popularData?.items ?? []}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ReviewCard log={item} />}
+          renderItem={({ item }) => <ReviewCard review={item} />}
           ListHeaderComponent={
             noFollowing ? (
               <Text className="mb-4 text-center text-muted">
                 {isSignedIn
-                  ? "Follow some people to see their logs here."
-                  : "Sign up to follow people and see their logs here."}
+                  ? "Follow some people to see their reviews here."
+                  : "Sign up to follow people and see their reviews here."}
               </Text>
             ) : null
           }
           ListEmptyComponent={
-            !isPopularLoading ? (
+            isPopularLoading ? (
+              <ReviewCardSkeleton count={4} />
+            ) : (
               <EmptyState
-                message="No reviews yet — be the first to log a set."
+                message="No reviews yet — be the first to review a set."
                 className="mt-4 text-center text-muted"
               />
-            ) : null
+            )
           }
         />
       ) : (
@@ -94,7 +96,7 @@ export default function FeedScreen() {
           contentContainerStyle={contentStyle}
           data={items}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ReviewCard log={item} />}
+          renderItem={({ item }) => <ReviewCard review={item} />}
           onEndReachedThreshold={0.5}
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) {
@@ -102,14 +104,14 @@ export default function FeedScreen() {
             }
           }}
           ListFooterComponent={
-            isFetchingNextPage ? (
-              <Text className="my-4 text-center text-muted">Loading more…</Text>
-            ) : null
+            isFetchingNextPage ? <ReviewCardSkeleton count={2} /> : null
           }
           ListEmptyComponent={
-            !isLoading ? (
-              <EmptyState message="Follow some people to see their logs here." />
-            ) : null
+            isLoading ? (
+              <ReviewCardSkeleton count={4} />
+            ) : (
+              <EmptyState message="Follow some people to see their reviews here." />
+            )
           }
         />
       )}

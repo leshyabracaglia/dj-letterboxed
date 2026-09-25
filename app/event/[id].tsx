@@ -1,17 +1,33 @@
 import { Stack, useLocalSearchParams } from "expo-router";
-import { FlatList } from "react-native";
+import { FlatList, View } from "react-native";
 
 import {
   EmptyState,
   Page,
   PageHeader,
-  ScreenLoading,
+  Skeleton,
   Text,
   usePageContentStyle,
 } from "../../components/ui";
-import { ReviewCard } from "../../components/ReviewCard";
+import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
 import { useEventDetail } from "../../lib/api/hooks";
 import { formatDateTime } from "../../lib/format";
+
+function EventSkeleton() {
+  const contentStyle = usePageContentStyle();
+  return (
+    <Page>
+      <PageHeader border="accent">
+        <Skeleton className="h-7 w-56" />
+        <Skeleton className="mt-2 h-4 w-40" />
+        <Skeleton className="mt-2 h-3 w-28" />
+      </PageHeader>
+      <View style={contentStyle}>
+        <ReviewCardSkeleton count={3} />
+      </View>
+    </Page>
+  );
+}
 
 export default function EventScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -19,7 +35,7 @@ export default function EventScreen() {
   const contentStyle = usePageContentStyle();
 
   if (!data) {
-    return <ScreenLoading />;
+    return <EventSkeleton />;
   }
 
   return (
@@ -38,10 +54,10 @@ export default function EventScreen() {
       </PageHeader>
       <FlatList
         contentContainerStyle={contentStyle}
-        data={data.logs}
+        data={data.reviews}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <ReviewCard log={item} />}
-        ListEmptyComponent={<EmptyState message="No logs yet for this event." />}
+        renderItem={({ item }) => <ReviewCard review={item} />}
+        ListEmptyComponent={<EmptyState message="No reviews yet for this event." />}
       />
     </Page>
   );

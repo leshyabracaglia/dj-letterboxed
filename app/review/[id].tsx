@@ -9,10 +9,11 @@ import {
   Button,
   Page,
   RatingStars,
-  ScreenLoading,
+  Skeleton,
   Text,
   usePageContentStyle,
 } from "../../components/ui";
+import { useCurrentUser } from "../../lib/auth";
 import { useApi } from "../../lib/api/client";
 import { queryKeys } from "../../lib/api/queryKeys";
 import type { Dj, Event, Review, ReviewComment, User } from "../../lib/api/types";
@@ -30,11 +31,7 @@ function CommentSection({ reviewId }: { reviewId: string }) {
     queryKey: queryKeys.reviews.comments(reviewId),
     queryFn: () => api.get<ReviewComment[]>(`/reviews/${reviewId}/comments`),
   });
-  const { data: me } = useQuery({
-    queryKey: queryKeys.users.me(),
-    queryFn: () => api.get<User>("/users/me"),
-    enabled: isSignedIn,
-  });
+  const { me } = useCurrentUser();
 
   const commentsKey = queryKeys.reviews.comments(reviewId);
   const invalidate = () => queryClient.invalidateQueries({ queryKey: commentsKey });
@@ -105,7 +102,17 @@ function CommentSection({ reviewId }: { reviewId: string }) {
           ) : null}
         </View>
       ))}
-      {(comments ?? []).length === 0 ? (
+      {!comments ? (
+        Array.from({ length: 2 }).map((_, i) => (
+          <View key={i} className="mb-3 flex-row items-start gap-2">
+            <Skeleton className="h-6 w-6 rounded-full" />
+            <View className="flex-1">
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="mt-1.5 h-3.5 w-3/4" />
+            </View>
+          </View>
+        ))
+      ) : comments.length === 0 ? (
         <Text className="mb-3 text-sm text-muted">No comments yet.</Text>
       ) : null}
       {isSignedIn ? (
@@ -200,7 +207,7 @@ function LikeButton({
 }
 
 // getById always hydrates these relations, so narrow them to required here.
-type LogDetail = Review & {
+type ReviewDetail = Review & {
   dj: Dj;
   event: Event | null;
   taggedUsers: User[];
@@ -209,78 +216,106 @@ type LogDetail = Review & {
   isLikedByMe: boolean;
 };
 
-export default function LogDetailScreen() {
+function ReviewDetailSkeleton() {
+  const contentStyle = usePageContentStyle();
+  return (
+    <Page>
+      <View style={[contentStyle, { paddingTop: 24, alignItems: "center" }]}>
+        <View className="w-full max-w-xl rounded-2xl border border-primary/15 bg-white dark:bg-surface-dark p-5 shadow-sm">
+          <View className="flex-row items-start justify-between gap-3">
+            <Skeleton className="h-7 w-44" />
+            <Skeleton className="h-4 w-24" />
+          </View>
+          <Skeleton className="mt-3 h-4 w-52" />
+          <Skeleton className="mt-2 h-3.5 w-28" />
+          <Skeleton className="mt-5 h-4 w-full" />
+          <Skeleton className="mt-2 h-4 w-full" />
+          <Skeleton className="mt-2 h-4 w-2/3" />
+          <View className="mt-4 flex-row items-center justify-between border-t border-primary/10 pt-4">
+            <View className="flex-row items-center gap-2">
+              <Skeleton className="h-7 w-7 rounded-full" />
+              <Skeleton className="h-3.5 w-32" />
+            </View>
+            <Skeleton className="h-8 w-14 rounded-full" />
+          </View>
+        </View>
+      </View>
+    </Page>
+  );
+}
+
+export default function ReviewDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const api = useApi();
   const contentStyle = usePageContentStyle();
-  const { data: log } = useQuery({
+  const { data: review } = useQuery({
     queryKey: queryKeys.reviews.byId(id!),
-    queryFn: () => api.get<LogDetail>(`/reviews/${id}`),
+    queryFn: () => api.get<ReviewDetail>(`/reviews/${id}`),
   });
 
-  if (!log) {
-    return <ScreenLoading />;
+  if (!review) {
+    return <ReviewDetailSkeleton />;
   }
 
   return (
     <Page>
-      <Stack.Screen options={{ title: log.dj.name }} />
+      <Stack.Screen options={{ title: review.dj.name }} />
       <ScrollView contentContainerStyle={[contentStyle, { paddingTop: 24, alignItems: "center" }]}>
         <View className="w-full max-w-xl rounded-2xl border border-primary/15 bg-white dark:bg-surface-dark p-5 shadow-sm">
           <View className="flex-row items-start justify-between gap-3">
             <View className="flex-1">
-              <Link href={ROUTES.DJ(log.dj.slug)}>
+              <Link href={ROUTES.DJ(review.dj.slug)}>
                 <Text className="text-2xl font-bold text-primary dark:text-primary-dark">
-                  {log.dj.name}
+                  {review.dj.name}
                 </Text>
               </Link>
             </View>
-            <RatingStars value={log.rating} size={16} />
+            <RatingStars value={review.rating} size={16} />
           </View>
 
-          {log.event ? (
-            <Link href={ROUTES.EVENT(log.event.id)}>
+          {review.event && (
+            <Link href={ROUTES.EVENT(review.event.id)}>
               <Text className="mt-2 text-sm font-medium text-accent-text dark:text-accent-dark">
-                {log.event.name} · {log.event.venue}
+                {review.event.name} · {review.event.venue}
               </Text>
             </Link>
-          ) : null}
+          )} 
 
-          <Text className="mt-1 text-sm text-muted">Seen {formatDate(log.seenAt)}</Text>
+          <Text className="mt-1 text-sm text-muted">Seen {formatDate(review.seenAt)}</Text>
 
-          {log.crowdVibe ? (
+          {review.crowdVibe && (
             <View className="mt-3">
-              <CrowdVibeBadge vibe={log.crowdVibe} />
+              <CrowdVibeBadge vibe={review.crowdVibe} />
             </View>
-          ) : null}
+          )}
 
-          {log.reviewText ? (
-            <Text className="mt-4 text-base text-ink dark:text-paper">{log.reviewText}</Text>
-          ) : null}
+          {review.reviewText && (
+            <Text className="mt-4 text-base text-ink dark:text-paper">{review.reviewText}</Text>
+          )}
 
-          {log.taggedUsers && log.taggedUsers.length > 0 ? (
+          {review.taggedUsers && review.taggedUsers.length > 0 && (
             <Text className="mt-3 text-sm text-muted">
-              With {log.taggedUsers.map((u) => `@${u.username}`).join(", ")}
+              With {review.taggedUsers.map((u) => `@${u.username}`).join(", ")}
             </Text>
-          ) : null}
+          )}
 
           <View className="mt-4 flex-row items-center justify-between border-t border-primary/10 pt-4">
-            <Link href={ROUTES.USER(log.user.username)} asChild>
+            <Link href={ROUTES.USER(review.user.username)} asChild>
               <Pressable className="flex-row items-center gap-2 active:opacity-80">
                 <Avatar
-                  uri={log.user.avatarUrl}
-                  name={log.user.displayName ?? log.user.username}
+                  uri={review.user.avatarUrl}
+                  name={review.user.displayName ?? review.user.username}
                   size={28}
                 />
-                <Text className="text-sm text-muted">Logged by @{log.user.username}</Text>
+                <Text className="text-sm text-muted">Reviewed by @{review.user.username}</Text>
               </Pressable>
             </Link>
-            <LikeButton reviewId={log.id} likeCount={log.likeCount} isLiked={log.isLikedByMe} />
+            <LikeButton reviewId={review.id} likeCount={review.likeCount} isLiked={review.isLikedByMe} />
           </View>
         </View>
 
         <View className="w-full max-w-xl">
-          <CommentSection reviewId={log.id} />
+          <CommentSection reviewId={review.id} />
         </View>
       </ScrollView>
     </Page>

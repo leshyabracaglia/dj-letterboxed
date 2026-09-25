@@ -1,15 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "@clerk/expo";
-import { useQuery } from "@tanstack/react-query";
 import { Redirect, useSegments } from "expo-router";
 import { Tabs } from "expo-router/js-tabs";
 import { useColorScheme } from "nativewind";
 import { ColorValue, Platform } from "react-native";
 
 import { WebNav } from "../../components/WebNav";
-import { useApi } from "../../lib/api/client";
-import { queryKeys } from "../../lib/api/queryKeys";
-import type { User } from "../../lib/api/types";
+import { useCurrentUser } from "../../lib/auth";
 import { ROUTES } from "../../lib/routes";
 import { needsOnboarding } from "../../lib/user";
 
@@ -28,21 +24,14 @@ function TabIcon({
 }
 
 export default function TabsLayout() {
-  const { isSignedIn, isLoaded } = useAuth();
+  const { me, isSignedIn, isLoaded } = useCurrentUser();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
-  const api = useApi();
   const segments = useSegments();
   // Browse (DJ search) and Feed (falls back to Popular without a following
-  // graph) work without an account; Log and Profile redirect to sign-in.
+  // graph) work without an account; Review and Profile redirect to sign-in.
   const activeTab = segments[segments.length - 1];
   const isPublicTab = activeTab === "browse" || activeTab === "feed";
-
-  const { data: me } = useQuery({
-    queryKey: queryKeys.users.me(),
-    queryFn: () => api.get<User>("/users/me"),
-    enabled: !!isSignedIn,
-  });
 
   if (!isLoaded) {
     return null;
@@ -88,9 +77,9 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="log"
+        name="review"
         options={{
-          title: "Log a Set",
+          title: "Review a Set",
           tabBarIcon: ({ color, size }) => (
             <TabIcon name="add-circle" color={color} size={size} />
           ),

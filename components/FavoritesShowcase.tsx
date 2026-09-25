@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Modal, Pressable, ScrollView, View } from "react-native";
-import { Avatar, Button, Text } from "./ui";
+import { Avatar, Button, Skeleton, Text } from "./ui";
 
 import { useApi } from "../lib/api/client";
 import { useFavoriteReviews } from "../lib/api/hooks";
@@ -15,7 +15,7 @@ const MAX_FAVORITES = 3;
 
 /** A user's pinned top-3 shows, shown on their profile. Read-only for
  * everyone but the profile's owner, who can tap "Edit" to pick from their
- * own logged reviews - tap order sets the rank (#1 first). */
+ * own reviews - tap order sets the rank (#1 first). */
 export function FavoritesShowcase({
   username,
   isSelf,
@@ -23,14 +23,28 @@ export function FavoritesShowcase({
 }: {
   username: string;
   isSelf: boolean;
-  /** The signed-in owner's own logged reviews, to pick favorites from.
+  /** The signed-in owner's own reviews, to pick favorites from.
    * Unused (and not required) when isSelf is false. */
   ownReviews?: Review[];
 }) {
   const { data } = useFavoriteReviews(username);
   const [editing, setEditing] = useState(false);
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <View className="mt-3 border-t border-primary/15 pt-3">
+        <Skeleton className="h-4 w-28" />
+        <View className="mt-2 flex-row gap-3">
+          {Array.from({ length: MAX_FAVORITES }).map((_, i) => (
+            <View key={i} className="w-20 items-center">
+              <Skeleton className="h-14 w-14 rounded-full" />
+              <Skeleton className="mt-1.5 h-3 w-14" />
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  }
   if (data.items.length === 0 && !isSelf) return null;
 
   return (
@@ -60,7 +74,7 @@ export function FavoritesShowcase({
           return (
             <Pressable
               key={review.id}
-              onPress={() => router.push(ROUTES.LOG_DETAIL(review.id))}
+              onPress={() => router.push(ROUTES.REVIEW_DETAIL(review.id))}
               className="w-20 items-center"
             >
               <Avatar uri={review.dj?.imageUrl} name={review.dj?.name ?? "?"} size={56} />
@@ -140,7 +154,7 @@ function EditFavoritesModal({
           <ScrollView className="max-h-96">
             {ownReviews.length === 0 ? (
               <Text className="py-6 text-center text-muted">
-                Log a show first, then come back to pin your favorites.
+                Review a show first, then come back to pin your favorites.
               </Text>
             ) : (
               ownReviews.map((review) => {

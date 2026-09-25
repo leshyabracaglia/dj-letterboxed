@@ -10,5 +10,5 @@ export { Button } from "./Button";
 export { Page } from "./Page";
 export { PageHeader } from "./PageHeader";
 export { RatingStars } from "./RatingStars";
-export { ScreenLoading } from "./ScreenLoading";
+export { Skeleton } from "./Skeleton";
 export { Text } from "./Text";

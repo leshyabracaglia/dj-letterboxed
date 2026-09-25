@@ -78,8 +78,7 @@ ALB-based design.
    then update the `database_url` secret (`modules/secrets/main.tf`) to use
    `beatboxd_app` instead of the master user, and re-apply (this changes
    the `.env` file `user_data` writes on next instance replacement — for
-   an in-place update, re-run the SSM deploy command above after rotating
-   the secret so the running container picks up the new DSN).
+   an in-place update, see "Rotating secrets" below).
 
 6. **GitHub Actions**: `.github/workflows/server-deploy.yml` assumes
    `terraform output -raw github_deploy_role_arn` via OIDC (set as the
@@ -88,7 +87,23 @@ ALB-based design.
    triggered once `server-ci` succeeds on `main`. It looks up the running
    instance by its `Name=beatboxd-app` tag rather than a hardcoded
    instance ID, since that ID changes across a `user_data`-forced
-   replacement (e.g. rotating `clerk_issuer`/`clerk_jwks_url`).
+   replacement (e.g. rotating `clerk_issuer`/`clerk_jwks_url`). Before
+   restarting the stack it runs `server/deploy/refresh-env.sh` on the
+   instance, which re-reads every Secrets Manager-backed value into
+   `/opt/beatboxd/.env`.
+
+## Rotating secrets
+
+`user_data` only writes `/opt/beatboxd/.env` on first boot, and changing a
+secret's *value* doesn't change `user_data`, so `terraform apply` alone never
+reaches the running container. After updating a secret (Clerk secret key,
+webhook signing secret, Spotify creds, `DATABASE_URL`) via `terraform apply`,
+re-run the `server-deploy` workflow (Actions → server-deploy → re-run, or push
+to `main`) — its refresh step pulls the new values into `.env` and
+`docker compose up -d` recreates the API container with them. The manual SSM
+command in step 3 does *not* refresh secrets. `clerk_jwks_url`/`clerk_issuer`
+are plain Terraform vars baked into `user_data`, so changing those replaces
+the instance instead.
 
 ## Why these choices (and what changed from the original ECS/Aurora design)
 

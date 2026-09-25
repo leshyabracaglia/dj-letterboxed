@@ -63,7 +63,7 @@ func (req createReviewRequest) validate() (seenAt time.Time, vibe *db.CrowdVibe,
 
 // CreateReview godoc
 //
-//	@Summary	Log a set: create a review of a DJ (optionally tied to an event)
+//	@Summary	Create a review of a DJ (optionally tied to an event)
 //	@Tags		reviews
 //	@Accept		json
 //	@Produce	json

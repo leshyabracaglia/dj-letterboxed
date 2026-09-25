@@ -14,6 +14,7 @@ import { Appearance, Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { WebNav } from "../components/WebNav";
+import { AuthProvider } from "../lib/auth";
 import { tokenCache } from "../lib/clerk-token-cache";
 import { getStoredThemePreference, resolveColorScheme } from "../lib/theme-storage";
 
@@ -70,25 +71,27 @@ export default function RootLayout() {
     <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <StatusBar style={isDark ? "light" : "dark"} />
-          <Stack
-            screenOptions={{
-              // Web gets the same persistent top nav as the tabs group
-              // instead of a per-page native title bar with a back button —
-              // native keeps the standard themed header, back chevron and all.
-              header: Platform.OS === "web" ? () => <WebNav /> : undefined,
-              headerStyle: { backgroundColor: isDark ? "#000000" : "#F6F6F9" },
-              headerTintColor: isDark ? "#F6F6F9" : "#000000",
-              headerTitleStyle: { fontFamily: "Roboto_700Bold" },
-              headerBackTitleStyle: { fontFamily: "Roboto_400Regular" },
-              headerShadowVisible: false,
-              contentStyle: { backgroundColor: isDark ? "#000000" : "#F6F6F9" },
-            }}
-          >
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          </Stack>
+          <AuthProvider>
+            <StatusBar style={isDark ? "light" : "dark"} />
+            <Stack
+              screenOptions={{
+                // Web gets the same persistent top nav as the tabs group
+                // instead of a per-page native title bar with a back button —
+                // native keeps the standard themed header, back chevron and all.
+                header: Platform.OS === "web" ? () => <WebNav /> : undefined,
+                headerStyle: { backgroundColor: isDark ? "#000000" : "#F6F6F9" },
+                headerTintColor: isDark ? "#F6F6F9" : "#000000",
+                headerTitleStyle: { fontFamily: "Roboto_700Bold" },
+                headerBackTitleStyle: { fontFamily: "Roboto_400Regular" },
+                headerShadowVisible: false,
+                contentStyle: { backgroundColor: isDark ? "#000000" : "#F6F6F9" },
+              }}
+            >
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            </Stack>
+          </AuthProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
     </ClerkProvider>

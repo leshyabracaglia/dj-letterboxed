@@ -81,7 +81,7 @@ const INACTIVE_COLOR = "#8a8a99";
 const LINKS = [
   { href: ROUTES.FEED, path: "/feed", label: "Feed", icon: "home", gated: false },
   { href: ROUTES.BROWSE, path: "/browse", label: "Browse", icon: "search", gated: false },
-  { href: ROUTES.LOG, path: "/log", label: "Log a Set", icon: "add-circle", gated: true },
+  { href: ROUTES.REVIEW, path: "/review", label: "Review a Set", icon: "add-circle", gated: true },
   { href: ROUTES.PROFILE, path: "/profile", label: "Profile", icon: "person", gated: true },
 ] as const;
 
@@ -134,7 +134,7 @@ export function WebNav() {
       <BrandWordmark />
       <View className="flex-row items-center gap-1">
         {LINKS.map((link) =>
-          // Signed out, Log and Profile pop a sign-in/sign-up prompt
+          // Signed out, Review and Profile pop a sign-in/sign-up prompt
           // instead of navigating to a screen that would just redirect.
           !isSignedIn && link.gated ? (
             <NavItem key={link.label} link={link} onPress={() => setShowSignInPrompt(true)} />

@@ -13,13 +13,13 @@ func CountReviewsByUser(ctx context.Context, q DBTX, userID string) (int64, erro
 }
 
 type UserTotals struct {
-	TotalLogs int64 `json:"totalLogs"`
-	UniqueDjs int64 `json:"uniqueDjs"`
+	TotalReviews int64 `json:"totalReviews"`
+	UniqueDjs    int64 `json:"uniqueDjs"`
 }
 
 func GetUserTotals(ctx context.Context, q DBTX, userID string) (*UserTotals, error) {
 	var t UserTotals
-	err := q.QueryRow(ctx, "SELECT COUNT(*), COUNT(DISTINCT dj_id) FROM reviews WHERE user_id = $1", userID).Scan(&t.TotalLogs, &t.UniqueDjs)
+	err := q.QueryRow(ctx, "SELECT COUNT(*), COUNT(DISTINCT dj_id) FROM reviews WHERE user_id = $1", userID).Scan(&t.TotalReviews, &t.UniqueDjs)
 	if err != nil {
 		return nil, err
 	}
@@ -27,18 +27,18 @@ func GetUserTotals(ctx context.Context, q DBTX, userID string) (*UserTotals, err
 }
 
 type TopDj struct {
-	Dj       db.Dj `json:"dj"`
-	LogCount int64 `json:"logCount"`
+	Dj          db.Dj `json:"dj"`
+	ReviewCount int64 `json:"reviewCount"`
 }
 
 func GetTopDjsForUser(ctx context.Context, q DBTX, userID string) ([]TopDj, error) {
 	rows, err := q.Query(ctx, `
-		SELECT d.id, d.name, d.slug, d.bio, d.genres, d.image_url, d.spotify_id, d.created_by_user_id, d.created_at, d.updated_at, COUNT(r.id) AS log_count
+		SELECT d.id, d.name, d.slug, d.bio, d.genres, d.image_url, d.spotify_id, d.created_by_user_id, d.created_at, d.updated_at, COUNT(r.id) AS review_count
 		FROM reviews r
 		JOIN djs d ON d.id = r.dj_id
 		WHERE r.user_id = $1
 		GROUP BY d.id
-		ORDER BY log_count DESC
+		ORDER BY review_count DESC
 		LIMIT 5`, userID)
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func GetTopDjsForUser(ctx context.Context, q DBTX, userID string) ([]TopDj, erro
 	var out []TopDj
 	for rows.Next() {
 		var t TopDj
-		if err := rows.Scan(&t.Dj.ID, &t.Dj.Name, &t.Dj.Slug, &t.Dj.Bio, &t.Dj.Genres, &t.Dj.ImageURL, &t.Dj.SpotifyID, &t.Dj.CreatedByUserID, &t.Dj.CreatedAt, &t.Dj.UpdatedAt, &t.LogCount); err != nil {
+		if err := rows.Scan(&t.Dj.ID, &t.Dj.Name, &t.Dj.Slug, &t.Dj.Bio, &t.Dj.Genres, &t.Dj.ImageURL, &t.Dj.SpotifyID, &t.Dj.CreatedByUserID, &t.Dj.CreatedAt, &t.Dj.UpdatedAt, &t.ReviewCount); err != nil {
 			return nil, err
 		}
 		out = append(out, t)
@@ -57,18 +57,18 @@ func GetTopDjsForUser(ctx context.Context, q DBTX, userID string) ([]TopDj, erro
 }
 
 type TopVenue struct {
-	Venue    string `json:"venue"`
-	LogCount int64  `json:"logCount"`
+	Venue       string `json:"venue"`
+	ReviewCount int64  `json:"reviewCount"`
 }
 
 func GetTopVenuesForUser(ctx context.Context, q DBTX, userID string) ([]TopVenue, error) {
 	rows, err := q.Query(ctx, `
-		SELECT e.venue, COUNT(r.id) AS log_count
+		SELECT e.venue, COUNT(r.id) AS review_count
 		FROM reviews r
 		JOIN events e ON e.id = r.event_id
 		WHERE r.user_id = $1
 		GROUP BY e.venue
-		ORDER BY log_count DESC
+		ORDER BY review_count DESC
 		LIMIT 5`, userID)
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func GetTopVenuesForUser(ctx context.Context, q DBTX, userID string) ([]TopVenue
 	var out []TopVenue
 	for rows.Next() {
 		var t TopVenue
-		if err := rows.Scan(&t.Venue, &t.LogCount); err != nil {
+		if err := rows.Scan(&t.Venue, &t.ReviewCount); err != nil {
 			return nil, err
 		}
 		out = append(out, t)

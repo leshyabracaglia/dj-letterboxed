@@ -121,11 +121,17 @@ func (c *SpotifyClient) SearchArtists(query string) ([]SpotifyArtist, error) {
 		if len(a.Images) > 0 {
 			imageURL = &a.Images[0].URL
 		}
+		// Spotify omits genres entirely for newer dev-mode apps; keep this a
+		// JSON [] rather than null since the client reads .length on it.
+		genres := a.Genres
+		if genres == nil {
+			genres = []string{}
+		}
 		out = append(out, SpotifyArtist{
 			SpotifyID: a.ID,
 			Name:      a.Name,
 			ImageURL:  imageURL,
-			Genres:    a.Genres,
+			Genres:    genres,
 		})
 	}
 	return out, nil

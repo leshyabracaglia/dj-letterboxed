@@ -7,18 +7,19 @@ import {
   EmptyState,
   Page,
   PageHeader,
-  ScreenLoading,
+  Skeleton,
   Text,
   usePageContentStyle,
 } from "../../components/ui";
 
 import { FavoritesShowcase } from "../../components/FavoritesShowcase";
-import { ReviewCard } from "../../components/ReviewCard";
+import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
 import { StatsSummary } from "../../components/StatsSummary";
+import { useCurrentUser } from "../../lib/auth";
 import { useApi } from "../../lib/api/client";
-import { useUserProfile } from "../../lib/api/hooks";
+import { useUserProfile, useUserReviews } from "../../lib/api/hooks";
 import { queryKeys } from "../../lib/api/queryKeys";
-import type { Paginated, Review, User, UserProfile } from "../../lib/api/types";
+import type { UserProfile } from "../../lib/api/types";
 import { ROUTES } from "../../lib/routes";
 
 type FollowingSnapshot = { following: boolean } | undefined;
@@ -105,26 +106,42 @@ function FollowButton({ userId, username }: { userId: string; username?: string 
   );
 }
 
+function UserProfileSkeleton() {
+  const contentStyle = usePageContentStyle();
+  return (
+    <Page>
+      <PageHeader border="primary">
+        <View className="flex-row items-center gap-3">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <View>
+            <Skeleton className="h-7 w-40" />
+            <Skeleton className="mt-2 h-4 w-24" />
+          </View>
+        </View>
+        <View className="mt-3 flex-row gap-4">
+          <Skeleton className="h-6 w-16" />
+          <Skeleton className="h-6 w-24" />
+          <Skeleton className="h-6 w-24" />
+        </View>
+      </PageHeader>
+      <View style={contentStyle}>
+        <ReviewCardSkeleton count={3} />
+      </View>
+    </Page>
+  );
+}
+
 export default function UserProfileScreen() {
   const { username } = useLocalSearchParams<{ username: string }>();
   const { isSignedIn } = useAuth();
-  const api = useApi();
   const contentStyle = usePageContentStyle();
 
-  const { data: me } = useQuery({
-    queryKey: queryKeys.users.me(),
-    queryFn: () => api.get<User>("/users/me"),
-    enabled: isSignedIn,
-  });
+  const { me } = useCurrentUser();
   const { data: profile } = useUserProfile(username);
-  const { data: logs } = useQuery({
-    queryKey: queryKeys.reviews.byUser(username!),
-    queryFn: () => api.get<Paginated<Review>>(`/users/${username}/reviews`, { limit: 20 }),
-    enabled: !!username,
-  });
+  const { data: reviews } = useUserReviews(username);
 
   if (!profile) {
-    return <ScreenLoading />;
+    return <UserProfileSkeleton />;
   }
 
   const isSelf = me?.id === profile.user.id;
@@ -156,7 +173,7 @@ export default function UserProfileScreen() {
         ) : null}
         <View className="mt-3 flex-row gap-4">
           <Text className="text-muted">
-            <Text className="font-numeric text-2xl text-ink dark:text-paper mt-1">{profile.logCount}</Text> log{profile.logCount === 1 ? "" : "s"}
+            <Text className="font-numeric text-2xl text-ink dark:text-paper mt-1">{profile.reviewCount}</Text> review{profile.reviewCount === 1 ? "" : "s"}
           </Text>
           <Link href={ROUTES.USER_FOLLOWERS(profile.user.username)}>
             <Text className="text-muted">
@@ -175,15 +192,17 @@ export default function UserProfileScreen() {
         <FavoritesShowcase
           username={profile.user.username}
           isSelf={isSelf}
-          ownReviews={isSelf ? (logs?.items ?? []) : undefined}
+          ownReviews={isSelf ? (reviews?.items ?? []) : undefined}
         />
       </PageHeader>
       <FlatList
         contentContainerStyle={contentStyle}
-        data={logs?.items ?? []}
+        data={reviews?.items ?? []}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <ReviewCard log={{ ...item, user: profile.user }} />}
-        ListEmptyComponent={<EmptyState message="No logs yet." />}
+        renderItem={({ item }) => <ReviewCard review={{ ...item, user: profile.user }} />}
+        ListEmptyComponent={
+          reviews ? <EmptyState message="No reviews yet." /> : <ReviewCardSkeleton count={3} />
+        }
       />
     </Page>
   );

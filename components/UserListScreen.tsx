@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, Stack, useLocalSearchParams } from "expo-router";
 import { FlatList, Pressable, View } from "react-native";
 
-import { Avatar, EmptyState, Page, Text, usePageContentStyle } from "./ui";
+import { Avatar, EmptyState, Page, Skeleton, Text, usePageContentStyle } from "./ui";
 import { useApi } from "../lib/api/client";
 import { useUserProfile } from "../lib/api/hooks";
 import { queryKeys } from "../lib/api/queryKeys";
@@ -49,7 +49,26 @@ export function UserListScreen({ mode }: { mode: "followers" | "following" }) {
             </Pressable>
           </Link>
         )}
-        ListEmptyComponent={<EmptyState message={empty} />}
+        ListEmptyComponent={
+          list ? (
+            <EmptyState message={empty} />
+          ) : (
+            <>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <View
+                  key={i}
+                  className="mb-2 flex-row items-center gap-3 rounded-2xl border border-primary/15 bg-white dark:bg-surface-dark p-4 shadow-sm"
+                >
+                  <Skeleton className="h-9 w-9 rounded-full" />
+                  <View>
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="mt-1.5 h-3.5 w-20" />
+                  </View>
+                </View>
+              ))}
+            </>
+          )
+        }
       />
     </Page>
   );

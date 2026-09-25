@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { FlatList, Pressable, TextInput, View } from "react-native";
 
@@ -8,9 +8,11 @@ import {
   EmptyState,
   GenreTags,
   Page,
+  Skeleton,
   Text,
   usePageContentStyle,
 } from "../../components/ui";
+import { useDjSearch } from "../../lib/api/hooks";
 import { useApi } from "../../lib/api/client";
 import { queryKeys } from "../../lib/api/queryKeys";
 import type { Dj, VenueSummary } from "../../lib/api/types";
@@ -42,9 +44,27 @@ function VenueCard({ venue }: { venue: VenueSummary }) {
       <Text className="text-lg font-semibold text-ink dark:text-paper">{venue.venue}</Text>
       <Text className="mt-1 text-sm text-muted">
         {venue.city ? `${venue.city} · ` : ""}
-        {venue.eventCount} {venue.eventCount === 1 ? "event" : "events"} logged
+        {venue.eventCount} {venue.eventCount === 1 ? "event" : "events"} reviewed
       </Text>
     </Card>
+  );
+}
+
+function BrowseCardSkeleton({ tint }: { tint: "primary" | "accent" }) {
+  return (
+    <>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Card key={i} tint={tint}>
+          <View className="flex-row items-center gap-3">
+            {tint === "primary" ? <Skeleton className="h-12 w-12 rounded-full" /> : null}
+            <View className="flex-1">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="mt-2 h-3.5 w-28" />
+            </View>
+          </View>
+        </Card>
+      ))}
+    </>
   );
 }
 
@@ -59,16 +79,13 @@ export default function BrowseScreen() {
   const [query, setQuery] = useState("");
   const contentStyle = usePageContentStyle();
 
-  const { data: djs } = useQuery({
-    queryKey: queryKeys.djs.search(query),
-    queryFn: () => api.get<Dj[]>("/djs/search", { q: query }),
-    enabled: tab === "djs" && query.length > 0,
-  });
+  const { data: djs } = useDjSearch(query, tab === "djs");
 
   const { data: venues } = useQuery({
     queryKey: queryKeys.venues.search(query),
     queryFn: () => api.get<VenueSummary[]>("/venues/search", { q: query }),
     enabled: tab === "venues" && query.length > 0,
+    placeholderData: keepPreviousData,
   });
 
   return (
@@ -108,8 +125,10 @@ export default function BrowseScreen() {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <DjCard dj={item} />}
           ListEmptyComponent={
-            query.length > 0 ? (
-              <EmptyState message="No DJs found. Add one when you log a set." />
+            query.length > 0 && !djs ? (
+              <BrowseCardSkeleton tint="primary" />
+            ) : query.length > 0 ? (
+              <EmptyState message="No DJs found. Add one when you review a set." />
             ) : (
               <EmptyState message="Search for a DJ to see their profile and reviews." />
             )
@@ -122,10 +141,12 @@ export default function BrowseScreen() {
           keyExtractor={(item) => item.venue}
           renderItem={({ item }) => <VenueCard venue={item} />}
           ListEmptyComponent={
-            query.length > 0 ? (
-              <EmptyState message="No venues found. Add one when you log a set." />
+            query.length > 0 && !venues ? (
+              <BrowseCardSkeleton tint="accent" />
+            ) : query.length > 0 ? (
+              <EmptyState message="No venues found. Add one when you review a set." />
             ) : (
-              <EmptyState message="Search for a venue to see events logged there." />
+              <EmptyState message="Search for a venue to see events reviewed there." />
             )
           }
         />

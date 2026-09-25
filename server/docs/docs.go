@@ -614,7 +614,7 @@ const docTemplate = `{
                 "tags": [
                     "reviews"
                 ],
-                "summary": "Log a set: create a review of a DJ (optionally tied to an event)",
+                "summary": "Create a review of a DJ (optionally tied to an event)",
                 "parameters": [
                     {
                         "description": "review to create",
@@ -1189,7 +1189,7 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "Get a user's profile by username, with follow/log counts",
+                "summary": "Get a user's profile by username, with follow/review counts",
                 "parameters": [
                     {
                         "type": "string",
@@ -1303,7 +1303,7 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "Get a user's log stats: totals, top DJs, top venues",
+                "summary": "Get a user's review stats: totals, top DJs, top venues",
                 "parameters": [
                     {
                         "type": "string",
@@ -1466,8 +1466,8 @@ const docTemplate = `{
             "required": [
                 "avgRating",
                 "dj",
-                "logCount",
-                "recentLogs"
+                "recentReviews",
+                "reviewCount"
             ],
             "properties": {
                 "avgRating": {
@@ -1476,14 +1476,14 @@ const docTemplate = `{
                 "dj": {
                     "$ref": "#/definitions/Dj"
                 },
-                "logCount": {
-                    "type": "integer"
-                },
-                "recentLogs": {
+                "recentReviews": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/ReviewDTO"
                     }
+                },
+                "reviewCount": {
+                    "type": "integer"
                 }
             }
         },
@@ -1530,13 +1530,13 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "event",
-                "logs"
+                "reviews"
             ],
             "properties": {
                 "event": {
                     "$ref": "#/definitions/Event"
                 },
-                "logs": {
+                "reviews": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/ReviewDTO"
@@ -1594,11 +1594,11 @@ const docTemplate = `{
         "LeaderboardEntry": {
             "type": "object",
             "required": [
-                "logCount",
+                "reviewCount",
                 "user"
             ],
             "properties": {
-                "logCount": {
+                "reviewCount": {
                     "type": "integer"
                 },
                 "user": {
@@ -1839,13 +1839,13 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "dj",
-                "logCount"
+                "reviewCount"
             ],
             "properties": {
                 "dj": {
                     "$ref": "#/definitions/Dj"
                 },
-                "logCount": {
+                "reviewCount": {
                     "type": "integer"
                 }
             }
@@ -1853,11 +1853,11 @@ const docTemplate = `{
         "TopVenue": {
             "type": "object",
             "required": [
-                "logCount",
+                "reviewCount",
                 "venue"
             ],
             "properties": {
-                "logCount": {
+                "reviewCount": {
                     "type": "integer"
                 },
                 "venue": {
@@ -1905,7 +1905,7 @@ const docTemplate = `{
             "required": [
                 "followerCount",
                 "followingCount",
-                "logCount",
+                "reviewCount",
                 "user"
             ],
             "properties": {
@@ -1915,7 +1915,7 @@ const docTemplate = `{
                 "followingCount": {
                     "type": "integer"
                 },
-                "logCount": {
+                "reviewCount": {
                     "type": "integer"
                 },
                 "user": {
@@ -1928,7 +1928,7 @@ const docTemplate = `{
             "required": [
                 "topDjs",
                 "topVenues",
-                "totalLogs",
+                "totalReviews",
                 "uniqueDjs"
             ],
             "properties": {
@@ -1944,7 +1944,7 @@ const docTemplate = `{
                         "$ref": "#/definitions/TopVenue"
                     }
                 },
-                "totalLogs": {
+                "totalReviews": {
                     "type": "integer"
                 },
                 "uniqueDjs": {

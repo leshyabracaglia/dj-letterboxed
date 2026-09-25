@@ -1,5 +1,4 @@
 import { useAuth } from "@clerk/expo";
-import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { FlatList, Pressable, View } from "react-native";
 
@@ -8,45 +7,48 @@ import {
   EmptyState,
   Page,
   PageHeader,
+  Skeleton,
   Text,
   usePageContentStyle,
 } from "../../components/ui";
 import { FavoritesShowcase } from "../../components/FavoritesShowcase";
-import { ReviewCard } from "../../components/ReviewCard";
+import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
 import { StatsSummary } from "../../components/StatsSummary";
-import { useApi } from "../../lib/api/client";
-import { queryKeys } from "../../lib/api/queryKeys";
-import type { Paginated, Review, User } from "../../lib/api/types";
+import { useUserReviews } from "../../lib/api/hooks";
+import { useCurrentUser } from "../../lib/auth";
 import { ROUTES } from "../../lib/routes";
 
 export default function ProfileScreen() {
-  const api = useApi();
   const { signOut } = useAuth();
   const contentStyle = usePageContentStyle();
 
-  const { data: me } = useQuery({
-    queryKey: queryKeys.users.me(),
-    queryFn: () => api.get<User>("/users/me"),
-  });
-  const { data } = useQuery({
-    queryKey: queryKeys.reviews.byUser(me?.username ?? ""),
-    queryFn: () =>
-      api.get<Paginated<Review>>(`/users/${me?.username}/reviews`, { limit: 20 }),
-    enabled: !!me?.username,
-  });
+  const { me } = useCurrentUser();
+  const { data } = useUserReviews(me?.username);
 
   return (
     <Page>
       <PageHeader>
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-3">
-            <Avatar uri={me?.avatarUrl} name={me?.displayName ?? me?.username ?? "?"} size={72} />
-            <View>
-              <Text className="text-2xl font-bold text-ink dark:text-paper">
-                {me?.displayName ?? me?.username ?? "Your profile"}
-              </Text>
-              {me?.username ? <Text className="text-muted">@{me.username}</Text> : null}
-            </View>
+            {me ? (
+              <>
+                <Avatar uri={me.avatarUrl} name={me.displayName ?? me.username} size={72} />
+                <View>
+                  <Text className="text-2xl font-bold text-ink dark:text-paper">
+                    {me.displayName ?? me.username}
+                  </Text>
+                  <Text className="text-muted">@{me.username}</Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <Skeleton className="h-[72px] w-[72px] rounded-full" />
+                <View>
+                  <Skeleton className="h-7 w-36" />
+                  <Skeleton className="mt-2 h-4 w-24" />
+                </View>
+              </>
+            )}
           </View>
           <View className="flex-row gap-2">
             <Pressable
@@ -76,8 +78,14 @@ export default function ProfileScreen() {
         contentContainerStyle={contentStyle}
         data={data?.items ?? []}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <ReviewCard log={{ ...item, user: me }} />}
-        ListEmptyComponent={<EmptyState message="You haven't logged any sets yet." />}
+        renderItem={({ item }) => <ReviewCard review={{ ...item, user: me }} />}
+        ListEmptyComponent={
+          data ? (
+            <EmptyState message="You haven't reviewed any sets yet." />
+          ) : (
+            <ReviewCardSkeleton count={3} />
+          )
+        }
       />
     </Page>
   );

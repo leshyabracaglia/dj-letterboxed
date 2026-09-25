@@ -54,17 +54,17 @@ definitions:
         type: number
       dj:
         $ref: '#/definitions/Dj'
-      logCount:
-        type: integer
-      recentLogs:
+      recentReviews:
         items:
           $ref: '#/definitions/ReviewDTO'
         type: array
+      reviewCount:
+        type: integer
     required:
     - avgRating
     - dj
-    - logCount
-    - recentLogs
+    - recentReviews
+    - reviewCount
     type: object
   Event:
     properties:
@@ -98,13 +98,13 @@ definitions:
     properties:
       event:
         $ref: '#/definitions/Event'
-      logs:
+      reviews:
         items:
           $ref: '#/definitions/ReviewDTO'
         type: array
     required:
     - event
-    - logs
+    - reviews
     type: object
   FavoriteReviewsResponse:
     properties:
@@ -139,12 +139,12 @@ definitions:
     type: object
   LeaderboardEntry:
     properties:
-      logCount:
+      reviewCount:
         type: integer
       user:
         $ref: '#/definitions/User'
     required:
-    - logCount
+    - reviewCount
     - user
     type: object
   PaginatedReviews:
@@ -311,20 +311,20 @@ definitions:
     properties:
       dj:
         $ref: '#/definitions/Dj'
-      logCount:
+      reviewCount:
         type: integer
     required:
     - dj
-    - logCount
+    - reviewCount
     type: object
   TopVenue:
     properties:
-      logCount:
+      reviewCount:
         type: integer
       venue:
         type: string
     required:
-    - logCount
+    - reviewCount
     - venue
     type: object
   User:
@@ -358,14 +358,14 @@ definitions:
         type: integer
       followingCount:
         type: integer
-      logCount:
+      reviewCount:
         type: integer
       user:
         $ref: '#/definitions/User'
     required:
     - followerCount
     - followingCount
-    - logCount
+    - reviewCount
     - user
     type: object
   UserStatsResponse:
@@ -378,14 +378,14 @@ definitions:
         items:
           $ref: '#/definitions/TopVenue'
         type: array
-      totalLogs:
+      totalReviews:
         type: integer
       uniqueDjs:
         type: integer
     required:
     - topDjs
     - topVenues
-    - totalLogs
+    - totalReviews
     - uniqueDjs
     type: object
   VenueDetailResponse:
@@ -968,7 +968,7 @@ paths:
             $ref: '#/definitions/errorEnvelope'
       security:
       - BearerAuth: []
-      summary: 'Log a set: create a review of a DJ (optionally tied to an event)'
+      summary: Create a review of a DJ (optionally tied to an event)
       tags:
       - reviews
   /api/reviews/{id}:
@@ -1220,7 +1220,7 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
-      summary: Get a user's profile by username, with follow/log counts
+      summary: Get a user's profile by username, with follow/review counts
       tags:
       - users
   /api/users/{username}/favorites:
@@ -1294,7 +1294,7 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
-      summary: 'Get a user''s log stats: totals, top DJs, top venues'
+      summary: 'Get a user''s review stats: totals, top DJs, top venues'
       tags:
       - users
   /api/users/me:

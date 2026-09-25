@@ -58,7 +58,7 @@ func (h *Handlers) SearchUsers(w http.ResponseWriter, r *http.Request) {
 
 // GetUserByUsername godoc
 //
-//	@Summary	Get a user's profile by username, with follow/log counts
+//	@Summary	Get a user's profile by username, with follow/review counts
 //	@Tags		users
 //	@Produce	json
 //	@Param		username	path		string	true	"username"
@@ -74,7 +74,7 @@ func (h *Handlers) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logCount, err := queries.CountReviewsByUser(r.Context(), h.Pool, user.ID)
+	reviewCount, err := queries.CountReviewsByUser(r.Context(), h.Pool, user.ID)
 	if err != nil {
 		InternalError(w, err)
 		return
@@ -92,7 +92,7 @@ func (h *Handlers) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
 
 	WriteJSON(w, http.StatusOK, UserProfileResponse{
 		User:           *user,
-		LogCount:       logCount,
+		ReviewCount:    reviewCount,
 		FollowerCount:  followerCount,
 		FollowingCount: followingCount,
 	})
@@ -100,7 +100,7 @@ func (h *Handlers) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
 
 // GetUserStats godoc
 //
-//	@Summary	Get a user's log stats: totals, top DJs, top venues
+//	@Summary	Get a user's review stats: totals, top DJs, top venues
 //	@Tags		users
 //	@Produce	json
 //	@Param		username	path		string	true	"username"
@@ -133,10 +133,10 @@ func (h *Handlers) GetUserStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteJSON(w, http.StatusOK, UserStatsResponse{
-		TotalLogs: totals.TotalLogs,
-		UniqueDjs: totals.UniqueDjs,
-		TopDjs:    orEmpty(topDjs),
-		TopVenues: orEmpty(topVenues),
+		TotalReviews: totals.TotalReviews,
+		UniqueDjs:    totals.UniqueDjs,
+		TopDjs:       orEmpty(topDjs),
+		TopVenues:    orEmpty(topVenues),
 	})
 }
 

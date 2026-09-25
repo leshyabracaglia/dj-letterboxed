@@ -60,15 +60,15 @@ type PaginatedReviews struct {
 }
 
 type DjDetailResponse struct {
-	Dj         db.Dj       `json:"dj"`
-	AvgRating  *float64    `json:"avgRating"`
-	LogCount   int64       `json:"logCount"`
-	RecentLogs []ReviewDTO `json:"recentLogs"`
+	Dj            db.Dj       `json:"dj"`
+	AvgRating     *float64    `json:"avgRating"`
+	ReviewCount   int64       `json:"reviewCount"`
+	RecentReviews []ReviewDTO `json:"recentReviews"`
 }
 
 type EventDetailResponse struct {
-	Event db.Event    `json:"event"`
-	Logs  []ReviewDTO `json:"logs"`
+	Event   db.Event    `json:"event"`
+	Reviews []ReviewDTO `json:"reviews"`
 }
 
 type VenueDetailResponse struct {
@@ -80,16 +80,16 @@ type VenueDetailResponse struct {
 
 type UserProfileResponse struct {
 	User           db.User `json:"user"`
-	LogCount       int64   `json:"logCount"`
+	ReviewCount    int64   `json:"reviewCount"`
 	FollowerCount  int64   `json:"followerCount"`
 	FollowingCount int64   `json:"followingCount"`
 }
 
 type UserStatsResponse struct {
-	TotalLogs int64              `json:"totalLogs"`
-	UniqueDjs int64              `json:"uniqueDjs"`
-	TopDjs    []queries.TopDj    `json:"topDjs"`
-	TopVenues []queries.TopVenue `json:"topVenues"`
+	TotalReviews int64              `json:"totalReviews"`
+	UniqueDjs    int64              `json:"uniqueDjs"`
+	TopDjs       []queries.TopDj    `json:"topDjs"`
+	TopVenues    []queries.TopVenue `json:"topVenues"`
 }
 
 type FeedResponse struct {
