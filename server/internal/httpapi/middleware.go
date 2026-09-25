@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -44,12 +45,14 @@ func (a *Auth) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := bearerToken(r)
 		if token == "" {
+			slog.Warn("auth rejected", "reason", "missing bearer token", "path", r.URL.Path, "ua", r.UserAgent())
 			Unauthorized(w)
 			return
 		}
 
 		clerkID, err := a.Verifier.VerifyToken(token)
 		if err != nil {
+			slog.Warn("auth rejected", "reason", err.Error(), "path", r.URL.Path, "ua", r.UserAgent())
 			Unauthorized(w)
 			return
 		}
