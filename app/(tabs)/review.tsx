@@ -487,6 +487,19 @@ export default function ReviewSetScreen() {
     mutationFn: (input: CreateReviewInput) => api.post<Review>("/reviews", input),
   });
 
+  const resetForm = () => {
+    setDjName("");
+    setArtistPick(null);
+    setEventName("");
+    setVenue("");
+    setCity("");
+    setSeenAt(todayISODate());
+    setRating(undefined);
+    setCrowdVibe(undefined);
+    setReviewText("");
+    setTaggedUsers([]);
+  };
+
   const pending = createDj.isPending || createEvent.isPending || createReview.isPending;
 
   const onSubmit = async () => {
@@ -567,7 +580,25 @@ export default function ReviewSetScreen() {
       queryClient.invalidateQueries({ queryKey: queryKeys.feed.activity() });
       queryClient.invalidateQueries({ queryKey: queryKeys.feed.popular() });
 
-      router.replace(ROUTES.PROFILE);
+      // Seed the detail query too so the review page we land on renders
+      // immediately; the background refetch fills in anything server-derived.
+      if (me) {
+        queryClient.setQueryData<Review>(queryKeys.reviews.byId(created.id), {
+          ...created,
+          dj,
+          event,
+          taggedUsers,
+          user: me,
+          likeCount: 0,
+          commentCount: 0,
+          isLikedByMe: false,
+        });
+      }
+
+      // The tab stays mounted behind the review page, so clear it for the
+      // next log rather than leaving this one's answers filled in on back.
+      resetForm();
+      router.push(ROUTES.REVIEW_DETAIL(created.id, { justLogged: true }));
     } catch (err: any) {
       setError(err?.message ?? "Could not save your review");
     }

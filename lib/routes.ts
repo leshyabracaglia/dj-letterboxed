@@ -18,7 +18,10 @@ export const ROUTES = {
   DJ: (slug: string): Href => `/dj/${slug}` as Href,
   EVENT: (id: string): Href => `/event/${id}` as Href,
   VENUE: (venue: string): Href => `/venue/${encodeURIComponent(venue)}` as Href,
-  REVIEW_DETAIL: (id: string): Href => `/review/${id}` as Href,
+  // `justLogged` marks the landing right after creating the review, so the
+  // page can prompt the author to share it.
+  REVIEW_DETAIL: (id: string, opts?: { justLogged?: boolean }): Href =>
+    `/review/${id}${opts?.justLogged ? "?justLogged=1" : ""}` as Href,
   USER: (username: string): Href => `/user/${username}` as Href,
   USER_FOLLOWERS: (username: string): Href => `/user/${username}/followers` as Href,
   USER_FOLLOWING: (username: string): Href => `/user/${username}/following` as Href,
