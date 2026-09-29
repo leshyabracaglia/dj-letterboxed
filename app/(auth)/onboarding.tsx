@@ -1,15 +1,15 @@
 import { useAuth, useUser } from "@clerk/expo";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
+import { Keyboard, KeyboardAvoidingView, Pressable, ScrollView, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 
 import { Avatar, Button, Text } from "../../components/ui";
 
 import { useCurrentUser, useUpdateProfile } from "../../lib/auth";
 import { pickAndUploadAvatar } from "../../lib/avatarUpload";
 import { ROUTES } from "../../lib/routes";
+import { isIos } from "@/lib/utils";
 
 const USERNAME_RE = /^[a-z0-9_]{3,32}$/;
 
@@ -65,7 +65,7 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
+      <KeyboardAvoidingView behavior={isIos ? "padding" : undefined} className="flex-1">
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 24 }}
           keyboardShouldPersistTaps="handled"

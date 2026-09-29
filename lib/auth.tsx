@@ -4,7 +4,7 @@ import { createContext, useContext, type ReactNode } from "react";
 
 import { useApi } from "./api/client";
 import { queryKeys } from "./api/queryKeys";
-import type { UpdateProfileInput, User } from "./api/types";
+import type { User } from "./api/types";
 
 type AuthContextValue = {
   /** The signed-in user's local `users` row; undefined while signed out or still loading. */
@@ -14,6 +14,13 @@ type AuthContextValue = {
   isLoaded: boolean;
   /** Signed in, but `/users/me` hasn't resolved yet. */
   isLoadingMe: boolean;
+};
+
+export type UpdateProfileInput = {
+  username?: string;
+  displayName?: string;
+  bio?: string;
+  avatarUrl?: string;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -64,7 +71,6 @@ export function useUpdateProfile({
   onError,
 }: {
   onSuccess?: (user: User) => void;
-  /** Receives a user-facing message (username-taken is mapped for you). */
   onError?: (message: string) => void;
 } = {}) {
   const api = useApi();

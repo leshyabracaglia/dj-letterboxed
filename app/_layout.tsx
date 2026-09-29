@@ -10,9 +10,10 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
 import { useEffect, useState } from "react";
-import { Appearance, Platform } from "react-native";
+import { Appearance } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { useIsDesktopWeb } from "../components/ui";
 import { WebNav } from "../components/WebNav";
 import { AuthProvider } from "../lib/auth";
 import { tokenCache } from "../lib/clerk-token-cache";
@@ -41,6 +42,7 @@ export default function RootLayout() {
   });
   const [themeReady, setThemeReady] = useState(false);
   const { colorScheme, setColorScheme } = useColorScheme();
+  const isDesktopWeb = useIsDesktopWeb();
 
   useEffect(() => {
     // Re-reads the stored preference (rather than trusting local state) so
@@ -75,10 +77,10 @@ export default function RootLayout() {
             <StatusBar style={isDark ? "light" : "dark"} />
             <Stack
               screenOptions={{
-                // Web gets the same persistent top nav as the tabs group
-                // instead of a per-page native title bar with a back button —
-                // native keeps the standard themed header, back chevron and all.
-                header: Platform.OS === "web" ? () => <WebNav /> : undefined,
+                // Desktop web gets the same persistent top nav as the tabs group
+                // instead of a per-page title bar; phone-width web and native keep
+                // the standard themed header with a back chevron.
+                header: isDesktopWeb ? () => <WebNav /> : undefined,
                 headerStyle: { backgroundColor: isDark ? "#000000" : "#F6F6F9" },
                 headerTintColor: isDark ? "#F6F6F9" : "#000000",
                 headerTitleStyle: { fontFamily: "Roboto_700Bold" },

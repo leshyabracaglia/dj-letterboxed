@@ -5,7 +5,7 @@
 // (see scripts/generate-api-types.sh). Request body types stay hand-written
 // below - lower drift risk since adding a new one touches both ends at once,
 // and OpenAPI's json-schema request shapes don't carry TS's optional-vs-
-// omitted distinction cleanly (see taggedUserIds below).
+// omitted distinction cleanly (see taggedUserIds in app/(tabs)/review.tsx).
 //
 // Dates arrive as RFC3339 strings, not Date objects (plain JSON, no
 // superjson) - callers already wrap them in `new Date(...)` where needed.
@@ -42,14 +42,6 @@ export type FavoriteReviewsResponse = Schemas["FavoriteReviewsResponse"];
 
 // Request bodies
 
-export type CreateDjInput = {
-  name: string;
-  bio?: string;
-  genres?: string[];
-  spotifyId?: string;
-  imageUrl?: string;
-};
-
 export type CreateEventInput = {
   name: string;
   venue: string;
@@ -58,27 +50,6 @@ export type CreateEventInput = {
   description?: string;
 };
 
-export type CreateReviewInput = {
-  djId: string;
-  eventId?: string;
-  rating?: number;
-  reviewText?: string;
-  crowdVibe?: CrowdVibe;
-  crowdVibeNote?: string;
-  seenAt: string;
-  taggedUserIds?: string[];
-};
-
-export type UpdateReviewInput = Partial<Omit<CreateReviewInput, "djId">> & {
-  id: string;
-};
-
-export type UpdateProfileInput = {
-  username?: string;
-  displayName?: string;
-  bio?: string;
-  avatarUrl?: string;
-};
 
 /** Ordered review ids to showcase on the caller's profile, #1 favorite
  * first - at most 3, no duplicates, each must be a review the caller owns.

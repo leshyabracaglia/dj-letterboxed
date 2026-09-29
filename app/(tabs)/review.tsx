@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   TextInput,
@@ -26,29 +25,65 @@ import { useCurrentUser } from "../../lib/auth";
 import { useApi } from "../../lib/api/client";
 import { queryKeys } from "../../lib/api/queryKeys";
 import type {
-  CreateDjInput,
   CreateEventInput,
-  CreateReviewInput,
   Dj,
   Event,
   Paginated,
   Review,
   SpotifyArtist,
   User,
+  CrowdVibe,
 } from "../../lib/api/types";
 import { ROUTES } from "../../lib/routes";
+import { isIos } from "@/lib/utils";
 
-type NewArtistDraft = {
+type ICreateDjInput = {
   name: string;
-  bio: string;
-  imageUrl: string;
-  genres: string[];
+  bio?: string;
+  genres?: string[];
+  spotifyId?: string;
+  imageUrl?: string;
 };
 
-type ArtistPick =
-  | { type: "existing"; dj: Dj }
-  | { type: "spotify"; artist: SpotifyArtist }
-  | { type: "new"; draft: NewArtistDraft };
+// TODO: have POST /reviews create the artist and event when they don't exist
+// yet (and return the full review), so this screen can make a single call.
+type ICreateReviewInput = {
+  djId: string;
+  eventId?: string;
+  rating?: number;
+  reviewText?: string;
+  crowdVibe?: CrowdVibe;
+  crowdVibeNote?: string;
+  seenAt: string;
+  taggedUserIds?: string[];
+};
+
+// An already-saved DJ, or one (from Spotify or typed in by hand) that gets
+// created when the review is saved.
+type IArtistPick = { type: "existing"; dj: Dj } | { type: "new"; input: ICreateDjInput };
+
+// Form fields as typed; turned into API inputs on submit.
+type IReviewDraft = {
+  eventName: string;
+  venue: string;
+  city: string;
+  seenAt: string;
+  rating?: number;
+  crowdVibe?: CrowdVibe;
+  reviewText: string;
+  taggedUsers: User[];
+};
+
+function emptyDraft(): IReviewDraft {
+  return {
+    eventName: "",
+    venue: "",
+    city: "",
+    seenAt: new Date().toISOString().slice(0, 10),
+    reviewText: "",
+    taggedUsers: [],
+  };
+}
 
 const INPUT_CLASS =
   "rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted";
@@ -106,7 +141,7 @@ function ArtistSearchInput({
 }: {
   value: string;
   onChangeText: (text: string) => void;
-  onSelect: (pick: ArtistPick) => void;
+  onSelect: (pick: IArtistPick) => void;
   onCreate: () => void;
 }) {
   const api = useApi();
@@ -125,9 +160,9 @@ function ArtistSearchInput({
   // re-created); community-added DJs with no Spotify match go last.
   const locals = localResults ?? [];
   const localBySpotifyId = new Map(locals.filter((dj) => dj.spotifyId).map((dj) => [dj.spotifyId, dj]));
-  const rows: ArtistPick[] = (spotifyResults ?? []).map((artist) => {
+  const rows: IArtistPick[] = (spotifyResults ?? []).map((artist) => {
     const dj = localBySpotifyId.get(artist.spotifyId);
-    return dj ? { type: "existing", dj } : { type: "spotify", artist };
+    return dj ? { type: "existing", dj } : { type: "new", input: artist };
   });
   const listedDjIds = new Set(rows.flatMap((row) => (row.type === "existing" ? [row.dj.id] : [])));
   const remaining = locals.filter((dj) => !listedDjIds.has(dj.id));
@@ -173,15 +208,15 @@ function ArtistSearchInput({
                   subtitle={djSubtitle(row.dj)}
                   onPress={() => onSelect(row)}
                 />
-              ) : row.type === "spotify" ? (
+              ) : (
                 <ArtistResultRow
-                  key={`spotify-${row.artist.spotifyId}`}
-                  name={row.artist.name}
-                  imageUrl={row.artist.imageUrl}
-                  subtitle={row.artist.genres.join(", ")}
+                  key={`spotify-${row.input.spotifyId}`}
+                  name={row.input.name}
+                  imageUrl={row.input.imageUrl}
+                  subtitle={row.input.genres?.join(", ") ?? ""}
                   onPress={() => onSelect(row)}
                 />
-              ) : null,
+              ),
             )}
           </ScrollView>
           <Pressable
@@ -206,7 +241,7 @@ function SelectedArtistCard({
   imageUrl,
   genres,
   bio,
-  label,
+  isFromCommunity,
   actionLabel,
   onAction,
   onClear,
@@ -215,7 +250,7 @@ function SelectedArtistCard({
   imageUrl?: string | null;
   genres: string[];
   bio?: string | null;
-  label?: string;
+  isFromCommunity?: boolean;
   actionLabel?: string;
   onAction?: () => void;
   onClear: () => void;
@@ -226,7 +261,7 @@ function SelectedArtistCard({
         <Avatar uri={imageUrl || null} name={name} size={56} />
         <View className="flex-1">
           <Text className="text-lg font-semibold text-ink dark:text-paper">{name}</Text>
-          {label ? <Text className="text-xs text-muted">{label}</Text> : null}
+          {!!isFromCommunity && <Text className="text-xs text-muted">{COMMUNITY_ADDED_LABEL}</Text>}
         </View>
         <View className="items-end gap-1">
           {onAction ? (
@@ -241,16 +276,16 @@ function SelectedArtistCard({
           </Pressable>
         </View>
       </View>
-      {genres.length > 0 ? (
+      {genres.length > 0 && (
         <View className="mt-3">
           <GenreTags genres={genres} limit={5} />
         </View>
-      ) : null}
-      {bio ? (
+      )}
+      {!!bio && (
         <Text numberOfLines={4} className="mt-3 text-sm text-ink/80 dark:text-paper/80">
           {bio}
         </Text>
-      ) : null}
+      )}
     </View>
   );
 }
@@ -262,17 +297,16 @@ function CreateArtistModal({
   onSave,
 }: {
   visible: boolean;
-  initial: NewArtistDraft;
+  initial: ICreateDjInput;
   onClose: () => void;
-  onSave: (draft: NewArtistDraft) => void;
+  onSave: (draft: ICreateDjInput) => void;
 }) {
   const [name, setName] = useState(initial.name);
   const [imageUrl, setImageUrl] = useState(initial.imageUrl);
-  const [genresText, setGenresText] = useState(initial.genres.join(", "));
   const [bio, setBio] = useState(initial.bio);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string>();
 
-  const trimmedImageUrl = imageUrl.trim();
+  const trimmedImageUrl = imageUrl?.trim();
 
   const save = () => {
     const trimmedName = name.trim();
@@ -286,19 +320,15 @@ function CreateArtistModal({
     }
     onSave({
       name: trimmedName,
-      imageUrl: trimmedImageUrl,
-      bio: bio.trim(),
-      genres: genresText
-        .split(",")
-        .map((g) => g.trim())
-        .filter(Boolean),
+      imageUrl: trimmedImageUrl || undefined,
+      bio: bio?.trim() || undefined,
     });
   };
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={isIos ? "padding" : undefined}
         className="flex-1"
       >
         <Pressable onPress={onClose} className="flex-1 justify-end bg-ink/40">
@@ -336,15 +366,6 @@ function CreateArtistModal({
                 className={`mb-3 ${INPUT_CLASS}`}
               />
 
-              <Text className="mb-1 text-sm font-medium text-muted">Genres (optional)</Text>
-              <TextInput
-                placeholder="techno, house, dubstep"
-                value={genresText}
-                onChangeText={setGenresText}
-                autoCapitalize="none"
-                className={`mb-3 ${INPUT_CLASS}`}
-              />
-
               <Text className="mb-1 text-sm font-medium text-muted">Quick bio (optional)</Text>
               <TextInput
                 placeholder="A sentence or two about them"
@@ -355,9 +376,7 @@ function CreateArtistModal({
                 className={`min-h-20 ${INPUT_CLASS}`}
               />
 
-              {error ? (
-                <Text className="mt-3 text-danger dark:text-danger-dark">{error}</Text>
-              ) : null}
+              {error && <Text className="mt-3 text-danger dark:text-danger-dark">{error}</Text>}
             </ScrollView>
             <View className="mt-4 flex-row gap-3">
               <Button onPress={save} className="flex-1 py-3">
@@ -400,7 +419,7 @@ function TagFriendsPicker({
 
   return (
     <View>
-      {taggedUsers.length > 0 ? (
+      {taggedUsers.length > 0 && (
         <View className="mb-2 flex-row flex-wrap gap-2">
           {taggedUsers.map((u) => (
             <Pressable
@@ -413,12 +432,12 @@ function TagFriendsPicker({
             </Pressable>
           ))}
         </View>
-      ) : null}
+      )}
       <TextInput
         placeholder="Tag friends who were there"
         value={query}
         onChangeText={setQuery}
-        className="rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
+        className={INPUT_CLASS}
       />
       {trimmed.length > 1 && results && results.length > 0 ? (
         <View className="mt-1 overflow-hidden rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary">
@@ -453,62 +472,52 @@ const VIBES = [
   { value: "dead", label: "💀 Dead" },
 ] as const;
 
-function todayISODate() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-export default function ReviewSetScreen() {
+export default function CreateReviewScreen() {
   const api = useApi();
   const queryClient = useQueryClient();
   const contentStyle = usePageContentStyle();
 
   const { me } = useCurrentUser();
 
-  const [djName, setDjName] = useState("");
-  const [artistPick, setArtistPick] = useState<ArtistPick | null>(null);
+  const [djQuery, setDjQuery] = useState("");
+  const [artistPick, setArtistPick] = useState<IArtistPick>();
   const [showCreateArtist, setShowCreateArtist] = useState(false);
-  const [eventName, setEventName] = useState("");
-  const [venue, setVenue] = useState("");
-  const [city, setCity] = useState("");
-  const [seenAt, setSeenAt] = useState(todayISODate());
-  const [rating, setRating] = useState<number | undefined>(undefined);
-  const [crowdVibe, setCrowdVibe] = useState<(typeof VIBES)[number]["value"] | undefined>();
-  const [reviewText, setReviewText] = useState("");
-  const [taggedUsers, setTaggedUsers] = useState<User[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<IReviewDraft>(emptyDraft);
+  const [error, setError] = useState<string>();
+
+  const updateDraft = (changes: Partial<IReviewDraft>) =>
+    setDraft((prev) => ({ ...prev, ...changes }));
 
   const createDj = useMutation({
-    mutationFn: (input: CreateDjInput) => api.post<Dj>("/djs", input),
+    mutationFn: (input: ICreateDjInput) => api.post<Dj>("/djs", input),
   });
   const createEvent = useMutation({
     mutationFn: (input: CreateEventInput) => api.post<Event>("/events", input),
   });
   const createReview = useMutation({
-    mutationFn: (input: CreateReviewInput) => api.post<Review>("/reviews", input),
+    mutationFn: (input: ICreateReviewInput) => api.post<Review>("/reviews", input),
   });
 
   const resetForm = () => {
-    setDjName("");
-    setArtistPick(null);
-    setEventName("");
-    setVenue("");
-    setCity("");
-    setSeenAt(todayISODate());
-    setRating(undefined);
-    setCrowdVibe(undefined);
-    setReviewText("");
-    setTaggedUsers([]);
+    setDjQuery("");
+    setArtistPick(undefined);
+    setDraft(emptyDraft());
+    setError(undefined);
   };
 
   const pending = createDj.isPending || createEvent.isPending || createReview.isPending;
 
   const onSubmit = async () => {
-    setError(null);
+    setError(undefined);
+    if (!me) {
+      setError("Must be logged in to create a review");
+      return;
+    }
     if (!artistPick) {
       setError("Pick a DJ from the list, or create a new artist");
       return;
     }
-    const seenAtDate = new Date(seenAt);
+    const seenAtDate = new Date(draft.seenAt);
     if (Number.isNaN(seenAtDate.getTime())) {
       setError("Enter the date you saw them as YYYY-MM-DD");
       return;
@@ -516,134 +525,92 @@ export default function ReviewSetScreen() {
 
     try {
       const dj =
-        artistPick?.type === "existing"
-          ? artistPick.dj
-          : await createDj.mutateAsync(
-              artistPick?.type === "spotify"
-                ? {
-                    name: artistPick.artist.name,
-                    spotifyId: artistPick.artist.spotifyId,
-                    imageUrl: artistPick.artist.imageUrl ?? undefined,
-                    genres: artistPick.artist.genres,
-                  }
-                : {
-                    name: artistPick.draft.name,
-                    bio: artistPick.draft.bio || undefined,
-                    imageUrl: artistPick.draft.imageUrl || undefined,
-                    genres: artistPick.draft.genres,
-                  },
-            );
+        artistPick.type === "existing" ? artistPick.dj : await createDj.mutateAsync(artistPick.input);
 
       let event: Event | undefined;
-      if (eventName.trim() && venue.trim()) {
+      if (draft.eventName.trim() && draft.venue.trim()) {
         event = await createEvent.mutateAsync({
-          name: eventName.trim(),
-          venue: venue.trim(),
-          city: city.trim() || undefined,
+          name: draft.eventName.trim(),
+          venue: draft.venue.trim(),
+          city: draft.city.trim() || undefined,
           eventDate: seenAtDate.toISOString(),
         });
       }
 
-      const created = await createReview.mutateAsync({
+      const createdReview = await createReview.mutateAsync({
         djId: dj.id,
         eventId: event?.id,
-        rating,
-        reviewText: reviewText.trim() || undefined,
-        crowdVibe,
+        rating: draft.rating,
+        reviewText: draft.reviewText.trim() || undefined,
+        crowdVibe: draft.crowdVibe,
         seenAt: seenAtDate.toISOString(),
-        taggedUserIds: taggedUsers.map((u) => u.id),
+        taggedUserIds: draft.taggedUsers.map((u) => u.id),
       });
 
-      // Seed the profile list with the full review (server response only
-      // carries bare row fields) so it's there the instant we redirect,
-      // instead of a blank/stale list until a background refetch lands.
-      if (me?.username) {
-        const reviewsKey = queryKeys.reviews.byUser(me.username);
-        const fullReview: Review = {
-          ...created,
-          dj,
-          event,
-          taggedUsers,
-          likeCount: 0,
-          commentCount: 0,
-          isLikedByMe: false,
-        };
-        queryClient.setQueryData<Paginated<Review>>(reviewsKey, (old) => ({
-          items: [fullReview, ...(old?.items ?? [])],
-          nextCursor: old?.nextCursor ?? null,
-        }));
-        queryClient.invalidateQueries({ queryKey: reviewsKey });
-        queryClient.invalidateQueries({ queryKey: queryKeys.users.stats(me.username) });
-      }
+      // The server response only carries bare row fields; seed the profile
+      // list and the detail page with the full review so both render
+      // instantly instead of waiting on a background refetch.
+      const fullReview: Review = {
+        ...createdReview,
+        dj,
+        event,
+        user: me,
+        taggedUsers: draft.taggedUsers,
+        likeCount: 0,
+        commentCount: 0,
+        isLikedByMe: false,
+      };
+      const reviewsKey = queryKeys.reviews.byUser(me.username);
+      queryClient.setQueryData<Paginated<Review>>(reviewsKey, (old) => ({
+        items: [fullReview, ...(old?.items ?? [])],
+        nextCursor: old?.nextCursor ?? null,
+      }));
+      queryClient.setQueryData<Review>(queryKeys.reviews.byId(createdReview.id), fullReview);
+
+      queryClient.invalidateQueries({ queryKey: reviewsKey });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.stats(me.username) });
       queryClient.invalidateQueries({ queryKey: queryKeys.djs.bySlug(dj.slug) });
       if (event) queryClient.invalidateQueries({ queryKey: queryKeys.events.byId(event.id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.feed.activity() });
       queryClient.invalidateQueries({ queryKey: queryKeys.feed.popular() });
 
-      // Seed the detail query too so the review page we land on renders
-      // immediately; the background refetch fills in anything server-derived.
-      if (me) {
-        queryClient.setQueryData<Review>(queryKeys.reviews.byId(created.id), {
-          ...created,
-          dj,
-          event,
-          taggedUsers,
-          user: me,
-          likeCount: 0,
-          commentCount: 0,
-          isLikedByMe: false,
-        });
-      }
-
       // The tab stays mounted behind the review page, so clear it for the
       // next log rather than leaving this one's answers filled in on back.
       resetForm();
-      router.push(ROUTES.REVIEW_DETAIL(created.id, { justLogged: true }));
+      router.push(ROUTES.REVIEW_DETAIL(createdReview.id, { justLogged: true }));
     } catch (err: any) {
       setError(err?.message ?? "Could not save your review");
     }
   };
 
+  const selectedArtist = artistPick?.type === "existing" ? artistPick.dj : artistPick?.input;
+
   return (
     <Page title="Review a Set">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1"
-      >
+      <KeyboardAvoidingView behavior={isIos ? "padding" : undefined} className="flex-1">
         <ScrollView contentContainerStyle={contentStyle} keyboardShouldPersistTaps="handled">
           <Text className="mb-1 text-sm font-medium text-muted">DJ</Text>
           <View className="mb-4">
-            {artistPick?.type === "existing" ? (
+            {selectedArtist ? (
               <SelectedArtistCard
-                name={artistPick.dj.name}
-                imageUrl={artistPick.dj.imageUrl}
-                genres={artistPick.dj.genres ?? []}
-                bio={artistPick.dj.bio}
-                label={artistPick.dj.spotifyId ? undefined : COMMUNITY_ADDED_LABEL}
-                onClear={() => setArtistPick(null)}
-              />
-            ) : artistPick?.type === "spotify" ? (
-              <SelectedArtistCard
-                name={artistPick.artist.name}
-                imageUrl={artistPick.artist.imageUrl}
-                genres={artistPick.artist.genres}
-                onClear={() => setArtistPick(null)}
-              />
-            ) : artistPick?.type === "new" ? (
-              <SelectedArtistCard
-                name={artistPick.draft.name}
-                imageUrl={artistPick.draft.imageUrl}
-                genres={artistPick.draft.genres}
-                bio={artistPick.draft.bio}
-                label="New artist · added to Beatboxd when you save your review"
+                name={selectedArtist.name}
+                imageUrl={selectedArtist.imageUrl}
+                genres={selectedArtist.genres ?? []}
+                bio={selectedArtist.bio}
+                isFromCommunity={!selectedArtist.spotifyId}
                 actionLabel="Edit"
-                onAction={() => setShowCreateArtist(true)}
-                onClear={() => setArtistPick(null)}
+                // Only hand-made artists (not yet saved, not from Spotify) are editable.
+                onAction={
+                  artistPick?.type === "new" && !artistPick.input.spotifyId
+                    ? () => setShowCreateArtist(true)
+                    : undefined
+                }
+                onClear={() => setArtistPick(undefined)}
               />
             ) : (
               <ArtistSearchInput
-                value={djName}
-                onChangeText={setDjName}
+                value={djQuery}
+                onChangeText={setDjQuery}
                 onSelect={setArtistPick}
                 onCreate={() => setShowCreateArtist(true)}
               />
@@ -654,14 +621,10 @@ export default function ReviewSetScreen() {
             // search text / draft each time it opens.
             <CreateArtistModal
               visible
-              initial={
-                artistPick?.type === "new"
-                  ? artistPick.draft
-                  : { name: djName.trim(), bio: "", imageUrl: "", genres: [] }
-              }
+              initial={artistPick?.type === "new" ? artistPick.input : { name: djQuery.trim() }}
               onClose={() => setShowCreateArtist(false)}
-              onSave={(draft) => {
-                setArtistPick({ type: "new", draft });
+              onSave={(input) => {
+                setArtistPick({ type: "new", input });
                 setShowCreateArtist(false);
               }}
             />
@@ -670,34 +633,34 @@ export default function ReviewSetScreen() {
           <Text className="mb-1 text-sm font-medium text-muted">Event (optional)</Text>
           <TextInput
             placeholder="Event name"
-            value={eventName}
-            onChangeText={setEventName}
-            className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
+            value={draft.eventName}
+            onChangeText={(eventName) => updateDraft({ eventName })}
+            className={`mb-2 ${INPUT_CLASS}`}
           />
           <TextInput
             placeholder="Venue"
-            value={venue}
-            onChangeText={setVenue}
-            className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
+            value={draft.venue}
+            onChangeText={(venue) => updateDraft({ venue })}
+            className={`mb-2 ${INPUT_CLASS}`}
           />
           <TextInput
             placeholder="City"
-            value={city}
-            onChangeText={setCity}
-            className="mb-4 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
+            value={draft.city}
+            onChangeText={(city) => updateDraft({ city })}
+            className={`mb-4 ${INPUT_CLASS}`}
           />
 
           <Text className="mb-1 text-sm font-medium text-muted">Date you saw them</Text>
           <TextInput
             placeholder="YYYY-MM-DD"
-            value={seenAt}
-            onChangeText={setSeenAt}
-            className="mb-4 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
+            value={draft.seenAt}
+            onChangeText={(seenAt) => updateDraft({ seenAt })}
+            className={`mb-4 ${INPUT_CLASS}`}
           />
 
           <Text className="mb-1 text-sm font-medium text-muted">Rating</Text>
           <View className="mb-4">
-            <RatingStars value={rating} onChange={setRating} size={22} />
+            <RatingStars value={draft.rating} onChange={(rating) => updateDraft({ rating })} size={22} />
           </View>
 
           <Text className="mb-1 text-sm font-medium text-muted">Crowd vibe</Text>
@@ -705,12 +668,12 @@ export default function ReviewSetScreen() {
             {VIBES.map((v) => (
               <Pressable
                 key={v.value}
-                onPress={() => setCrowdVibe(v.value)}
+                onPress={() => updateDraft({ crowdVibe: v.value })}
                 className={`rounded-full px-3 py-2 ${
-                  crowdVibe === v.value ? "bg-primary" : "bg-white dark:bg-surface-dark border border-primary/20"
+                  draft.crowdVibe === v.value ? "bg-primary" : "bg-white dark:bg-surface-dark border border-primary/20"
                 }`}
               >
-                <Text className={crowdVibe === v.value ? "text-paper" : "text-ink dark:text-paper"}>
+                <Text className={draft.crowdVibe === v.value ? "text-paper" : "text-ink dark:text-paper"}>
                   {v.label}
                 </Text>
               </Pressable>
@@ -720,25 +683,30 @@ export default function ReviewSetScreen() {
           <Text className="mb-1 text-sm font-medium text-muted">Review</Text>
           <TextInput
             placeholder="How was it?"
-            value={reviewText}
-            onChangeText={setReviewText}
+            value={draft.reviewText}
+            onChangeText={(reviewText) => updateDraft({ reviewText })}
             multiline
             numberOfLines={4}
-            className="mb-4 min-h-24 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
+            className={`mb-4 min-h-24 ${INPUT_CLASS}`}
           />
 
           <Text className="mb-1 text-sm font-medium text-muted">Tag friends (optional)</Text>
           <View className="mb-4">
             <TagFriendsPicker
-              taggedUsers={taggedUsers}
-              onAdd={(user) => setTaggedUsers((prev) => [...prev, user])}
+              taggedUsers={draft.taggedUsers}
+              onAdd={(user) =>
+                setDraft((prev) => ({ ...prev, taggedUsers: [...prev.taggedUsers, user] }))
+              }
               onRemove={(userId) =>
-                setTaggedUsers((prev) => prev.filter((u) => u.id !== userId))
+                setDraft((prev) => ({
+                  ...prev,
+                  taggedUsers: prev.taggedUsers.filter((u) => u.id !== userId),
+                }))
               }
             />
           </View>
 
-          {error ? <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text> : null}
+          {!!error && <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text>}
 
           <Button disabled={pending} onPress={onSubmit} className="py-3">
             <Text className="text-center font-semibold text-paper">

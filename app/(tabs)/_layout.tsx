@@ -2,8 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { Redirect, useSegments } from "expo-router";
 import { Tabs } from "expo-router/js-tabs";
 import { useColorScheme } from "nativewind";
-import { ColorValue, Platform } from "react-native";
+import { ColorValue } from "react-native";
 
+import { useIsDesktopWeb } from "../../components/ui";
 import { WebNav } from "../../components/WebNav";
 import { useCurrentUser } from "../../lib/auth";
 import { ROUTES } from "../../lib/routes";
@@ -28,6 +29,7 @@ export default function TabsLayout() {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
   const segments = useSegments();
+  const isDesktopWeb = useIsDesktopWeb();
   // Browse (DJ search) and Feed (falls back to Popular without a following
   // graph) work without an account; Review and Profile redirect to sign-in.
   const activeTab = segments[segments.length - 1];
@@ -48,11 +50,12 @@ export default function TabsLayout() {
   return (
     <Tabs
       initialRouteName="feed"
-      // Bottom tabs read as a mobile pattern; on web, a horizontal navbar reads better.
-      tabBar={Platform.OS === "web" ? () => <WebNav /> : undefined}
+      // Bottom tabs read as a mobile pattern; on desktop web, a horizontal navbar
+      // reads better. Phone-width web keeps the bottom tab bar.
+      tabBar={isDesktopWeb ? () => <WebNav /> : undefined}
       screenOptions={{
         headerShown: false,
-        tabBarPosition: Platform.OS === "web" ? "top" : "bottom",
+        tabBarPosition: isDesktopWeb ? "top" : "bottom",
         tabBarActiveTintColor: isDark ? "#BA95E4" : "#7131B9",
         tabBarInactiveTintColor: "#8a8a99",
         tabBarStyle: {

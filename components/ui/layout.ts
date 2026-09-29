@@ -1,4 +1,4 @@
-import { useWindowDimensions, type ViewStyle } from "react-native";
+import { Platform, useWindowDimensions, type ViewStyle } from "react-native";
 
 // Horizontal page gutter. Wider once the viewport stops being phone-sized
 // (tablets, desktop web) so content doesn't hug the window edges.
@@ -16,4 +16,11 @@ export function usePageGutter(): number {
 export function usePageContentStyle(): ViewStyle {
   const gutter = usePageGutter();
   return { paddingHorizontal: gutter, paddingVertical: 16 };
+}
+
+// The top WebNav only fits a desktop-width browser; phone-sized web gets the
+// same bottom tab bar and native-style stack header as the apps.
+export function useIsDesktopWeb(): boolean {
+  const { width } = useWindowDimensions();
+  return Platform.OS === "web" && width >= WIDE_BREAKPOINT;
 }

@@ -5,7 +5,7 @@ export { Card } from "./Card";
 export { EmptyState } from "./EmptyState";
 export { GenreTags } from "./GenreTags";
 export { GlassSurface } from "./GlassSurface";
-export { usePageContentStyle, usePageGutter } from "./layout";
+export { useIsDesktopWeb, usePageContentStyle, usePageGutter } from "./layout";
 export { Button } from "./Button";
 export { Page } from "./Page";
 export { PageHeader } from "./PageHeader";

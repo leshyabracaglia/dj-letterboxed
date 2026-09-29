@@ -5,7 +5,7 @@ import { isClerkAPIResponseError, useUser } from "@clerk/expo";
 import { router } from "expo-router";
 import { useColorScheme } from "nativewind";
 import { useEffect, useState } from "react";
-import { Alert, Platform, Pressable, TextInput, View } from "react-native";
+import { Alert, Pressable, TextInput, View } from "react-native";
 
 import { Avatar, Button, Page, Text, usePageContentStyle } from "../components/ui";
 import { useCurrentUser, useUpdateProfile } from "../lib/auth";
@@ -17,6 +17,7 @@ import {
   setStoredThemePreference,
   type ThemePreference,
 } from "../lib/theme-storage";
+import { isWeb } from "@/lib/utils";
 
 const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: "system", label: "System" },
@@ -223,7 +224,7 @@ function AccountSettings() {
   };
 
   const onDeletePress = () => {
-    if (Platform.OS === "web") {
+    if (isWeb) {
       if (window.confirm("Delete your account? This can't be undone.")) {
         deleteAccount();
       }
