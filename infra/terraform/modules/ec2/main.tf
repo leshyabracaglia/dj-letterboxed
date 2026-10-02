@@ -62,6 +62,7 @@ data "aws_iam_policy_document" "instance_permissions" {
     actions = ["secretsmanager:GetSecretValue"]
     resources = [
       var.database_url_secret_arn,
+      var.db_master_user_secret_arn,
       var.clerk_secret_key_secret_arn,
       var.clerk_webhook_signing_secret_secret_arn,
       var.spotify_client_id_secret_arn,

@@ -19,3 +19,8 @@ output "github_deploy_role_arn" {
 output "db_endpoint" {
   value = module.database.endpoint
 }
+
+output "db_master_user_secret_arn" {
+  description = "Put this in the repo's GitHub Actions vars as DB_MASTER_SECRET_ARN (server-deploy runs migrations with it)."
+  value       = module.database.master_user_secret_arn
+}

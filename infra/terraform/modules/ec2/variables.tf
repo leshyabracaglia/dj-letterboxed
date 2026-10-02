@@ -37,6 +37,11 @@ variable "database_url_secret_arn" {
   type = string
 }
 
+variable "db_master_user_secret_arn" {
+  type        = string
+  description = "RDS-managed master credentials; read only by server/deploy/migrate.sh at deploy time, never put in .env."
+}
+
 variable "clerk_secret_key_secret_arn" {
   type = string
 }

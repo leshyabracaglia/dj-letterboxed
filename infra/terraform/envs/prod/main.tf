@@ -82,7 +82,6 @@ module "secrets" {
   project                      = var.project
   db_endpoint                  = module.database.endpoint
   db_name                      = module.database.database_name
-  db_master_user_secret_arn    = module.database.master_user_secret_arn
   clerk_secret_key             = var.clerk_secret_key
   clerk_webhook_signing_secret = var.clerk_webhook_signing_secret
   spotify_client_id            = var.spotify_client_id
@@ -101,6 +100,7 @@ module "ec2" {
   ecr_repository_url = module.ecr.repository_url
 
   database_url_secret_arn                 = module.secrets.database_url_secret_arn
+  db_master_user_secret_arn               = module.database.master_user_secret_arn
   clerk_secret_key_secret_arn             = module.secrets.clerk_secret_key_secret_arn
   clerk_webhook_signing_secret_secret_arn = module.secrets.clerk_webhook_signing_secret_secret_arn
   spotify_client_id_secret_arn            = module.secrets.spotify_client_id_secret_arn

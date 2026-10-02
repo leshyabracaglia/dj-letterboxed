@@ -11,9 +11,10 @@ variable "db_name" {
   type = string
 }
 
-variable "db_master_user_secret_arn" {
+variable "db_app_username" {
   type        = string
-  description = "ARN of the RDS-managed master credentials secret."
+  description = "Least-privilege Postgres role the API connects as."
+  default     = "beatboxd_app"
 }
 
 variable "clerk_secret_key" {

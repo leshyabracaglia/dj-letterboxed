@@ -56,29 +56,25 @@ ALB-based design.
    This is also exactly what Phase 3's `server-deploy.yml` CI workflow
    automates going forward.
 
-4. **Run migrations against the new RDS instance** — from a machine that
-   can reach it. The instance itself is the simplest path since it's
-   already inside the same security-group boundary: SSM into it
-   (`aws ssm start-session --profile beatboxd --target $(terraform output -raw app_instance_id)`)
-   and run the `migrate` binary there, or temporarily open port 5432 on
-   `aws_security_group.db` to your own IP and run `make migrate-up`
-   locally against `DATABASE_URL` (revert the security group rule after).
+4. **Migrations + app DB role run on every deploy.** `server-deploy.yml`
+   ships `server/deploy/migrate.sh` to the instance, which fetches the
+   RDS-managed **master** credentials fresh (AWS rotates them every 7 days)
+   and, in a one-off container, runs `migrate up` and then `migrate
+   app-role`. The latter creates/syncs the least-privilege `beatboxd_app`
+   role: DML on all tables (including ones future migrations add, via
+   `ALTER DEFAULT PRIVILEGES`), no DDL, no access to `schema_migrations`.
+   The master password is never written to `.env`, so the API container
+   can't see it.
 
-5. **Dedicated app DB role**: the `DATABASE_URL` secret this module
-   creates points at the RDS **master** user for now, so the stack is
-   usable immediately. Connect once with the master credentials (from the
-   Secrets Manager secret Terraform references) and run:
-   ```sql
-   CREATE ROLE beatboxd_app WITH LOGIN PASSWORD '...';
-   GRANT ALL PRIVILEGES ON DATABASE beatboxd TO beatboxd_app;
-   GRANT ALL ON ALL TABLES IN SCHEMA public TO beatboxd_app;
-   GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO beatboxd_app;
-   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO beatboxd_app;
-   ```
-   then update the `database_url` secret (`modules/secrets/main.tf`) to use
-   `beatboxd_app` instead of the master user, and re-apply (this changes
-   the `.env` file `user_data` writes on next instance replacement — for
-   an in-place update, see "Rotating secrets" below).
+5. **The API connects as `beatboxd_app`**, never the master user.
+   `modules/secrets` generates its password (`random_password.db_app`) and
+   builds the `beatboxd/database-url` secret from it; that password is
+   static, so master-password rotation can't take the API down. The deploy
+   workflow needs the master secret's ARN as the repo Actions variable
+   `DB_MASTER_SECRET_ARN` (`terraform output -raw db_master_user_secret_arn`).
+   To rotate the app password: `terraform apply -replace=module.secrets.random_password.db_app`,
+   then redeploy (refresh-env picks up the new URL and `migrate app-role`
+   sets the role's password to match before the API restarts).
 
 6. **GitHub Actions**: `.github/workflows/server-deploy.yml` assumes
    `terraform output -raw github_deploy_role_arn` via OIDC (set as the

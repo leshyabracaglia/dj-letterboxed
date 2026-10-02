@@ -1,21 +1,20 @@
 # App-facing secrets, injected into the EC2 instance's user-data (fetched
 # at boot via the instance's IAM role, never baked into the image).
-# DATABASE_URL is assembled from the RDS-managed master credentials secret
-# + endpoint.
 #
-# NOTE: this wires the app to the RDS *master* user for the initial
-# provisioning pass. Per infra/terraform/README.md, create a dedicated
-# least-privilege `beatboxd_app` Postgres role post-provisioning and swap
-# this secret to use it instead — flagged in the migration plan as a
-# follow-up, not a blocker for getting the stack live.
+# DATABASE_URL connects as the least-privilege `beatboxd_app` role (DML only,
+# no DDL), never the RDS master user. Its password is generated here and is
+# static, so AWS's rotation of the RDS-managed master password can't break
+# the running API. The role itself is created/synced to this password by
+# `migrate app-role` on every deploy (server/deploy/migrate.sh), which is
+# also the only thing that uses the master credentials.
 
-data "aws_secretsmanager_secret_version" "db_master" {
-  secret_id = var.db_master_user_secret_arn
+resource "random_password" "db_app" {
+  length  = 40
+  special = false
 }
 
 locals {
-  db_master_creds = jsondecode(data.aws_secretsmanager_secret_version.db_master.secret_string)
-  database_url    = "postgres://${local.db_master_creds.username}:${urlencode(local.db_master_creds.password)}@${var.db_endpoint}/${var.db_name}?sslmode=require"
+  database_url = "postgres://${var.db_app_username}:${random_password.db_app.result}@${var.db_endpoint}/${var.db_name}?sslmode=require"
 }
 
 resource "aws_secretsmanager_secret" "database_url" {
