@@ -58,7 +58,10 @@ func ensureAppRole(ctx context.Context, masterURL, appDatabaseURL string) error 
 				CREATE ROLE %s LOGIN;
 			END IF;
 		END $$`, "'"+role+"'", ident),
-		fmt.Sprintf("ALTER ROLE %s WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD %s", ident, literal),
+		// Just LOGIN + password: new roles already default to NOSUPERUSER/
+		// NOCREATEDB/NOCREATEROLE, and RDS's master isn't a true superuser,
+		// so naming those attributes here is rejected (42501) there.
+		fmt.Sprintf("ALTER ROLE %s WITH LOGIN PASSWORD %s", ident, literal),
 		fmt.Sprintf("GRANT CONNECT ON DATABASE %s TO %s", pgx.Identifier{app.Path[1:]}.Sanitize(), ident),
 		fmt.Sprintf("GRANT USAGE ON SCHEMA public TO %s", ident),
 		fmt.Sprintf("REVOKE CREATE ON SCHEMA public FROM PUBLIC, %s", ident),
