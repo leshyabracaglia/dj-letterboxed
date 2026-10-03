@@ -1,4 +1,3 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { FlatList, Pressable, TextInput, View } from "react-native";
 
@@ -12,9 +11,7 @@ import {
   Text,
   usePageContentStyle,
 } from "../../components/ui";
-import { useDjSearch } from "../../lib/api/hooks";
-import { useApi } from "../../lib/api/client";
-import { queryKeys } from "../../lib/api/queryKeys";
+import { useDjSearch, useVenueSearch } from "../../lib/api/hooks";
 import type { Dj, VenueSummary } from "../../lib/api/types";
 import { ROUTES } from "../../lib/routes";
 
@@ -40,8 +37,8 @@ function DjCard({ dj }: { dj: Dj }) {
 
 function VenueCard({ venue }: { venue: VenueSummary }) {
   return (
-    <Card href={ROUTES.VENUE(venue.venue)} tint="accent">
-      <Text className="text-lg font-semibold text-ink dark:text-paper">{venue.venue}</Text>
+    <Card href={ROUTES.VENUE(venue.id)} tint="accent">
+      <Text className="text-lg font-semibold text-ink dark:text-paper">{venue.name}</Text>
       <Text className="mt-1 text-sm text-muted">
         {venue.city ? `${venue.city} · ` : ""}
         {venue.eventCount} {venue.eventCount === 1 ? "event" : "events"} reviewed
@@ -74,19 +71,13 @@ const TABS = [
 ] as const;
 
 export default function BrowseScreen() {
-  const api = useApi();
   const [tab, setTab] = useState<(typeof TABS)[number]["value"]>("djs");
   const [query, setQuery] = useState("");
   const contentStyle = usePageContentStyle();
 
   const { data: djs } = useDjSearch(query, tab === "djs");
 
-  const { data: venues } = useQuery({
-    queryKey: queryKeys.venues.search(query),
-    queryFn: () => api.get<VenueSummary[]>("/venues/search", { q: query }),
-    enabled: tab === "venues" && query.length > 0,
-    placeholderData: keepPreviousData,
-  });
+  const { data: venues } = useVenueSearch(query, tab === "venues");
 
   return (
     <Page
@@ -138,7 +129,7 @@ export default function BrowseScreen() {
         <FlatList
           contentContainerStyle={contentStyle}
           data={venues ?? []}
-          keyExtractor={(item) => item.venue}
+          keyExtractor={(item) => item.id}
           renderItem={({ item }) => <VenueCard venue={item} />}
           ListEmptyComponent={
             query.length > 0 && !venues ? (

@@ -55,11 +55,16 @@ func run() error {
 	}
 
 	spotify := domain.NewSpotifyClient(cfg.SpotifyClientID, cfg.SpotifyClientSecret)
+	places := domain.NewPlacesClient(cfg.GooglePlacesAPIKey)
+	if !places.Configured() {
+		slog.Warn("GOOGLE_PLACES_API_KEY not set; place search is disabled")
+	}
 
 	router := httpapi.NewRouter(httpapi.RouterConfig{
 		Pool:                      pool,
 		Verifier:                  verifier,
 		Spotify:                   spotify,
+		Places:                    places,
 		ClerkWebhookSigningSecret: cfg.ClerkWebhookSigningSecret,
 	})
 

@@ -14,6 +14,9 @@ type Config struct {
 	ClerkIssuer               string
 	SpotifyClientID           string
 	SpotifyClientSecret       string
+	// Optional: without it place search returns 503 and venues can only be
+	// typed in by hand.
+	GooglePlacesAPIKey string
 }
 
 func Load() (*Config, error) {
@@ -26,6 +29,12 @@ func Load() (*Config, error) {
 		ClerkIssuer:               os.Getenv("CLERK_ISSUER"),
 		SpotifyClientID:           os.Getenv("SPOTIFY_CLIENT_ID"),
 		SpotifyClientSecret:       os.Getenv("SPOTIFY_CLIENT_SECRET"),
+		GooglePlacesAPIKey:        os.Getenv("GOOGLE_PLACES_API_KEY"),
+	}
+	// Terraform stores "unset" when no key was given (Secrets Manager
+	// rejects empty strings); treat it as not configured.
+	if cfg.GooglePlacesAPIKey == "unset" {
+		cfg.GooglePlacesAPIKey = ""
 	}
 
 	if cfg.DatabaseURL == "" {

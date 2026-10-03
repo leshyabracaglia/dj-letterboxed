@@ -62,7 +62,11 @@ func run() error {
 	}
 
 	eventDate := mustParse("2026-06-14T23:00:00Z")
-	event1, err := queries.CreateEvent(ctx, pool, "Innervisions", "The Foundry", strPtr("Brooklyn, NY"), eventDate, nil, alice.ID)
+	foundry, err := queries.UpsertUnlinkedVenue(ctx, pool, "The Foundry", strPtr("Brooklyn, NY"), alice.ID)
+	if err != nil {
+		return err
+	}
+	event1, err := queries.CreateEvent(ctx, pool, "Innervisions", foundry, strPtr("Brooklyn, NY"), eventDate, nil, alice.ID)
 	if err != nil {
 		return err
 	}

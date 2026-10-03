@@ -10,11 +10,11 @@ import (
 	"beatboxd/server/internal/db"
 )
 
-const eventCols = "id, name, venue, city, event_date, description, created_by_user_id, created_at"
+const eventCols = "id, name, venue, venue_id, city, event_date, description, created_by_user_id, created_at"
 
 func scanEvent(row pgx.Row) (*db.Event, error) {
 	var e db.Event
-	err := row.Scan(&e.ID, &e.Name, &e.Venue, &e.City, &e.EventDate, &e.Description, &e.CreatedByUserID, &e.CreatedAt)
+	err := row.Scan(&e.ID, &e.Name, &e.Venue, &e.VenueID, &e.City, &e.EventDate, &e.Description, &e.CreatedByUserID, &e.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
@@ -46,8 +46,8 @@ func GetEventByID(ctx context.Context, q DBTX, id string) (*db.Event, error) {
 	return scanEvent(q.QueryRow(ctx, "SELECT "+eventCols+" FROM events WHERE id = $1", id))
 }
 
-func GetEventByExactMatch(ctx context.Context, q DBTX, name, venue string, eventDate time.Time) (*db.Event, error) {
-	return scanEvent(q.QueryRow(ctx, "SELECT "+eventCols+" FROM events WHERE name = $1 AND venue = $2 AND event_date = $3", name, venue, eventDate))
+func GetEventByExactMatch(ctx context.Context, q DBTX, name, venueID string, eventDate time.Time) (*db.Event, error) {
+	return scanEvent(q.QueryRow(ctx, "SELECT "+eventCols+" FROM events WHERE name = $1 AND venue_id = $2 AND event_date = $3", name, venueID, eventDate))
 }
 
 // GetEventsByIDs batch-fetches events for hydrating relations, keyed by id.
@@ -71,9 +71,10 @@ func GetEventsByIDs(ctx context.Context, q DBTX, ids []string) (map[string]db.Ev
 	return out, rows.Err()
 }
 
-func CreateEvent(ctx context.Context, q DBTX, name, venue string, city *string, eventDate time.Time, description *string, createdByUserID string) (*db.Event, error) {
+// CreateEvent stores venue.Name as the event's denormalized venue name.
+func CreateEvent(ctx context.Context, q DBTX, name string, venue *db.Venue, city *string, eventDate time.Time, description *string, createdByUserID string) (*db.Event, error) {
 	return scanEvent(q.QueryRow(ctx, `
-		INSERT INTO events (name, venue, city, event_date, description, created_by_user_id)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING `+eventCols, name, venue, city, eventDate, description, createdByUserID))
+		INSERT INTO events (name, venue, venue_id, city, event_date, description, created_by_user_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING `+eventCols, name, venue.Name, venue.ID, city, eventDate, description, createdByUserID))
 }

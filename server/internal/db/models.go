@@ -44,10 +44,25 @@ type Dj struct {
 	UpdatedAt       time.Time `json:"updatedAt"`
 }
 
-type Event struct {
+type Venue struct {
 	ID              string    `json:"id"`
 	Name            string    `json:"name"`
+	City            *string   `json:"city"`
+	Address         *string   `json:"address"`
+	GooglePlaceID   *string   `json:"googlePlaceId"`
+	Latitude        *float64  `json:"latitude"`
+	Longitude       *float64  `json:"longitude"`
+	CreatedByUserID *string   `json:"createdByUserId"`
+	CreatedAt       time.Time `json:"createdAt"`
+}
+
+type Event struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// Venue is the venue's display name, kept denormalized alongside
+	// VenueID so existing displays don't need a join.
 	Venue           string    `json:"venue"`
+	VenueID         *string   `json:"venueId"`
 	City            *string   `json:"city"`
 	EventDate       time.Time `json:"eventDate"`
 	Description     *string   `json:"description"`

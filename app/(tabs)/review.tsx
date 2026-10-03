@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -20,7 +20,7 @@ import {
   Text,
   usePageContentStyle,
 } from "../../components/ui";
-import { useDjSearch } from "../../lib/api/hooks";
+import { useDjSearch, useVenueSearch } from "../../lib/api/hooks";
 import { useCurrentUser } from "../../lib/auth";
 import { useApi } from "../../lib/api/client";
 import { queryKeys } from "../../lib/api/queryKeys";
@@ -29,10 +29,12 @@ import type {
   Dj,
   Event,
   Paginated,
+  PlaceSuggestion,
   Review,
   SpotifyArtist,
   User,
   CrowdVibe,
+  VenueSummary,
 } from "../../lib/api/types";
 import { ROUTES } from "../../lib/routes";
 import { isIos } from "@/lib/utils";
@@ -62,10 +64,19 @@ type ICreateReviewInput = {
 // created when the review is saved.
 type IArtistPick = { type: "existing"; dj: Dj } | { type: "new"; input: ICreateDjInput };
 
+// An already-saved venue, a Google Places result (saved as a venue when the
+// review is saved), or a name typed in by hand.
+type IVenuePick =
+  | { type: "existing"; venue: VenueSummary }
+  | { type: "place"; place: PlaceSuggestion }
+  | { type: "typed"; name: string };
+
 // Form fields as typed; turned into API inputs on submit.
 type IReviewDraft = {
   eventName: string;
-  venue: string;
+  venuePick?: IVenuePick;
+  // Only asked for (and sent) for a typed-in venue; saved and Google venues
+  // already know their city.
   city: string;
   seenAt: string;
   rating?: number;
@@ -77,7 +88,6 @@ type IReviewDraft = {
 function emptyDraft(): IReviewDraft {
   return {
     eventName: "",
-    venue: "",
     city: "",
     seenAt: new Date().toISOString().slice(0, 10),
     reviewText: "",
@@ -396,6 +406,172 @@ function CreateArtistModal({
   );
 }
 
+// Groups a venue search's Google Places calls (and the save of the picked
+// place) into one billing session. Any URL-safe string up to 36 chars works.
+function newPlacesSessionToken() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 14)}`;
+}
+
+function useDebouncedValue<T>(value: T, delayMs: number) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
+
+function venuePickName(pick: IVenuePick) {
+  if (pick.type === "existing") return pick.venue.name;
+  if (pick.type === "place") return pick.place.name;
+  return pick.name;
+}
+
+function venuePickKey(pick: IVenuePick) {
+  if (pick.type === "existing") return `local-${pick.venue.id}`;
+  if (pick.type === "place") return `place-${pick.place.placeId}`;
+  return `typed-${pick.name}`;
+}
+
+function venuePickSubtitle(pick: IVenuePick) {
+  if (pick.type === "existing") return pick.venue.address ?? pick.venue.city ?? "";
+  if (pick.type === "place") return pick.place.secondaryText;
+  return "Added by you";
+}
+
+function VenueResultRow({
+  name,
+  subtitle,
+  onPress,
+}: {
+  name: string;
+  subtitle: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{ height: RESULT_ROW_HEIGHT }}
+      className="justify-center border-b border-muted/10 px-4 active:bg-primary-tint/40 dark:active:bg-primary/10"
+    >
+      <Text numberOfLines={1} className="text-ink dark:text-paper">
+        {name}
+      </Text>
+      {subtitle ? (
+        <Text numberOfLines={1} className="text-xs text-muted">
+          {subtitle}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
+function VenueSearchInput({
+  sessionToken,
+  onSelect,
+}: {
+  sessionToken: string;
+  onSelect: (pick: IVenuePick) => void;
+}) {
+  const api = useApi();
+  const [value, setValue] = useState("");
+  const query = value.trim();
+  const enabled = query.length > 1;
+  // Google bills per request, so wait for a pause in typing; the local
+  // search is cheap and stays instant.
+  const placesQuery = useDebouncedValue(query, 300);
+
+  const { data: localResults, isFetching: isLocalFetching } = useVenueSearch(query, enabled);
+  const { data: placeResults, isFetching: isPlacesFetching } = useQuery({
+    queryKey: queryKeys.venues.placesSearch(placesQuery),
+    queryFn: () =>
+      api.get<PlaceSuggestion[]>("/venues/places-search", { q: placesQuery, sessionToken }),
+    enabled: enabled && placesQuery.length > 1,
+    // Place search is optional (503 when the server has no API key); fall
+    // back to saved and typed venues instead of retrying.
+    retry: false,
+  });
+
+  // Venues already on Beatboxd lead (they carry review history); Google
+  // results follow, minus any place someone already saved.
+  const locals = localResults ?? [];
+  const savedPlaceIds = new Set(locals.flatMap((v) => (v.googlePlaceId ? [v.googlePlaceId] : [])));
+  const rows: IVenuePick[] = [
+    ...locals.map((venue) => ({ type: "existing" as const, venue })),
+    ...(placeResults ?? [])
+      .filter((place) => !savedPlaceIds.has(place.placeId))
+      .map((place) => ({ type: "place" as const, place })),
+  ];
+  const isFetching = isLocalFetching || isPlacesFetching || placesQuery !== query;
+
+  return (
+    <View>
+      <TextInput
+        placeholder="Venue"
+        value={value}
+        onChangeText={setValue}
+        className={INPUT_CLASS}
+      />
+      {enabled ? (
+        <View className="mt-1 overflow-hidden rounded-xl border border-primary/20 bg-white dark:bg-surface-dark">
+          <ScrollView
+            style={{ maxHeight: RESULT_ROW_HEIGHT * VISIBLE_RESULT_ROWS }}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+          >
+            {rows.map((row) => (
+              <VenueResultRow
+                key={venuePickKey(row)}
+                name={venuePickName(row)}
+                subtitle={venuePickSubtitle(row)}
+                onPress={() => onSelect(row)}
+              />
+            ))}
+            {isFetching ? (
+              <View
+                style={{ height: RESULT_ROW_HEIGHT }}
+                className="justify-center border-b border-muted/10 px-4"
+              >
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="mt-1.5 h-3 w-56" />
+              </View>
+            ) : null}
+          </ScrollView>
+          <Pressable
+            onPress={() => onSelect({ type: "typed", name: query })}
+            className="flex-row items-center gap-3 px-4 py-3 active:bg-primary-tint/40 dark:active:bg-primary/10"
+          >
+            <View className="h-10 w-10 items-center justify-center rounded-lg border border-dashed border-accent/60">
+              <Text className="text-lg text-accent-text dark:text-accent-dark">+</Text>
+            </View>
+            <Text numberOfLines={1} className="flex-1 font-medium text-accent-text dark:text-accent-dark">
+              Use &ldquo;{query}&rdquo;
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function SelectedVenueCard({ pick, onClear }: { pick: IVenuePick; onClear: () => void }) {
+  return (
+    <View className="flex-row items-center gap-3 rounded-xl border border-primary/20 bg-white px-4 py-3 dark:bg-surface-dark">
+      <View className="flex-1">
+        <Text numberOfLines={1} className="font-semibold text-ink dark:text-paper">
+          {venuePickName(pick)}
+        </Text>
+        <Text numberOfLines={1} className="text-xs text-muted">
+          {venuePickSubtitle(pick)}
+        </Text>
+      </View>
+      <Pressable onPress={onClear} hitSlop={8}>
+        <Text className="text-sm text-muted">Change</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function TagFriendsPicker({
   taggedUsers,
   onAdd,
@@ -483,6 +659,7 @@ export default function CreateReviewScreen() {
   const [artistPick, setArtistPick] = useState<IArtistPick>();
   const [showCreateArtist, setShowCreateArtist] = useState(false);
   const [draft, setDraft] = useState<IReviewDraft>(emptyDraft);
+  const [placesSessionToken, setPlacesSessionToken] = useState(newPlacesSessionToken);
   const [error, setError] = useState<string>();
 
   const updateDraft = (changes: Partial<IReviewDraft>) =>
@@ -502,6 +679,7 @@ export default function CreateReviewScreen() {
     setDjQuery("");
     setArtistPick(undefined);
     setDraft(emptyDraft());
+    setPlacesSessionToken(newPlacesSessionToken());
     setError(undefined);
   };
 
@@ -522,17 +700,26 @@ export default function CreateReviewScreen() {
       setError("Enter the date you saw them as YYYY-MM-DD");
       return;
     }
+    const { venuePick } = draft;
+    if (draft.eventName.trim() && !venuePick) {
+      setError("Pick the venue for this event");
+      return;
+    }
 
     try {
       const dj =
         artistPick.type === "existing" ? artistPick.dj : await createDj.mutateAsync(artistPick.input);
 
       let event: Event | undefined;
-      if (draft.eventName.trim() && draft.venue.trim()) {
+      if (venuePick) {
         event = await createEvent.mutateAsync({
-          name: draft.eventName.trim(),
-          venue: draft.venue.trim(),
-          city: draft.city.trim() || undefined,
+          // A venue with no event name logs as a night at that venue.
+          name: draft.eventName.trim() || venuePickName(venuePick),
+          ...(venuePick.type === "existing"
+            ? { venueId: venuePick.venue.id }
+            : venuePick.type === "place"
+              ? { placeId: venuePick.place.placeId, placeSessionToken: placesSessionToken }
+              : { venue: venuePick.name, city: draft.city.trim() || undefined }),
           eventDate: seenAtDate.toISOString(),
         });
       }
@@ -571,6 +758,8 @@ export default function CreateReviewScreen() {
       queryClient.invalidateQueries({ queryKey: queryKeys.users.stats(me.username) });
       queryClient.invalidateQueries({ queryKey: queryKeys.djs.bySlug(dj.slug) });
       if (event) queryClient.invalidateQueries({ queryKey: queryKeys.events.byId(event.id) });
+      if (event?.venueId) queryClient.invalidateQueries({ queryKey: queryKeys.venues.byId(event.venueId) });
+      queryClient.invalidateQueries({ queryKey: ["venues", "search"] });
       queryClient.invalidateQueries({ queryKey: queryKeys.feed.activity() });
       queryClient.invalidateQueries({ queryKey: queryKeys.feed.popular() });
 
@@ -637,18 +826,31 @@ export default function CreateReviewScreen() {
             onChangeText={(eventName) => updateDraft({ eventName })}
             className={`mb-2 ${INPUT_CLASS}`}
           />
-          <TextInput
-            placeholder="Venue"
-            value={draft.venue}
-            onChangeText={(venue) => updateDraft({ venue })}
-            className={`mb-2 ${INPUT_CLASS}`}
-          />
-          <TextInput
-            placeholder="City"
-            value={draft.city}
-            onChangeText={(city) => updateDraft({ city })}
-            className={`mb-4 ${INPUT_CLASS}`}
-          />
+          <View className="mb-4">
+            {draft.venuePick ? (
+              <SelectedVenueCard
+                pick={draft.venuePick}
+                onClear={() => {
+                  updateDraft({ venuePick: undefined });
+                  // A new search is a new Google billing session.
+                  setPlacesSessionToken(newPlacesSessionToken());
+                }}
+              />
+            ) : (
+              <VenueSearchInput
+                sessionToken={placesSessionToken}
+                onSelect={(venuePick) => updateDraft({ venuePick })}
+              />
+            )}
+            {draft.venuePick?.type === "typed" ? (
+              <TextInput
+                placeholder="City"
+                value={draft.city}
+                onChangeText={(city) => updateDraft({ city })}
+                className={`mt-2 ${INPUT_CLASS}`}
+              />
+            ) : null}
+          </View>
 
           <Text className="mb-1 text-sm font-medium text-muted">Date you saw them</Text>
           <TextInput

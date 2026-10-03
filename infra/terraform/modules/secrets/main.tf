@@ -60,3 +60,14 @@ resource "aws_secretsmanager_secret_version" "spotify_client_secret" {
   secret_id     = aws_secretsmanager_secret.spotify_client_secret.id
   secret_string = var.spotify_client_secret != "" ? var.spotify_client_secret : "unset"
 }
+
+# Reaches the instance via server/deploy/refresh-env.sh on each deploy, not
+# user_data (see the note there). The API treats "unset" as no key, so place
+# search reports itself unconfigured (503) until a real one is set.
+resource "aws_secretsmanager_secret" "google_places_api_key" {
+  name = "${var.project}/google-places-api-key"
+}
+resource "aws_secretsmanager_secret_version" "google_places_api_key" {
+  secret_id     = aws_secretsmanager_secret.google_places_api_key.id
+  secret_string = var.google_places_api_key != "" ? var.google_places_api_key : "unset"
+}

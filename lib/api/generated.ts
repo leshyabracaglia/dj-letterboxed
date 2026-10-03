@@ -317,7 +317,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create an event (or return the existing one, deduped by exact name+venue+date) */
+        /**
+         * Create an event (or return the existing one, deduped by exact name+venue+date)
+         * @description The venue is resolved from venueId, then placeId (a Google Places id, saved as a venue on first use), then the typed venue name.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -1572,6 +1575,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/venues/places-search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Google Places for venues not yet saved
+         * @description Pass the same client-generated sessionToken on every keystroke of one search and on the POST /api/events that saves the picked place, so Google bills them as one session.
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description search query */
+                    q: string;
+                    /** @description Places autocomplete session token */
+                    sessionToken?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PlaceSuggestion"][];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Service Unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/venues/search": {
         parameters: {
             query?: never;
@@ -1579,7 +1644,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Search venues by name (derived from events.venue, grouped) */
+        /** Search saved venues by name */
         get: {
             parameters: {
                 query: {
@@ -1611,21 +1676,21 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/venues/{venue}": {
+    "/api/venues/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get a venue by exact name, with its events */
+        /** Get a venue by id, with its events */
         get: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description venue name */
-                    venue: string;
+                    /** @description venue id */
+                    id: string;
                 };
                 cookie?: never;
             };
@@ -1691,7 +1756,12 @@ export interface components {
             eventDate: string;
             id: string;
             name: string;
+            /**
+             * @description Venue is the venue's display name, kept denormalized alongside
+             *     VenueID so existing displays don't need a join.
+             */
             venue: string;
+            venueId: string;
         };
         EventDetailResponse: {
             event: components["schemas"]["Event"];
@@ -1715,6 +1785,15 @@ export interface components {
         PaginatedReviews: {
             items: components["schemas"]["ReviewDTO"][];
             nextCursor: string;
+        };
+        PlaceSuggestion: {
+            name: string;
+            placeId: string;
+            /**
+             * @description SecondaryText is the rest of the place's description, usually its
+             *     street address and city.
+             */
+            secondaryText: string;
         };
         PopularResponse: {
             items: components["schemas"]["ReviewDTO"][];
@@ -1800,15 +1879,16 @@ export interface components {
             uniqueDjs: number;
         };
         VenueDetailResponse: {
-            city: string;
-            eventCount: number;
             events: components["schemas"]["Event"][];
-            venue: string;
+            venue: components["schemas"]["VenueSummary"];
         };
         VenueSummary: {
+            address: string;
             city: string;
             eventCount: number;
-            venue: string;
+            googlePlaceId: string;
+            id: string;
+            name: string;
         };
         addCommentRequest: {
             body: string;
@@ -1829,7 +1909,10 @@ export interface components {
             description: string;
             eventDate: string;
             name: string;
+            placeId: string;
+            placeSessionToken: string;
             venue: string;
+            venueId: string;
         };
         createReviewRequest: {
             crowdVibe: string;
