@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 import { ScrollView } from "react-native";
 
-import { isClerkAPIResponseError, useUser } from "@clerk/expo";
+import { isClerkAPIResponseError, useAuth, useUser } from "@clerk/expo";
 import { router } from "expo-router";
 import { useColorScheme } from "nativewind";
 import { useEffect, useState } from "react";
@@ -184,9 +184,14 @@ function clerkErrorMessage(err: unknown, fallback: string) {
 
 function AccountSettings() {
   const { user } = useUser();
+  const { signOut } = useAuth();
+  // Accounts created via a social provider have no password yet, so there's
+  // no current one to confirm — Clerk lets them set one directly.
+  const hasPassword = user?.passwordEnabled ?? true;
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordPending, setPasswordPending] = useState(false);
@@ -199,17 +204,38 @@ function AccountSettings() {
       setPasswordError("Enter a new password");
       return;
     }
+    if (hasPassword && !currentPassword) {
+      setPasswordError("Enter your current password");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords don't match");
+      return;
+    }
     setPasswordPending(true);
     try {
-      await user?.updatePassword({ currentPassword, newPassword });
+      await user?.updatePassword({
+        ...(hasPassword ? { currentPassword } : {}),
+        newPassword,
+        signOutOfOtherSessions: true,
+      });
       setCurrentPassword("");
       setNewPassword("");
+      setConfirmPassword("");
       setPasswordSuccess(true);
     } catch (err) {
       setPasswordError(clerkErrorMessage(err, "Could not update your password"));
     } finally {
       setPasswordPending(false);
     }
+  };
+
+  // Resetting goes through Clerk's sign-in flow, which needs a signed-out
+  // client, so sign out first and hand the email over to prefill the form.
+  const onForgotPassword = async () => {
+    const email = user?.primaryEmailAddress?.emailAddress;
+    await signOut();
+    router.replace(ROUTES.FORGOT_PASSWORD(email ? { email } : undefined));
   };
 
   const deleteAccount = async () => {
@@ -242,26 +268,40 @@ function AccountSettings() {
 
   return (
     <View className="mt-6 border-t border-primary/15 pt-4">
-      <Text className="mb-2 text-xl font-display text-ink dark:text-paper">Change password</Text>
+      <Text className="mb-2 text-xl font-display text-ink dark:text-paper">
+        {hasPassword ? "Change password" : "Set a password"}
+      </Text>
+      {hasPassword ? (
+        <TextInput
+          secureTextEntry
+          autoComplete="current-password"
+          placeholder="Current password"
+          value={currentPassword}
+          onChangeText={setCurrentPassword}
+          className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
+        />
+      ) : null}
       <TextInput
         secureTextEntry
-        placeholder="Current password"
-        value={currentPassword}
-        onChangeText={setCurrentPassword}
+        autoComplete="new-password"
+        placeholder="New password"
+        value={newPassword}
+        onChangeText={setNewPassword}
         className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
       <TextInput
         secureTextEntry
-        placeholder="New password"
-        value={newPassword}
-        onChangeText={setNewPassword}
+        autoComplete="new-password"
+        placeholder="Confirm new password"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
         className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
       {passwordError ? (
         <Text className="mb-2 text-danger dark:text-danger-dark">{passwordError}</Text>
       ) : null}
       {passwordSuccess ? (
-        <Text className="mb-2 text-success dark:text-success-dark">Password updated.</Text>
+        <Text className="mb-2 text-success dark:text-success-dark">Password updated. Other devices have been signed out.</Text>
       ) : null}
       <Button
         disabled={passwordPending}
@@ -269,9 +309,16 @@ function AccountSettings() {
         className="py-3"
       >
         <Text className="text-center font-semibold text-paper">
-          {passwordPending ? "Saving..." : "Update password"}
+          {passwordPending ? "Saving..." : hasPassword ? "Update password" : "Set password"}
         </Text>
       </Button>
+      {hasPassword ? (
+        <Pressable onPress={onForgotPassword} className="mt-3 self-center">
+          <Text className="text-sm text-primary dark:text-primary-dark">
+            Forgot your current password?
+          </Text>
+        </Pressable>
+      ) : null}
 
       <Text className="mb-2 mt-8 text-xl font-display text-danger dark:text-danger-dark">
         Danger zone

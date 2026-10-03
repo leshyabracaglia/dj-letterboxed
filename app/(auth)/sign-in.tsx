@@ -104,8 +104,13 @@ export default function SignInScreen() {
         placeholder="Password"
         value={password}
         onChangeText={setPassword}
-        className="mb-4 w-full max-w-sm rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
+        className="mb-2 w-full max-w-sm rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
+      <View className="mb-4 w-full max-w-sm items-end">
+        <Link href={ROUTES.FORGOT_PASSWORD(email.trim() ? { email: email.trim() } : undefined)}>
+          <Text className="text-sm text-primary dark:text-primary-dark">Forgot password?</Text>
+        </Link>
+      </View>
       {errors.fields.identifier ? (
         <Text className="mb-3 text-danger dark:text-danger-dark">{errors.fields.identifier.message}</Text>
       ) : null}

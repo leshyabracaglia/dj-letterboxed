@@ -9,6 +9,10 @@ export const ROUTES = {
   HOME: "/" as Href,
   SIGN_IN: "/(auth)/sign-in" as Href,
   SIGN_UP: "/(auth)/sign-up" as Href,
+  // `email` prefills the form (e.g. coming from settings' "forgot your
+  // current password?").
+  FORGOT_PASSWORD: (opts?: { email?: string }): Href =>
+    `/(auth)/forgot-password${opts?.email ? `?email=${encodeURIComponent(opts.email)}` : ""}` as Href,
   ONBOARDING: "/(auth)/onboarding" as Href,
   FEED: "/(tabs)/feed" as Href,
   BROWSE: "/(tabs)/browse" as Href,
