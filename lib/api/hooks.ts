@@ -14,6 +14,7 @@ import type {
   SeriesSummary,
   User,
   UserProfile,
+  UserStats,
   VenueDetail,
   VenueSummary,
 } from "./types";
@@ -29,24 +30,43 @@ export function useUserReviews(username: string | undefined) {
   });
 }
 
-// Searches local DJs. Idle until `query` is non-empty (and `enabled`); keeps
-// showing the previous results while the next keystroke's search loads.
-export function useDjSearch(query: string, enabled: boolean = true) {
+// How many popular rows a browse search shows before anything is typed.
+const SUGGESTION_COUNT = 5;
+
+interface SearchOptions {
+  enabled?: boolean;
+  // With an empty query, fetch the top few (most-reviewed / busiest /
+  // most-followed) instead of staying idle.
+  suggest?: boolean;
+}
+
+// Searches local DJs. Idle until `query` is non-empty (and `enabled`) unless
+// `suggest`; keeps showing the previous results while the next keystroke's
+// search loads.
+export function useDjSearch(query: string, { enabled = true, suggest = false }: SearchOptions = {}) {
   const api = useApi();
   return useQuery({
     queryKey: queryKeys.djs.search(query),
-    queryFn: () => api.get<Dj[]>("/djs/search", { q: query }),
-    enabled: enabled && !!query.length,
+    queryFn: () =>
+      api.get<Dj[]>("/djs/search", query ? { q: query } : { limit: SUGGESTION_COUNT }),
+    enabled: enabled && (suggest || !!query.length),
     placeholderData: keepPreviousData,
   });
 }
 
-export function useVenueSearch(query: string, enabled: boolean = true) {
+export function useVenueSearch(
+  query: string,
+  { enabled = true, suggest = false }: SearchOptions = {},
+) {
   const api = useApi();
   return useQuery({
     queryKey: queryKeys.venues.search(query),
-    queryFn: () => api.get<VenueSummary[]>("/venues/search", { q: query }),
-    enabled: enabled && !!query.length,
+    queryFn: () =>
+      api.get<VenueSummary[]>(
+        "/venues/search",
+        query ? { q: query } : { limit: SUGGESTION_COUNT },
+      ),
+    enabled: enabled && (suggest || !!query.length),
     placeholderData: keepPreviousData,
   });
 }
@@ -64,13 +84,18 @@ export function useSeriesSearch(query: string, enabled: boolean = true) {
 }
 
 // Searches users by username/display name. Idle until `query` reaches
-// `minLength` (and `enabled`); keeps the previous results while typing.
-export function useUserSearch(query: string, { enabled = true, minLength = 1 } = {}) {
+// `minLength` (and `enabled`) unless `suggest` and the query is empty; keeps
+// the previous results while typing.
+export function useUserSearch(
+  query: string,
+  { enabled = true, suggest = false, minLength = 1 }: SearchOptions & { minLength?: number } = {},
+) {
   const api = useApi();
   return useQuery({
     queryKey: queryKeys.users.search(query),
-    queryFn: () => api.get<User[]>("/users/search", { q: query }),
-    enabled: enabled && query.length >= minLength,
+    queryFn: () =>
+      api.get<User[]>("/users/search", query ? { q: query } : { limit: SUGGESTION_COUNT }),
+    enabled: enabled && (query.length >= minLength || (suggest && !query.length)),
     placeholderData: keepPreviousData,
   });
 }
@@ -80,6 +105,7 @@ export function useUserProfile(username: string | undefined) {
   return useQuery({
     queryKey: queryKeys.users.byUsername(username!),
     queryFn: () => api.get<UserProfile>(`/users/${username}`),
+    enabled: !!username,
   });
 }
 
@@ -105,6 +131,16 @@ export function useVenueDetail(id: string | undefined) {
     queryKey: queryKeys.venues.byId(id!),
     queryFn: () => api.get<VenueDetail>(`/venues/${id}`),
     enabled: id !== undefined,
+  });
+}
+
+// Shared by the profile header's counts row (DJ count) and StatsSummary.
+export function useUserStats(username: string | undefined) {
+  const api = useApi();
+  return useQuery({
+    queryKey: queryKeys.users.stats(username!),
+    queryFn: () => api.get<UserStats>(`/users/${username}/stats`),
+    enabled: username !== undefined,
   });
 }
 

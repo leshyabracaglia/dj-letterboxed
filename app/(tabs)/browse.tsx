@@ -7,6 +7,7 @@ import {
   Card,
   EmptyState,
   GenreTags,
+  KEYBOARD_DISMISS_PROPS,
   Page,
   RatingStars,
   Skeleton,
@@ -107,6 +108,12 @@ function BrowseCardSkeleton({ tint }: { tint: "primary" | "accent" | "neutral" }
   );
 }
 
+function SuggestionsLabel({ label }: { label: string }) {
+  return (
+    <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">{label}</Text>
+  );
+}
+
 const TABS = [
   { value: "djs", label: "DJs" },
   { value: "events", label: "Events" },
@@ -115,10 +122,18 @@ const TABS = [
 ] as const;
 
 const COPY = {
-  djs: { title: "Browse DJs", placeholder: "Search DJs..." },
-  events: { title: "Browse Events", placeholder: "Search events like Innervisions..." },
-  venues: { title: "Browse Venues", placeholder: "Search venues..." },
-  people: { title: "Find People", placeholder: "Search by name or username..." },
+  djs: { title: "Browse DJs", placeholder: "Search DJs...", suggestions: "Popular DJs" },
+  events: {
+    title: "Browse Events",
+    placeholder: "Search events like Innervisions...",
+    suggestions: "Popular events",
+  },
+  venues: { title: "Browse Venues", placeholder: "Search venues...", suggestions: "Popular venues" },
+  people: {
+    title: "Find People",
+    placeholder: "Search by name or username...",
+    suggestions: "Suggested people",
+  },
 } as const;
 
 export default function BrowseScreen() {
@@ -127,12 +142,16 @@ export default function BrowseScreen() {
   const contentStyle = usePageContentStyle();
   const { me } = useCurrentUser();
 
-  const { data: djs } = useDjSearch(query, tab === "djs");
+  const trimmed = query.trim();
+  // An empty search shows the top few as suggestions instead of a blank list.
+  const { data: djs } = useDjSearch(trimmed, { enabled: tab === "djs", suggest: true });
   // Lists every event until a search is typed - this tab doubles as the index.
-  const { data: series } = useSeriesSearch(query.trim(), tab === "events");
-  const { data: users } = useUserSearch(query.trim(), { enabled: tab === "people" });
-
-  const { data: venues } = useVenueSearch(query, tab === "venues");
+  const { data: series } = useSeriesSearch(trimmed, tab === "events");
+  const { data: users } = useUserSearch(trimmed, { enabled: tab === "people", suggest: true });
+  const { data: venues } = useVenueSearch(trimmed, { enabled: tab === "venues", suggest: true });
+  // FlatList's ListHeaderComponent takes an element or null, not `false`.
+  const suggestionsHeader = (hasRows: boolean) =>
+    hasRows && !trimmed.length ? <SuggestionsLabel label={COPY[tab].suggestions} /> : null;
 
   return (
     <Page
@@ -166,22 +185,25 @@ export default function BrowseScreen() {
     >
       {tab === "djs" ? (
         <FlatList
+          {...KEYBOARD_DISMISS_PROPS}
           contentContainerStyle={contentStyle}
           data={djs ?? []}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <DjCard dj={item} />}
+          ListHeaderComponent={suggestionsHeader(!!djs?.length)}
           ListEmptyComponent={
-            !!query.length && !djs ? (
+            !djs ? (
               <BrowseCardSkeleton tint="primary" />
-            ) : query.length ? (
+            ) : trimmed.length ? (
               <EmptyState message="No DJs found. Add one when you review a set." />
             ) : (
-              <EmptyState message="Search for a DJ to see their profile and reviews." />
+              <EmptyState message="No DJs yet. Add one when you review a set." />
             )
           }
         />
       ) : tab === "events" ? (
         <FlatList
+          {...KEYBOARD_DISMISS_PROPS}
           contentContainerStyle={contentStyle}
           data={series ?? []}
           keyExtractor={(item) => item.id}
@@ -189,7 +211,7 @@ export default function BrowseScreen() {
           ListEmptyComponent={
             !series ? (
               <BrowseCardSkeleton tint="primary" />
-            ) : query.trim().length ? (
+            ) : trimmed.length ? (
               <EmptyState message="No events found. Add one when you review a set." />
             ) : (
               <EmptyState message="No events yet. Name one when you review a set." />
@@ -198,14 +220,16 @@ export default function BrowseScreen() {
         />
       ) : tab === "people" ? (
         <FlatList
+          {...KEYBOARD_DISMISS_PROPS}
           contentContainerStyle={contentStyle}
           data={users ?? []}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <UserCard user={item} isSelf={item.id === me?.id} />}
+          ListHeaderComponent={suggestionsHeader(!!users?.length)}
           ListEmptyComponent={
-            !!query.trim().length && !users ? (
+            !users ? (
               <BrowseCardSkeleton tint="neutral" />
-            ) : query.trim().length ? (
+            ) : trimmed.length ? (
               <EmptyState message="No people found." />
             ) : (
               <EmptyState message="Search for people to follow and see their sets in your feed." />
@@ -214,17 +238,19 @@ export default function BrowseScreen() {
         />
       ) : (
         <FlatList
+          {...KEYBOARD_DISMISS_PROPS}
           contentContainerStyle={contentStyle}
           data={venues ?? []}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <VenueCard venue={item} />}
+          ListHeaderComponent={suggestionsHeader(!!venues?.length)}
           ListEmptyComponent={
-            !!query.length && !venues ? (
+            !venues ? (
               <BrowseCardSkeleton tint="accent" />
-            ) : query.length ? (
+            ) : trimmed.length ? (
               <EmptyState message="No venues found. Add one when you review a set." />
             ) : (
-              <EmptyState message="Search for a venue to see events reviewed there." />
+              <EmptyState message="No venues yet. Add one when you review a set." />
             )
           }
         />

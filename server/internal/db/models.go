@@ -56,17 +56,21 @@ type Event struct {
 	SeriesID *string `json:"seriesId"`
 	// Venue is the venue's display name, kept denormalized alongside
 	// VenueID so existing displays don't need a join.
-	Venue           string    `json:"venue"`
-	VenueID         *string   `json:"venueId"`
-	City            *string   `json:"city"`
-	EventDate       time.Time `json:"eventDate"`
+	Venue     string    `json:"venue"`
+	VenueID   *string   `json:"venueId"`
+	City      *string   `json:"city"`
+	EventDate time.Time `json:"eventDate"`
+	// IsDay and IsNight say when the party ran; both is day into night.
+	// At least one is set.
+	IsDay           bool      `json:"isDay"`
+	IsNight         bool      `json:"isNight"`
 	Description     *string   `json:"description"`
 	CreatedByUserID *string   `json:"createdByUserId"`
 	CreatedAt       time.Time `json:"createdAt"`
 }
 
 type Review struct {
-	ID         string    `json:"id"`
+	ID     string `json:"id"`
 	UserID string `json:"userId"`
 	// DjID is nil for a review of the night as a whole (EventID is then set).
 	DjID       *string   `json:"djId"`

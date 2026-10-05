@@ -1,29 +1,29 @@
-import { useAuth } from "@clerk/expo";
 import { router } from "expo-router";
 import { FlatList, Pressable, View } from "react-native";
 
 import {
   Avatar,
   EmptyState,
+  Icon,
   Page,
   PageHeader,
   Skeleton,
   Text,
   usePageContentStyle,
 } from "../../components/ui";
-import { FavoritesShowcase } from "../../components/FavoritesShowcase";
+import { ProfileCounts } from "../../components/ProfileCounts";
 import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
 import { StatsSummary } from "../../components/StatsSummary";
-import { useUserReviews } from "../../lib/api/hooks";
+import { useUserProfile, useUserReviews } from "../../lib/api/hooks";
 import { useCurrentUser } from "../../lib/auth";
 import { ROUTES } from "../../lib/routes";
 
 export default function ProfileScreen() {
-  const { signOut } = useAuth();
   const contentStyle = usePageContentStyle();
 
   const { me } = useCurrentUser();
   const { data } = useUserReviews(me?.username);
+  const { data: profile } = useUserProfile(me?.username);
 
   return (
     <Page>
@@ -49,28 +49,19 @@ export default function ProfileScreen() {
               </>
             )}
           </View>
-          <View className="flex-row gap-2">
-            <Pressable
-              onPress={() => router.push(ROUTES.SETTINGS)}
-              className="rounded-full border border-primary/25 px-3 py-2"
-            >
-              <Text className="text-ink dark:text-paper">Settings</Text>
-            </Pressable>
-            <Pressable
-              onPress={async () => {
-                await signOut();
-                router.replace(ROUTES.SIGN_IN);
-              }}
-              className="rounded-full border border-primary/25 px-3 py-2"
-            >
-              <Text className="text-ink dark:text-paper">Sign out</Text>
-            </Pressable>
-          </View>
+          <Pressable
+            onPress={() => router.push(ROUTES.SETTINGS)}
+            accessibilityLabel="Settings"
+            hitSlop={8}
+            className="rounded-full border border-primary/25 p-2 active:opacity-80"
+          >
+            <Icon name="settings-outline" size={20} className="text-ink dark:text-paper" />
+          </Pressable>
         </View>
         {!!me?.bio && <Text className="mt-2 text-ink dark:text-paper">{me.bio}</Text>}
-        {!!me?.username && <StatsSummary username={me.username} />}
+        <ProfileCounts profile={profile} />
         {!!me?.username && (
-          <FavoritesShowcase username={me.username} isSelf ownReviews={data?.items ?? []} />
+          <StatsSummary username={me.username} />
         )}
       </PageHeader>
       <FlatList

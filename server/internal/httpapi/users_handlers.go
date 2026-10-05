@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -37,23 +38,21 @@ func (h *Handlers) Me(w http.ResponseWriter, r *http.Request) {
 
 // SearchUsers godoc
 //
-//	@Summary	Search users by username or display name
+//	@Summary	Search users by username or display name, most-followed first
 //	@Tags		users
 //	@Produce	json
-//	@Param		q	query	string	true	"search query"
-//	@Success	200	{array}	db.User
+//	@Param		q		query	string	false	"name search; omit for the most-followed users"
+//	@Param		limit	query	int		false	"max results, 1-50, default 20"
+//	@Success	200		{array}	db.User
 //	@Router		/api/users/search [get]
 func (h *Handlers) SearchUsers(w http.ResponseWriter, r *http.Request) {
-	q, ok := requireQueryParam(w, r, "q")
-	if !ok {
-		return
-	}
-	users, err := queries.SearchUsers(r.Context(), h.Pool, q)
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	users, err := queries.SearchUsers(r.Context(), h.Pool, q, queryLimit(r, 20, 50))
 	if err != nil {
 		InternalError(w, err)
 		return
 	}
-	WriteJSON(w, http.StatusOK, users)
+	WriteJSON(w, http.StatusOK, orEmpty(users))
 }
 
 // GetUserByUsername godoc

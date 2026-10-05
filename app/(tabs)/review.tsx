@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Pressable,
@@ -15,6 +16,9 @@ import {
   Button,
   DateInput,
   Icon,
+  type IconName,
+  KEYBOARD_DISMISS_PROPS,
+  KeyboardScrollView,
   Page,
   RatingStars,
   Skeleton,
@@ -38,7 +42,7 @@ import type {
   User,
   VenueSummary,
 } from "../../lib/api/types";
-import { formatTag, parseDateInputValue, toDateInputValue } from "../../lib/format";
+import { parseDateInputValue, toDateInputValue } from "../../lib/format";
 import { ROUTES } from "../../lib/routes";
 import { isIos } from "@/lib/utils";
 
@@ -84,16 +88,26 @@ type IReviewDraft = {
   // already know their city.
   city: string;
   seenAt: string;
+  isDay: boolean;
+  isNight: boolean;
   rating?: number;
   tags: string[];
   reviewText: string;
   taggedUsers: User[];
 };
 
+// Either or both: a day into night party picks both.
+const DAY_NIGHT_OPTIONS: { field: "isDay" | "isNight"; label: string; icon: IconName }[] = [
+  { field: "isDay", label: "Day", icon: "sunny-outline" },
+  { field: "isNight", label: "Night", icon: "moon-outline" },
+];
+
 function emptyDraft(): IReviewDraft {
   return {
     city: "",
     seenAt: toDateInputValue(new Date()),
+    isDay: false,
+    isNight: true,
     tags: [],
     reviewText: "",
     taggedUsers: [],
@@ -172,7 +186,7 @@ function ArtistSearchInput({
   const query = value.trim();
   const enabled = query.length > 1;
 
-  const { data: localResults, isFetching: isLocalFetching } = useDjSearch(query, enabled);
+  const { data: localResults, isFetching: isLocalFetching } = useDjSearch(query, { enabled });
   const { data: spotifyResults, isFetching: isSpotifyFetching } = useQuery({
     queryKey: queryKeys.djs.spotifySearch(query),
     queryFn: () => api.get<SpotifyArtist[]>("/djs/spotify-search", { q: query }),
@@ -474,7 +488,10 @@ function CreateArtistModal({
       >
         <Pressable onPress={onClose} className="flex-1 justify-end bg-ink/40">
           <Pressable
-            onPress={(e) => e.stopPropagation()}
+            onPress={(e) => {
+              e.stopPropagation();
+              Keyboard.dismiss();
+            }}
             className="max-h-[85%] rounded-t-2xl bg-paper p-5 dark:bg-surface-dark"
           >
             <Text className="mb-1 text-center text-lg font-display text-ink dark:text-paper">
@@ -483,7 +500,7 @@ function CreateArtistModal({
             <Text className="mb-4 text-center text-xs text-muted">
               They&apos;ll be added to Beatboxd when you save your review.
             </Text>
-            <ScrollView keyboardShouldPersistTaps="handled">
+            <ScrollView {...KEYBOARD_DISMISS_PROPS}>
               <View className="mb-4 items-center">
                 <Avatar uri={trimmedImageUrl || null} name={name || "?"} size={88} />
               </View>
@@ -621,7 +638,7 @@ function VenueSearchInput({
   // search is cheap and stays instant.
   const placesQuery = useDebouncedValue(query, 300);
 
-  const { data: localResults, isFetching: isLocalFetching } = useVenueSearch(query, enabled);
+  const { data: localResults, isFetching: isLocalFetching } = useVenueSearch(query, { enabled });
   const { data: placeResults, isFetching: isPlacesFetching } = useQuery({
     queryKey: queryKeys.venues.placesSearch(placesQuery),
     queryFn: () =>
@@ -825,7 +842,7 @@ function TagPicker({
               onPress={() => onRemove(tag)}
               className="flex-row items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 active:opacity-80"
             >
-              <Text className="text-paper">{formatTag(tag)}</Text>
+              <Text className="text-paper">{tag}</Text>
               <Icon name="close" size={14} className="text-paper" />
             </Pressable>
           ))}
@@ -863,7 +880,7 @@ function TagPicker({
                   onPress={() => add(t.name)}
                   className="rounded-full border border-primary/20 bg-white px-3 py-1.5 active:opacity-80 dark:bg-surface-dark"
                 >
-                  <Text className="text-ink dark:text-paper">{formatTag(t.name)}</Text>
+                  <Text className="text-ink dark:text-paper">{t.name}</Text>
                 </Pressable>
               ))}
             </View>
@@ -942,6 +959,10 @@ export default function CreateReviewScreen() {
       setError("You can't log a set that hasn't happened yet");
       return;
     }
+    if (!draft.isDay && !draft.isNight) {
+      setError("Pick day, night, or both");
+      return;
+    }
     // Midday local time, so the stored instant reads back as the same
     // calendar day in any time zone (UTC midnight shows as the day before
     // across the Americas).
@@ -989,6 +1010,8 @@ export default function CreateReviewScreen() {
             ? { placeId: venuePick.place.placeId, placeSessionToken: placesSessionToken }
             : { venue: venuePick.name, city: draft.city.trim() || undefined }),
         seenAt: seenAtDate.toISOString(),
+        isDay: draft.isDay,
+        isNight: draft.isNight,
         lineupDjIds: lineup.map((e) => djFor(e).id),
         night: draft.rating
           ? { rating: draft.rating, reviewText: draft.reviewText.trim() || undefined }
@@ -1063,168 +1086,177 @@ export default function CreateReviewScreen() {
 
   return (
     <Page title="Review a Set">
-      <KeyboardAvoidingView behavior={isIos ? "padding" : undefined} className="flex-1">
-        <ScrollView contentContainerStyle={contentStyle} keyboardShouldPersistTaps="handled">
-          <Text className="mb-1 text-sm font-medium text-muted">Event (optional)</Text>
-          <View className="mb-4">
-            {draft.seriesPick ? (
-              <SelectedSeriesCard
-                pick={draft.seriesPick}
-                onClear={() => updateDraft({ seriesPick: undefined })}
-              />
-            ) : (
-              <SeriesSearchInput onSelect={(seriesPick) => updateDraft({ seriesPick })} />
-            )}
-          </View>
-
-          <Text className="mb-1 text-sm font-medium text-muted">Venue</Text>
-          <View className="mb-4">
-            {draft.venuePick ? (
-              <SelectedVenueCard
-                pick={draft.venuePick}
-                onClear={() => {
-                  updateDraft({ venuePick: undefined });
-                  // A new search is a new Google billing session.
-                  setPlacesSessionToken(newPlacesSessionToken());
-                }}
-              />
-            ) : (
-              <VenueSearchInput
-                sessionToken={placesSessionToken}
-                onSelect={(venuePick) => updateDraft({ venuePick })}
-              />
-            )}
-            {draft.venuePick?.type === "typed" && (
-              <TextInput
-                placeholder="City"
-                value={draft.city}
-                onChangeText={(city) => updateDraft({ city })}
-                className={`mt-2 ${INPUT_CLASS}`}
-              />
-            )}
-          </View>
-
-          <Text className="mb-1 text-sm font-medium text-muted">Date</Text>
-          <View className="mb-4">
-            <DateInput
-              value={draft.seenAt}
-              onChange={(seenAt) => updateDraft({ seenAt })}
-              maximumDate={new Date()}
-              className={INPUT_CLASS}
+      <KeyboardScrollView contentContainerStyle={contentStyle}>
+        <Text className="mb-1 text-sm font-medium text-muted">Event (optional)</Text>
+        <View className="mb-4">
+          {draft.seriesPick ? (
+            <SelectedSeriesCard
+              pick={draft.seriesPick}
+              onClear={() => updateDraft({ seriesPick: undefined })}
             />
-          </View>
+          ) : (
+            <SeriesSearchInput onSelect={(seriesPick) => updateDraft({ seriesPick })} />
+          )}
+        </View>
 
-          <Text className="text-sm font-medium text-muted">DJs you saw</Text>
-          <Text className="mb-2 text-xs text-muted">
-            Add everyone you caught. Rating each one is optional.
-          </Text>
-          <View className="mb-4">
-            {lineup.map((entry) => (
-              <LineupEntryRow
-                key={entry.key}
-                entry={entry}
-                onChange={(changes) => updateEntry(entry.key, changes)}
-                // Only hand-made artists (not yet saved, not from Spotify) are editable.
-                onEdit={
-                  entry.pick.type === "new" && !entry.pick.input.spotifyId
-                    ? () => setArtistModal({ editingKey: entry.key })
-                    : undefined
-                }
-                onRemove={() => setLineup((prev) => prev.filter((e) => e.key !== entry.key))}
-              />
-            ))}
-            <ArtistSearchInput
-              value={djQuery}
-              onChangeText={setDjQuery}
-              onSelect={addToLineup}
-              onCreate={() => setArtistModal({ editingKey: null })}
-            />
-          </View>
-          {artistModal && (
-            // Mounted only while open so the form re-seeds from the current
-            // search text / artist each time it opens.
-            <CreateArtistModal
-              visible
-              initial={
-                editingEntry?.pick.type === "new" ? editingEntry.pick.input : { name: djQuery.trim() }
-              }
-              onClose={() => setArtistModal(undefined)}
-              onSave={(input) => {
-                if (editingEntry) {
-                  updateEntry(editingEntry.key, { pick: { type: "new", input } });
-                } else {
-                  addToLineup({ type: "new", input });
-                }
-                setArtistModal(undefined);
+        <Text className="mb-1 text-sm font-medium text-muted">Venue</Text>
+        <View className="mb-4">
+          {draft.venuePick ? (
+            <SelectedVenueCard
+              pick={draft.venuePick}
+              onClear={() => {
+                updateDraft({ venuePick: undefined });
+                // A new search is a new Google billing session.
+                setPlacesSessionToken(newPlacesSessionToken());
               }}
             />
+          ) : (
+            <VenueSearchInput
+              sessionToken={placesSessionToken}
+              onSelect={(venuePick) => updateDraft({ venuePick })}
+            />
           )}
-
-          <View className="mb-4 border-t border-primary/15 pt-4">
-            <Text className="text-base font-semibold text-ink dark:text-paper">The night overall</Text>
-            <Text className="text-xs text-muted">
-              {anyDjRated
-                ? "Optional, since you rated a DJ."
-                : "Required, unless you rate at least one DJ."}
-            </Text>
-          </View>
-
-          <Text className="mb-1 text-sm font-medium text-muted">Rating</Text>
-          <View className="mb-4 flex-row items-center justify-between">
-            <RatingStars value={draft.rating} onChange={(rating) => updateDraft({ rating })} size={22} />
-            {!!draft.rating && anyDjRated && (
-              <Pressable onPress={() => updateDraft({ rating: undefined })} hitSlop={8}>
-                <Text className="text-xs text-muted">Clear</Text>
-              </Pressable>
-            )}
-          </View>
-
-          <Text className="mb-1 text-sm font-medium text-muted">Tags (optional)</Text>
-          <View className="mb-4">
-            <TagPicker
-              tags={draft.tags}
-              onAdd={(tag) => setDraft((prev) => ({ ...prev, tags: [...prev.tags, tag] }))}
-              onRemove={(tag) =>
-                setDraft((prev) => ({ ...prev, tags: prev.tags.filter((t) => t !== tag) }))
-              }
+          {draft.venuePick?.type === "typed" && (
+            <TextInput
+              placeholder="City"
+              value={draft.city}
+              onChangeText={(city) => updateDraft({ city })}
+              className={`mt-2 ${INPUT_CLASS}`}
             />
-          </View>
+          )}
+        </View>
 
-          <Text className="mb-1 text-sm font-medium text-muted">Review</Text>
-          <TextInput
-            placeholder="How was the night?"
-            value={draft.reviewText}
-            onChangeText={(reviewText) => updateDraft({ reviewText })}
-            multiline
-            numberOfLines={4}
-            className={`mb-4 min-h-24 ${INPUT_CLASS}`}
+        <Text className="mb-1 text-sm font-medium text-muted">Date</Text>
+        <View className="mb-4">
+          <DateInput
+            value={draft.seenAt}
+            onChange={(seenAt) => updateDraft({ seenAt })}
+            maximumDate={new Date()}
+            className={INPUT_CLASS}
           />
+        </View>
 
-          <Text className="mb-1 text-sm font-medium text-muted">Tag friends (optional)</Text>
-          <View className="mb-4">
-            <TagFriendsPicker
-              taggedUsers={draft.taggedUsers}
-              onAdd={(user) =>
-                setDraft((prev) => ({ ...prev, taggedUsers: [...prev.taggedUsers, user] }))
+        <Text className="mb-1 text-sm font-medium text-muted">Day or night</Text>
+        <View className="mb-4 flex-row gap-2">
+          {DAY_NIGHT_OPTIONS.map(({ field, label, icon }) => {
+            const selected = draft[field];
+            return (
+              <Pressable
+                key={field}
+                onPress={() => updateDraft({ [field]: !selected })}
+                className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-full py-2 active:opacity-80 ${
+                  selected ? "bg-primary" : "border border-primary/20 bg-white dark:bg-surface-dark"
+                }`}
+              >
+                <Icon name={icon} size={16} className={selected ? "text-paper" : "text-ink dark:text-paper"} />
+                <Text className={selected ? "font-medium text-paper" : "text-ink dark:text-paper"}>{label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Text className="mb-1 text-sm font-medium text-muted">DJs you saw</Text>
+        <View className="mb-4">
+          {lineup.map((entry) => (
+            <LineupEntryRow
+              key={entry.key}
+              entry={entry}
+              onChange={(changes) => updateEntry(entry.key, changes)}
+              // Only hand-made artists (not yet saved, not from Spotify) are editable.
+              onEdit={
+                entry.pick.type === "new" && !entry.pick.input.spotifyId
+                  ? () => setArtistModal({ editingKey: entry.key })
+                  : undefined
               }
-              onRemove={(userId) =>
-                setDraft((prev) => ({
-                  ...prev,
-                  taggedUsers: prev.taggedUsers.filter((u) => u.id !== userId),
-                }))
-              }
+              onRemove={() => setLineup((prev) => prev.filter((e) => e.key !== entry.key))}
             />
-          </View>
+          ))}
+          <ArtistSearchInput
+            value={djQuery}
+            onChangeText={setDjQuery}
+            onSelect={addToLineup}
+            onCreate={() => setArtistModal({ editingKey: null })}
+          />
+        </View>
+        {artistModal && (
+          // Mounted only while open so the form re-seeds from the current
+          // search text / artist each time it opens.
+          <CreateArtistModal
+            visible
+            initial={
+              editingEntry?.pick.type === "new" ? editingEntry.pick.input : { name: djQuery.trim() }
+            }
+            onClose={() => setArtistModal(undefined)}
+            onSave={(input) => {
+              if (editingEntry) {
+                updateEntry(editingEntry.key, { pick: { type: "new", input } });
+              } else {
+                addToLineup({ type: "new", input });
+              }
+              setArtistModal(undefined);
+            }}
+          />
+        )}
 
-          {!!error && <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text>}
+        <View className="mb-4 border-t border-primary/15 pt-4">
+          <Text className="text-base font-semibold text-ink dark:text-paper">The night overall</Text>
+        </View>
 
-          <Button disabled={pending} onPress={onSubmit} className="py-3">
-            <Text className="text-center font-semibold text-paper">
-              {pending ? "Saving..." : "Save"}
-            </Text>
-          </Button>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        <Text className="mb-1 text-sm font-medium text-muted">Rating</Text>
+        <View className="mb-4 flex-row items-center justify-between">
+          <RatingStars value={draft.rating} onChange={(rating) => updateDraft({ rating })} size={22} />
+          {!!draft.rating && anyDjRated && (
+            <Pressable onPress={() => updateDraft({ rating: undefined })} hitSlop={8}>
+              <Text className="text-xs text-muted">Clear</Text>
+            </Pressable>
+          )}
+        </View>
+
+        <Text className="mb-1 text-sm font-medium text-muted">Tags (optional)</Text>
+        <View className="mb-4">
+          <TagPicker
+            tags={draft.tags}
+            onAdd={(tag) => setDraft((prev) => ({ ...prev, tags: [...prev.tags, tag] }))}
+            onRemove={(tag) =>
+              setDraft((prev) => ({ ...prev, tags: prev.tags.filter((t) => t !== tag) }))
+            }
+          />
+        </View>
+
+        <Text className="mb-1 text-sm font-medium text-muted">Review</Text>
+        <TextInput
+          placeholder="How was the night?"
+          value={draft.reviewText}
+          onChangeText={(reviewText) => updateDraft({ reviewText })}
+          multiline
+          numberOfLines={4}
+          className={`mb-4 min-h-24 ${INPUT_CLASS}`}
+        />
+
+        <Text className="mb-1 text-sm font-medium text-muted">Tag friends (optional)</Text>
+        <View className="mb-4">
+          <TagFriendsPicker
+            taggedUsers={draft.taggedUsers}
+            onAdd={(user) =>
+              setDraft((prev) => ({ ...prev, taggedUsers: [...prev.taggedUsers, user] }))
+            }
+            onRemove={(userId) =>
+              setDraft((prev) => ({
+                ...prev,
+                taggedUsers: prev.taggedUsers.filter((u) => u.id !== userId),
+              }))
+            }
+          />
+        </View>
+
+        {!!error && <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text>}
+
+        <Button disabled={pending} onPress={onSubmit} className="py-3">
+          <Text className="text-center font-semibold text-paper">
+            {pending ? "Saving..." : "Save"}
+          </Text>
+        </Button>
+      </KeyboardScrollView>
     </Page>
   );
 }

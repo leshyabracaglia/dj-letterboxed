@@ -6,16 +6,15 @@ import { useState } from "react";
 import { Pressable, type PressableProps, View } from "react-native";
 
 import { ROUTES } from "../lib/routes";
+import { BrandWordmark } from "./BrandWordmark";
 import { SignInPromptModal } from "./SignInPromptModal";
 import { Button, Text } from "./ui";
 
-function BrandWordmark() {
+function HomeLink() {
   return (
     <Link href={ROUTES.FEED} asChild>
       <Pressable>
-        <Text className="font-display text-4xl text-primary dark:text-primary-dark">
-          BeatBox&apos;d
-        </Text>
+        <BrandWordmark />
       </Pressable>
     </Link>
   );
@@ -80,7 +79,7 @@ export function WebNav() {
   // wraps this in a container painted with its default (light) theme color.
   return (
     <View className="flex-row items-center justify-between border-b border-ink/10 bg-paper px-6 py-3 dark:border-paper/10 dark:bg-ink">
-      <BrandWordmark />
+      <HomeLink />
       <View className="flex-row items-center gap-1">
         {LINKS.map((link) =>
           // Signed out, Review and Profile pop a sign-in/sign-up prompt

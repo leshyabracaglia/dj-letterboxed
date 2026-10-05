@@ -163,12 +163,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Search DJs by name */
+        /** Search DJs by name, most-reviewed first */
         get: {
             parameters: {
-                query: {
-                    /** @description search query */
-                    q: string;
+                query?: {
+                    /** @description name search; omit for the most-reviewed DJs */
+                    q?: string;
+                    /** @description max results, 1-50, default 20 */
+                    limit?: number;
                 };
                 header?: never;
                 path?: never;
@@ -183,15 +185,6 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["Dj"][];
-                    };
-                };
-                /** @description Bad Request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["errorEnvelope"];
                     };
                 };
             };
@@ -1493,12 +1486,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Search users by username or display name */
+        /** Search users by username or display name, most-followed first */
         get: {
             parameters: {
-                query: {
-                    /** @description search query */
-                    q: string;
+                query?: {
+                    /** @description name search; omit for the most-followed users */
+                    q?: string;
+                    /** @description max results, 1-50, default 20 */
+                    limit?: number;
                 };
                 header?: never;
                 path?: never;
@@ -1869,12 +1864,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Search saved venues by name */
+        /** Search saved venues by name, busiest first */
         get: {
             parameters: {
-                query: {
-                    /** @description search query */
-                    q: string;
+                query?: {
+                    /** @description name search; omit for the busiest venues */
+                    q?: string;
+                    /** @description max results, 1-50, default 20 */
+                    limit?: number;
                 };
                 header?: never;
                 path?: never;
@@ -1982,6 +1979,12 @@ export interface components {
             description: string;
             eventDate: string;
             id: string;
+            /**
+             * @description IsDay and IsNight say when the party ran; both is day into night.
+             *     At least one is set.
+             */
+            isDay: boolean;
+            isNight: boolean;
             name: string;
             /** @description SeriesID is nil for a night that isn't part of a named event. */
             seriesId: string;
@@ -2074,6 +2077,11 @@ export interface components {
             isLikedByMe?: boolean;
             isPopular?: boolean;
             likeCount?: number;
+            /**
+             * @description LineupDj is set on a night review (no Dj) when the night's lineup is
+             *     exactly one DJ, so it can be titled "<DJ> at <event>".
+             */
+            lineupDj?: components["schemas"]["Dj"];
             rating: number;
             reviewText: string;
             seenAt: string;
@@ -2198,6 +2206,9 @@ export interface components {
         createNightLogRequest: {
             city: string;
             djReviews: components["schemas"]["djReviewInput"][];
+            /** @description When the party ran: day, night, or both. Neither given means night. */
+            isDay: boolean;
+            isNight: boolean;
             /**
              * @description DJs the user saw; added to the night's lineup. DJs in djReviews are
              *     added too, whether or not they're listed here.

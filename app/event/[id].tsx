@@ -3,6 +3,7 @@ import { FlatList, View } from "react-native";
 
 import {
   EmptyState,
+  Icon,
   Page,
   PageHeader,
   Skeleton,
@@ -62,7 +63,14 @@ export default function EventScreen() {
           {data.event.city ? ` · ${data.event.city}` : ""}
         </Text>
         {/* Date only: a night's time is just midday of the logged day. */}
-        <Text className="mt-1 text-xs text-muted">{formatDate(data.event.eventDate)}</Text>
+        <View className="mt-1 flex-row items-center gap-1">
+          {data.event.isDay && <Icon name="sunny-outline" size={12} className="text-muted" />}
+          {data.event.isNight && <Icon name="moon-outline" size={12} className="text-muted" />}
+          <Text className="text-xs text-muted">
+            {data.event.isDay && data.event.isNight ? "Day into night" : data.event.isDay ? "Day" : "Night"} ·{" "}
+            {formatDate(data.event.eventDate)}
+          </Text>
+        </View>
         {!!data.event.description && (
           <Text className="mt-3 text-ink dark:text-paper">{data.event.description}</Text>
         )}

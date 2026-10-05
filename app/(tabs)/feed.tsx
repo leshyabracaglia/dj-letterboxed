@@ -10,6 +10,7 @@ import {
   useIsDesktopWeb,
   usePageContentStyle,
 } from "../../components/ui";
+import { BrandWordmark } from "../../components/BrandWordmark";
 import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
 import { useFeed, usePopularFeed } from "../../lib/api/hooks";
 
@@ -49,32 +50,27 @@ export default function FeedScreen() {
     effectiveTab === FEED_TABS.POPULAR,
   );
 
-  const tabs = isSignedIn ? (
+  // With nobody followed there's only Popular to show, so the switcher is
+  // hidden entirely (also while loading, so it doesn't flash in and out).
+  const showTabs = !!isSignedIn && !isLoading && !!followingCount;
+  const tabs = showTabs && (
     <View className="flex-row gap-2">
-      {Object.values(FEED_TABS).map((t) => {
-        // Following has nothing to show until they follow someone, so it
-        // reads as unavailable rather than a tab that silently does nothing.
-        const disabled = t === FEED_TABS.FOLLOWING && noFollowing;
-        return (
-          <Pressable
-            key={t}
-            onPress={() => setTab(t)}
-            disabled={disabled}
-            accessibilityState={{ disabled, selected: effectiveTab === t }}
-            className={`rounded-full px-3 py-1.5 ${
-              disabled ? "opacity-40" : "active:opacity-80"
-            } ${
-              effectiveTab === t ? "bg-primary" : "bg-white dark:bg-surface-dark border border-primary/20"
-            }`}
-          >
-            <Text className={effectiveTab === t ? "text-paper" : "text-ink dark:text-paper"}>
-              {FEED_TAB_LABELS[t]}
-            </Text>
-          </Pressable>
-        );
-      })}
+      {Object.values(FEED_TABS).map((t) => (
+        <Pressable
+          key={t}
+          onPress={() => setTab(t)}
+          accessibilityState={{ selected: effectiveTab === t }}
+          className={`rounded-full px-3 py-1.5 active:opacity-80 ${
+            effectiveTab === t ? "bg-primary" : "bg-white dark:bg-surface-dark border border-primary/20"
+          }`}
+        >
+          <Text className={effectiveTab === t ? "text-paper" : "text-ink dark:text-paper"}>
+            {FEED_TAB_LABELS[t]}
+          </Text>
+        </Pressable>
+      ))}
     </View>
-  ) : null;
+  );
 
   return (
     // Desktop web already shows the BeatBox'd wordmark in its top navbar;
@@ -83,9 +79,7 @@ export default function FeedScreen() {
     <Page ambient title={isDesktopWeb ? "Feed" : undefined} header={tabs}>
       {!isDesktopWeb && (
         <PageHeader>
-          <Text className="mb-3 font-display text-4xl text-primary dark:text-primary-dark">
-            BeatBox&apos;d
-          </Text>
+          <BrandWordmark className="mb-3" />
           {tabs}
         </PageHeader>
       )}

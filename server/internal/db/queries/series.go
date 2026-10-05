@@ -111,7 +111,7 @@ type SeriesNight struct {
 // ListSeriesNights returns a series' nights, most recent first.
 func ListSeriesNights(ctx context.Context, q DBTX, seriesID string) ([]SeriesNight, error) {
 	rows, err := q.Query(ctx, `
-		SELECT e.id, e.name, e.series_id, e.venue, e.venue_id, e.city, e.event_date, e.description, e.created_by_user_id, e.created_at,
+		SELECT e.id, e.name, e.series_id, e.venue, e.venue_id, e.city, e.event_date, e.is_day, e.is_night, e.description, e.created_by_user_id, e.created_at,
 			COUNT(r.id), AVG(r.rating)::float8
 		FROM events e
 		LEFT JOIN reviews r ON r.event_id = e.id
@@ -127,7 +127,7 @@ func ListSeriesNights(ctx context.Context, q DBTX, seriesID string) ([]SeriesNig
 	for rows.Next() {
 		var n SeriesNight
 		e := &n.Event
-		if err := rows.Scan(&e.ID, &e.Name, &e.SeriesID, &e.Venue, &e.VenueID, &e.City, &e.EventDate, &e.Description, &e.CreatedByUserID, &e.CreatedAt, &n.ReviewCount, &n.AvgRating); err != nil {
+		if err := rows.Scan(&e.ID, &e.Name, &e.SeriesID, &e.Venue, &e.VenueID, &e.City, &e.EventDate, &e.IsDay, &e.IsNight, &e.Description, &e.CreatedByUserID, &e.CreatedAt, &n.ReviewCount, &n.AvgRating); err != nil {
 			return nil, err
 		}
 		out = append(out, n)
@@ -209,4 +209,3 @@ func ListSeriesReviews(ctx context.Context, q DBTX, seriesID string, limit int) 
 		LIMIT $2`, seriesID, limit)
 	return collectReviews(rows, err)
 }
-

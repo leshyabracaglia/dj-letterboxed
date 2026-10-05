@@ -3,6 +3,7 @@ package httpapi
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -18,24 +19,21 @@ var _ db.Dj
 
 // SearchDjs godoc
 //
-//	@Summary	Search DJs by name
+//	@Summary	Search DJs by name, most-reviewed first
 //	@Tags		djs
 //	@Produce	json
-//	@Param		q	query		string	true	"search query"
-//	@Success	200	{array}		db.Dj
-//	@Failure	400	{object}	errorEnvelope
+//	@Param		q		query	string	false	"name search; omit for the most-reviewed DJs"
+//	@Param		limit	query	int		false	"max results, 1-50, default 20"
+//	@Success	200		{array}	db.Dj
 //	@Router		/api/djs/search [get]
 func (h *Handlers) SearchDjs(w http.ResponseWriter, r *http.Request) {
-	q, ok := requireQueryParam(w, r, "q")
-	if !ok {
-		return
-	}
-	djs, err := queries.SearchDjs(r.Context(), h.Pool, q)
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	djs, err := queries.SearchDjs(r.Context(), h.Pool, q, queryLimit(r, 20, 50))
 	if err != nil {
 		InternalError(w, err)
 		return
 	}
-	WriteJSON(w, http.StatusOK, djs)
+	WriteJSON(w, http.StatusOK, orEmpty(djs))
 }
 
 // GetDjBySlug godoc

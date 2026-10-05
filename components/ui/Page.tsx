@@ -1,10 +1,18 @@
 import type { ReactNode } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
-import { useColorScheme } from "nativewind";
+import { cssInterop, useColorScheme } from "nativewind";
 import { Platform, StyleSheet, View, type ViewStyle } from "react-native";
 
 import { PageHeader } from "./PageHeader";
+
+// NativeWind only maps className -> style for components it knows about, and
+// safe-area-context's SafeAreaView isn't one: without this, its flex-1 and
+// background were silently dropped on native, so a page shrank to its
+// content height and left the stack's bare background showing below it.
+// Registered here (module load of the components/ui barrel) so every
+// SafeAreaView in the app gets it, not just Page's.
+cssInterop(SafeAreaView, { className: "style" });
 
 // Web-only; cast because RN's ViewStyle doesn't declare CSS filter strings.
 const DARK_GLOW = { filter: "blur(90px)" } as ViewStyle;
@@ -65,7 +73,14 @@ export function Page({
   children?: ReactNode;
 }) {
   return (
-    <SafeAreaView className={`flex-1 bg-paper dark:bg-ink ${className}`}>
+    // No bottom edge: on tab screens the tab bar already covers the home
+    // indicator inset, so padding it here left a dead, non-scrolling strip
+    // above the tabs. Scroll content picks the inset up instead (see
+    // usePageContentStyle) so it can still scroll clear of the indicator.
+    <SafeAreaView
+      edges={["top", "left", "right"]}
+      className={`flex-1 bg-paper dark:bg-ink ${className}`}
+    >
       {ambient && <AmbientBackground />}
       {!!title && <PageHeader title={title}>{header}</PageHeader>}
       {children}

@@ -137,14 +137,19 @@ const docTemplate = `{
                 "tags": [
                     "djs"
                 ],
-                "summary": "Search DJs by name",
+                "summary": "Search DJs by name, most-reviewed first",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "search query",
+                        "description": "name search; omit for the most-reviewed DJs",
                         "name": "q",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "max results, 1-50, default 20",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -155,12 +160,6 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/Dj"
                             }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errorEnvelope"
                         }
                     }
                 }
@@ -1272,14 +1271,19 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "Search users by username or display name",
+                "summary": "Search users by username or display name, most-followed first",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "search query",
+                        "description": "name search; omit for the most-followed users",
                         "name": "q",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "max results, 1-50, default 20",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1568,14 +1572,19 @@ const docTemplate = `{
                 "tags": [
                     "venues"
                 ],
-                "summary": "Search saved venues by name",
+                "summary": "Search saved venues by name, busiest first",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "search query",
+                        "description": "name search; omit for the busiest venues",
                         "name": "q",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "max results, 1-50, default 20",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1727,6 +1736,8 @@ const docTemplate = `{
                 "description",
                 "eventDate",
                 "id",
+                "isDay",
+                "isNight",
                 "name",
                 "seriesId",
                 "venue",
@@ -1750,6 +1761,13 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
+                },
+                "isDay": {
+                    "description": "IsDay and IsNight say when the party ran; both is day into night.\nAt least one is set.",
+                    "type": "boolean"
+                },
+                "isNight": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
@@ -2084,6 +2102,14 @@ const docTemplate = `{
                 },
                 "likeCount": {
                     "type": "integer"
+                },
+                "lineupDj": {
+                    "description": "LineupDj is set on a night review (no Dj) when the night's lineup is\nexactly one DJ, so it can be titled \"\u003cDJ\u003e at \u003cevent\u003e\".",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/Dj"
+                        }
+                    ]
                 },
                 "rating": {
                     "type": "integer"
@@ -2578,6 +2604,8 @@ const docTemplate = `{
             "required": [
                 "city",
                 "djReviews",
+                "isDay",
+                "isNight",
                 "lineupDjIds",
                 "night",
                 "placeId",
@@ -2599,6 +2627,13 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/djReviewInput"
                     }
+                },
+                "isDay": {
+                    "description": "When the party ran: day, night, or both. Neither given means night.",
+                    "type": "boolean"
+                },
+                "isNight": {
+                    "type": "boolean"
                 },
                 "lineupDjIds": {
                     "description": "DJs the user saw; added to the night's lineup. DJs in djReviews are\nadded too, whether or not they're listed here.",

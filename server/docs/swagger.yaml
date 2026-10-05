@@ -78,6 +78,13 @@ definitions:
         type: string
       id:
         type: string
+      isDay:
+        description: |-
+          IsDay and IsNight say when the party ran; both is day into night.
+          At least one is set.
+        type: boolean
+      isNight:
+        type: boolean
       name:
         type: string
       seriesId:
@@ -97,6 +104,8 @@ definitions:
     - description
     - eventDate
     - id
+    - isDay
+    - isNight
     - name
     - seriesId
     - venue
@@ -314,6 +323,12 @@ definitions:
         type: boolean
       likeCount:
         type: integer
+      lineupDj:
+        allOf:
+        - $ref: '#/definitions/Dj'
+        description: |-
+          LineupDj is set on a night review (no Dj) when the night's lineup is
+          exactly one DJ, so it can be titled "<DJ> at <event>".
       rating:
         type: integer
       reviewText:
@@ -671,6 +686,12 @@ definitions:
         items:
           $ref: '#/definitions/djReviewInput'
         type: array
+      isDay:
+        description: 'When the party ran: day, night, or both. Neither given means
+          night.'
+        type: boolean
+      isNight:
+        type: boolean
       lineupDjIds:
         description: |-
           DJs the user saw; added to the night's lineup. DJs in djReviews are
@@ -711,6 +732,8 @@ definitions:
     required:
     - city
     - djReviews
+    - isDay
+    - isNight
     - lineupDjIds
     - night
     - placeId
@@ -968,11 +991,14 @@ paths:
   /api/djs/search:
     get:
       parameters:
-      - description: search query
+      - description: name search; omit for the most-reviewed DJs
         in: query
         name: q
-        required: true
         type: string
+      - description: max results, 1-50, default 20
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
@@ -982,11 +1008,7 @@ paths:
             items:
               $ref: '#/definitions/Dj'
             type: array
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/errorEnvelope'
-      summary: Search DJs by name
+      summary: Search DJs by name, most-reviewed first
       tags:
       - djs
   /api/djs/spotify-search:
@@ -1778,11 +1800,14 @@ paths:
   /api/users/search:
     get:
       parameters:
-      - description: search query
+      - description: name search; omit for the most-followed users
         in: query
         name: q
-        required: true
         type: string
+      - description: max results, 1-50, default 20
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
@@ -1792,7 +1817,7 @@ paths:
             items:
               $ref: '#/definitions/User'
             type: array
-      summary: Search users by username or display name
+      summary: Search users by username or display name, most-followed first
       tags:
       - users
   /api/venues/{id}:
@@ -1857,11 +1882,14 @@ paths:
   /api/venues/search:
     get:
       parameters:
-      - description: search query
+      - description: name search; omit for the busiest venues
         in: query
         name: q
-        required: true
         type: string
+      - description: max results, 1-50, default 20
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
@@ -1871,7 +1899,7 @@ paths:
             items:
               $ref: '#/definitions/VenueSummary'
             type: array
-      summary: Search saved venues by name
+      summary: Search saved venues by name, busiest first
       tags:
       - venues
 securityDefinitions:

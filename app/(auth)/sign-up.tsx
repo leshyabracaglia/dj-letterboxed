@@ -2,7 +2,7 @@ import { useSignUp } from "@clerk/expo";
 import { Link, router } from "expo-router";
 import { useState } from "react";
 import { TextInput, View } from "react-native";
-import { Button, Text } from "../../components/ui";
+import { Button, KeyboardScrollView, Text } from "../../components/ui";
 
 import { ROUTES } from "../../lib/routes";
 
@@ -51,7 +51,10 @@ export default function SignUpScreen() {
 
   if (pendingVerification) {
     return (
-      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink px-6">
+      <KeyboardScrollView
+        className="flex-1 bg-paper dark:bg-ink"
+        contentContainerClassName="flex-grow items-center justify-center px-6"
+      >
         <Text className="mb-8 text-4xl font-display text-ink dark:text-paper">Check your email</Text>
         <TextInput
           placeholder="Verification code"
@@ -67,12 +70,15 @@ export default function SignUpScreen() {
         >
           <Text className="text-center font-semibold text-paper">Verify</Text>
         </Button>
-      </View>
+      </KeyboardScrollView>
     );
   }
 
   return (
-    <View className="flex-1 items-center justify-center bg-paper dark:bg-ink px-6">
+    <KeyboardScrollView
+      className="flex-1 bg-paper dark:bg-ink"
+      contentContainerClassName="flex-grow items-center justify-center px-6"
+    >
       <Text className="mb-8 text-4xl font-display text-ink dark:text-paper">Create your account</Text>
       <TextInput
         autoCapitalize="none"
@@ -114,6 +120,6 @@ export default function SignUpScreen() {
           <Text className="text-muted">Continue without an account</Text>
         </Link>
       </View>
-    </View>
+    </KeyboardScrollView>
   );
 }

@@ -1,5 +1,5 @@
 import { useAuth } from "@clerk/expo";
-import { Link, Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams } from "expo-router";
 import { FlatList, View } from "react-native";
 import {
   Avatar,
@@ -11,13 +11,12 @@ import {
   usePageContentStyle,
 } from "../../components/ui";
 
-import { FavoritesShowcase } from "../../components/FavoritesShowcase";
 import { FollowButton } from "../../components/FollowButton";
+import { ProfileCounts } from "../../components/ProfileCounts";
 import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
 import { StatsSummary } from "../../components/StatsSummary";
 import { useCurrentUser } from "../../lib/auth";
 import { useUserProfile, useUserReviews } from "../../lib/api/hooks";
-import { ROUTES } from "../../lib/routes";
 
 function UserProfileSkeleton() {
   const contentStyle = usePageContentStyle();
@@ -31,11 +30,7 @@ function UserProfileSkeleton() {
             <Skeleton className="mt-2 h-4 w-24" />
           </View>
         </View>
-        <View className="mt-3 flex-row gap-4">
-          <Skeleton className="h-6 w-16" />
-          <Skeleton className="h-6 w-24" />
-          <Skeleton className="h-6 w-24" />
-        </View>
+        <ProfileCounts profile={undefined} />
       </PageHeader>
       <View style={contentStyle}>
         <ReviewCardSkeleton count={3} />
@@ -83,29 +78,8 @@ export default function UserProfileScreen() {
         {!!profile.user.bio && (
           <Text className="mt-2 text-ink dark:text-paper">{profile.user.bio}</Text>
         )}
-        <View className="mt-3 flex-row gap-4">
-          <Text className="text-muted">
-            <Text className="font-numeric text-2xl text-ink dark:text-paper mt-1">{profile.reviewCount}</Text> review{profile.reviewCount === 1 ? "" : "s"}
-          </Text>
-          <Link href={ROUTES.USER_FOLLOWERS(profile.user.username)}>
-            <Text className="text-muted">
-              <Text className="font-numeric text-2xl text-ink dark:text-paper mt-1">{profile.followerCount}</Text>{" "}
-              follower{profile.followerCount === 1 ? "" : "s"}
-            </Text>
-          </Link>
-          <Link href={ROUTES.USER_FOLLOWING(profile.user.username)}>
-            <Text className="text-muted">
-              <Text className="font-numeric text-2xl text-ink dark:text-paper mt-1">{profile.followingCount}</Text>{" "}
-              following{profile.followingCount === 1 ? "" : "s"}
-            </Text>
-          </Link>
-        </View>
+        <ProfileCounts profile={profile} />
         <StatsSummary username={profile.user.username} />
-        <FavoritesShowcase
-          username={profile.user.username}
-          isSelf={isSelf}
-          ownReviews={isSelf ? (reviews?.items ?? []) : undefined}
-        />
       </PageHeader>
       <FlatList
         contentContainerStyle={contentStyle}

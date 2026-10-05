@@ -93,14 +93,26 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	// Same date, two parties: the day in The Ruins and the night in the
+	// Main Hall are separate events (events.is_day / is_night).
 	event1, err := queries.CreateEvent(ctx, pool, "Innervisions New York", &innervisions.ID, knockdown, strPtr("Maspeth, NY"),
-		mustParse("2026-07-18T18:00:00Z"),
-		strPtr("Innervisions returns to Knockdown Center, taking over The Ruins and Main Hall. Day: DESIREE, Jimi Jules, Julya Karma, Trikk. Night: Âme (DJ + live), Dixon, Jimi Jules."),
+		mustParse("2026-07-18T18:00:00Z"), false, true,
+		strPtr("Innervisions takes over the Main Hall at Knockdown Center: Âme (DJ + live), Dixon, Jimi Jules."),
 		alice.ID)
 	if err != nil {
 		return err
 	}
-	if err := queries.AddToLineup(ctx, pool, event1.ID, []string{dj1.ID, dj4.ID, dj5.ID, dj6.ID, dj7.ID, dj8.ID}, alice.ID); err != nil {
+	if err := queries.AddToLineup(ctx, pool, event1.ID, []string{dj1.ID, dj4.ID, dj5.ID}, alice.ID); err != nil {
+		return err
+	}
+	dayEvent, err := queries.CreateEvent(ctx, pool, "Innervisions New York", &innervisions.ID, knockdown, strPtr("Maspeth, NY"),
+		mustParse("2026-07-18T18:00:00Z"), true, false,
+		strPtr("Innervisions in The Ruins at Knockdown Center: DESIREE, Jimi Jules, Julya Karma, Trikk."),
+		bob.ID)
+	if err != nil {
+		return err
+	}
+	if err := queries.AddToLineup(ctx, pool, dayEvent.ID, []string{dj5.ID, dj6.ID, dj7.ID, dj8.ID}, bob.ID); err != nil {
 		return err
 	}
 
@@ -113,7 +125,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	if err := queries.SetReviewTagLinks(ctx, pool, review1.ID, alice.ID, []string{"electric", "packed", "night"}); err != nil {
+	if err := queries.SetReviewTagLinks(ctx, pool, review1.ID, alice.ID, []string{"groovy", "packed"}); err != nil {
 		return err
 	}
 
@@ -126,45 +138,39 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	if err := queries.SetReviewTagLinks(ctx, pool, review4.ID, alice.ID, []string{"night", "emotional"}); err != nil {
+	if err := queries.SetReviewTagLinks(ctx, pool, review4.ID, alice.ID, []string{"emotional"}); err != nil {
 		return err
 	}
 
 	review5, err := queries.CreateReview(ctx, pool, queries.CreateReviewParams{
-		UserID: bob.ID, DjID: &dj5.ID, EventID: &event1.ID,
+		UserID: bob.ID, DjID: &dj5.ID, EventID: &dayEvent.ID,
 		Rating:     int16Ptr(4),
 		ReviewText: strPtr("Caught him in The Ruins at golden hour, perfect vibe for the open air."),
-		SeenAt:     event1.EventDate,
+		SeenAt:     dayEvent.EventDate,
 	})
 	if err != nil {
 		return err
 	}
-	if err := queries.SetReviewTagLinks(ctx, pool, review5.ID, bob.ID, []string{"day", "sunset"}); err != nil {
+	if err := queries.SetReviewTagLinks(ctx, pool, review5.ID, bob.ID, []string{"sunset"}); err != nil {
 		return err
 	}
 
-	review6, err := queries.CreateReview(ctx, pool, queries.CreateReviewParams{
-		UserID: bob.ID, DjID: &dj7.ID, EventID: &event1.ID,
+	_, err = queries.CreateReview(ctx, pool, queries.CreateReviewParams{
+		UserID: bob.ID, DjID: &dj7.ID, EventID: &dayEvent.ID,
 		Rating:     int16Ptr(3),
 		ReviewText: strPtr("Nice hypnotic stuff but the early slot meant half the crowd was still in line."),
-		SeenAt:     event1.EventDate,
+		SeenAt:     dayEvent.EventDate,
 	})
 	if err != nil {
-		return err
-	}
-	if err := queries.SetReviewTagLinks(ctx, pool, review6.ID, bob.ID, []string{"day"}); err != nil {
 		return err
 	}
 
-	review7, err := queries.CreateReview(ctx, pool, queries.CreateReviewParams{
-		UserID: bob.ID, DjID: &dj8.ID, EventID: &event1.ID,
+	_, err = queries.CreateReview(ctx, pool, queries.CreateReviewParams{
+		UserID: bob.ID, DjID: &dj8.ID, EventID: &dayEvent.ID,
 		Rating: int16Ptr(4),
-		SeenAt: event1.EventDate,
+		SeenAt: dayEvent.EventDate,
 	})
 	if err != nil {
-		return err
-	}
-	if err := queries.SetReviewTagLinks(ctx, pool, review7.ID, bob.ID, []string{"day"}); err != nil {
 		return err
 	}
 
@@ -178,7 +184,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	if err := queries.SetReviewTagLinks(ctx, pool, review8.ID, alice.ID, []string{"day", "night", "packed"}); err != nil {
+	if err := queries.SetReviewTagLinks(ctx, pool, review8.ID, alice.ID, []string{"packed", "great sound"}); err != nil {
 		return err
 	}
 
@@ -204,7 +210,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	if err := queries.SetReviewTagLinks(ctx, pool, review3.ID, bob.ID, []string{"electric", "sweaty", "bass in your chest"}); err != nil {
+	if err := queries.SetReviewTagLinks(ctx, pool, review3.ID, bob.ID, []string{"sweaty", "bass in your chest"}); err != nil {
 		return err
 	}
 

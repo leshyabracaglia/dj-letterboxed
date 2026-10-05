@@ -93,6 +93,26 @@ func (h *Handlers) hydrateReviews(ctx context.Context, reviews []db.Review, opts
 				dtos[i].Event = &ee
 			}
 		}
+
+		var nightIDs []string
+		for _, r := range reviews {
+			if r.DjID == nil && r.EventID != nil {
+				nightIDs = append(nightIDs, *r.EventID)
+			}
+		}
+		solo, err := queries.GetSoloLineupDjs(ctx, h.Pool, queries.DedupeStrings(nightIDs))
+		if err != nil {
+			return nil, err
+		}
+		for i, r := range reviews {
+			if r.DjID != nil || r.EventID == nil {
+				continue
+			}
+			if d, ok := solo[*r.EventID]; ok {
+				dd := d
+				dtos[i].LineupDj = &dd
+			}
+		}
 	}
 
 	if opts.IncludeEngagement {

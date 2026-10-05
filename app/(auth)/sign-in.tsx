@@ -2,7 +2,7 @@ import { useSignIn } from "@clerk/expo";
 import { Link, router } from "expo-router";
 import { useState } from "react";
 import { TextInput, View } from "react-native";
-import { Button, Text } from "../../components/ui";
+import { Button, KeyboardScrollView, Text } from "../../components/ui";
 
 import { ROUTES } from "../../lib/routes";
 
@@ -65,7 +65,10 @@ export default function SignInScreen() {
 
   if (needsVerification) {
     return (
-      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink px-6">
+      <KeyboardScrollView
+        className="flex-1 bg-paper dark:bg-ink"
+        contentContainerClassName="flex-grow items-center justify-center px-6"
+      >
         <Text className="mb-8 text-4xl font-display text-ink dark:text-paper">Verify it&apos;s you</Text>
         <Text className="mb-4 text-center text-muted">
           We sent a code to {email} to confirm this new device.
@@ -84,12 +87,15 @@ export default function SignInScreen() {
         >
           <Text className="text-center font-semibold text-paper">Verify</Text>
         </Button>
-      </View>
+      </KeyboardScrollView>
     );
   }
 
   return (
-    <View className="flex-1 items-center justify-center bg-paper dark:bg-ink px-6">
+    <KeyboardScrollView
+      className="flex-1 bg-paper dark:bg-ink"
+      contentContainerClassName="flex-grow items-center justify-center px-6"
+    >
       <Text className="mb-8 text-4xl font-display text-ink dark:text-paper">Welcome back</Text>
       <TextInput
         autoCapitalize="none"
@@ -135,6 +141,6 @@ export default function SignInScreen() {
           <Text className="text-muted">Continue without an account</Text>
         </Link>
       </View>
-    </View>
+    </KeyboardScrollView>
   );
 }

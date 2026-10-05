@@ -23,8 +23,13 @@ func scanDj(row pgx.Row) (*db.Dj, error) {
 	return &d, nil
 }
 
-func SearchDjs(ctx context.Context, q DBTX, query string) ([]db.Dj, error) {
-	rows, err := q.Query(ctx, "SELECT "+djCols+" FROM djs WHERE name ILIKE '%' || $1 || '%' LIMIT 20", query)
+// SearchDjs matches DJs by name, most-reviewed first; an empty query returns
+// the most-reviewed DJs overall.
+func SearchDjs(ctx context.Context, q DBTX, query string, limit int) ([]db.Dj, error) {
+	rows, err := q.Query(ctx, "SELECT "+djCols+` FROM djs
+		WHERE $1 = '' OR name ILIKE '%' || $1 || '%'
+		ORDER BY (SELECT COUNT(*) FROM reviews r WHERE r.dj_id = djs.id) DESC, lower(name)
+		LIMIT $2`, query, limit)
 	if err != nil {
 		return nil, err
 	}

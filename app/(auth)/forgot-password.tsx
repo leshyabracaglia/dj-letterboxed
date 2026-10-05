@@ -2,7 +2,7 @@ import { useSignIn } from "@clerk/expo";
 import { Link, router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
-import { Button, Text } from "../../components/ui";
+import { Button, KeyboardScrollView, Text } from "../../components/ui";
 
 import { ROUTES } from "../../lib/routes";
 
@@ -93,7 +93,10 @@ export default function ForgotPasswordScreen() {
 
   if (codeSent) {
     return (
-      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink px-6">
+      <KeyboardScrollView
+        className="flex-1 bg-paper dark:bg-ink"
+        contentContainerClassName="flex-grow items-center justify-center px-6"
+      >
         <Text className="mb-8 text-4xl font-display text-ink dark:text-paper">Reset password</Text>
         <Text className="mb-4 text-center text-muted">
           We sent a code to {email.trim()}. Enter it below with your new password.
@@ -131,12 +134,15 @@ export default function ForgotPasswordScreen() {
         <Pressable onPress={sendCode} disabled={busy} className="mt-6">
           <Text className="text-primary dark:text-primary-dark">Resend code</Text>
         </Pressable>
-      </View>
+      </KeyboardScrollView>
     );
   }
 
   return (
-    <View className="flex-1 items-center justify-center bg-paper dark:bg-ink px-6">
+    <KeyboardScrollView
+      className="flex-1 bg-paper dark:bg-ink"
+      contentContainerClassName="flex-grow items-center justify-center px-6"
+    >
       <Text className="mb-8 text-4xl font-display text-ink dark:text-paper">Forgot password</Text>
       <Text className="mb-4 text-center text-muted">
         Enter the email on your account and we&apos;ll send you a code to reset your password.
@@ -161,6 +167,6 @@ export default function ForgotPasswordScreen() {
           <Text className="text-primary dark:text-primary-dark">Back to sign in</Text>
         </Link>
       </View>
-    </View>
+    </KeyboardScrollView>
   );
 }

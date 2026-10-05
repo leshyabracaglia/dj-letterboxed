@@ -19,18 +19,16 @@ var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]
 
 // SearchVenues godoc
 //
-//	@Summary	Search saved venues by name
+//	@Summary	Search saved venues by name, busiest first
 //	@Tags		venues
 //	@Produce	json
-//	@Param		q	query	string	true	"search query"
-//	@Success	200	{array}	queries.VenueSummary
+//	@Param		q		query	string	false	"name search; omit for the busiest venues"
+//	@Param		limit	query	int		false	"max results, 1-50, default 20"
+//	@Success	200		{array}	queries.VenueSummary
 //	@Router		/api/venues/search [get]
 func (h *Handlers) SearchVenues(w http.ResponseWriter, r *http.Request) {
-	q, ok := requireQueryParam(w, r, "q")
-	if !ok {
-		return
-	}
-	venues, err := queries.SearchVenues(r.Context(), h.Pool, q)
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	venues, err := queries.SearchVenues(r.Context(), h.Pool, q, queryLimit(r, 20, 50))
 	if err != nil {
 		InternalError(w, err)
 		return

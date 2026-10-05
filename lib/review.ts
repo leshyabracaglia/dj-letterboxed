@@ -14,9 +14,14 @@ function seenWhere(event: Event | null | undefined): string[] {
 }
 
 /** What a review is about, for headings and avatars: its DJ, or - for a
- * review of the night as a whole (no DJ) - the night itself. `where` is
- * the extra context to show after the name. */
-export function reviewSubject(review: { dj?: Dj | null; event?: Event | null }): {
+ * review of the night as a whole (no DJ) - the night itself, titled
+ * "<DJ> at <event>" when its lineup is a single DJ. `where` is the extra
+ * context to show after the name. */
+export function reviewSubject(review: {
+  dj?: Dj | null;
+  event?: Event | null;
+  lineupDj?: Dj | null;
+}): {
   name: string;
   imageUrl: string | null;
   href: Href | null;
@@ -28,9 +33,10 @@ export function reviewSubject(review: { dj?: Dj | null; event?: Event | null }):
     return { name: dj.name, imageUrl: dj.imageUrl, href: ROUTES.DJ(dj.slug), where: seenWhere(event), isNight: false };
   }
   if (event) {
+    const { lineupDj } = review;
     return {
-      name: event.name,
-      imageUrl: null,
+      name: lineupDj ? `${lineupDj.name} at ${event.name || event.venue}` : event.name,
+      imageUrl: lineupDj?.imageUrl ?? null,
       href: ROUTES.EVENT(event.id),
       where: ["Whole night", ...seenWhere(event).slice(1)],
       isNight: true,

@@ -11,9 +11,12 @@ import (
 // isLikedByMe, spread onto one object rather than nested).
 type ReviewDTO struct {
 	db.Review
-	User         *db.User  `json:"user,omitempty"`
-	Dj           *db.Dj    `json:"dj,omitempty"`
-	Event        *db.Event `json:"event,omitempty"`
+	User  *db.User  `json:"user,omitempty"`
+	Dj    *db.Dj    `json:"dj,omitempty"`
+	Event *db.Event `json:"event,omitempty"`
+	// LineupDj is set on a night review (no Dj) when the night's lineup is
+	// exactly one DJ, so it can be titled "<DJ> at <event>".
+	LineupDj     *db.Dj    `json:"lineupDj,omitempty"`
 	TaggedUsers  []db.User `json:"taggedUsers"`
 	Tags         []string  `json:"tags"`
 	LikeCount    *int64    `json:"likeCount,omitempty"`

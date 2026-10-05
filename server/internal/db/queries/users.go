@@ -97,11 +97,14 @@ func DeleteUserByClerkID(ctx context.Context, q DBTX, clerkID string) error {
 	return err
 }
 
-func SearchUsers(ctx context.Context, q DBTX, query string) ([]db.User, error) {
+// SearchUsers matches users by username or display name, most-followed
+// first; an empty query returns the most-followed users overall.
+func SearchUsers(ctx context.Context, q DBTX, query string, limit int) ([]db.User, error) {
 	rows, err := q.Query(ctx, `
 		SELECT `+userCols+` FROM users
-		WHERE username ILIKE '%' || $1 || '%' OR display_name ILIKE '%' || $1 || '%'
-		LIMIT 20`, query)
+		WHERE $1 = '' OR username ILIKE '%' || $1 || '%' OR display_name ILIKE '%' || $1 || '%'
+		ORDER BY (SELECT COUNT(*) FROM follows f WHERE f.following_id = users.id) DESC, lower(username)
+		LIMIT $2`, query, limit)
 	if err != nil {
 		return nil, err
 	}

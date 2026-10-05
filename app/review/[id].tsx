@@ -6,7 +6,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   TextInput,
   useWindowDimensions,
   View,
@@ -20,6 +19,7 @@ import {
   Avatar,
   Button,
   Icon,
+  KeyboardScrollView,
   Page,
   RatingStars,
   Skeleton,
@@ -579,7 +579,7 @@ export default function ReviewDetailScreen() {
   return (
     <Page>
       <Stack.Screen options={{ title: subject.name }} />
-      <ScrollView contentContainerStyle={[contentStyle, { paddingTop: 24, alignItems: "center" }]}>
+      <KeyboardScrollView contentContainerStyle={[contentStyle, { paddingTop: 24, alignItems: "center" }]}>
         <View className="w-full max-w-xl rounded-2xl border border-primary/15 bg-white dark:bg-surface-dark p-5 shadow-sm">
           <View
             className={isDesktopWeb ? "flex-row items-start justify-between gap-3" : "items-start gap-2"}
@@ -644,7 +644,7 @@ export default function ReviewDetailScreen() {
         <View className="w-full max-w-xl">
           <CommentSection reviewId={review.id} />
         </View>
-      </ScrollView>
+      </KeyboardScrollView>
     </Page>
   );
 }

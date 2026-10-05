@@ -1,4 +1,5 @@
 import { Platform, useWindowDimensions, type ViewStyle } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Horizontal page gutter. Content is capped at MAX_CONTENT_WIDTH: on wide
 // viewports (tablets, desktop web) the gutter grows to center it, while
@@ -17,7 +18,10 @@ export function usePageGutter(): number {
 // clipped) while its content lines up with the page gutter.
 export function usePageContentStyle(): ViewStyle {
   const gutter = usePageGutter();
-  return { paddingHorizontal: gutter, paddingVertical: 16 };
+  const { bottom } = useSafeAreaInsets();
+  // Page leaves out the bottom safe-area edge, so the inset goes here, inside
+  // the scroll area, where it scrolls instead of sitting as a fixed gap.
+  return { paddingHorizontal: gutter, paddingTop: 16, paddingBottom: 16 + bottom };
 }
 
 // The top WebNav only fits a desktop-width browser; phone-sized web gets the

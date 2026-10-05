@@ -7,6 +7,7 @@ export { EmptyState } from "./EmptyState";
 export { GenreTags } from "./GenreTags";
 export { GlassSurface } from "./GlassSurface";
 export { Icon, type IconName } from "./Icon";
+export { KEYBOARD_DISMISS_PROPS, KeyboardScrollView } from "./KeyboardScrollView";
 export { useIsDesktopWeb, usePageContentStyle, usePageGutter } from "./layout";
 export { Button } from "./Button";
 export { Page } from "./Page";

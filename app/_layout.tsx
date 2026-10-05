@@ -134,7 +134,11 @@ export default function RootLayout() {
                 headerStyle: { backgroundColor: isDark ? "#000000" : "#F6F6F9" },
                 headerTintColor: isDark ? "#F6F6F9" : "#000000",
                 headerTitleStyle: { fontFamily: "Roboto_700Bold" },
-                headerBackTitleStyle: { fontFamily: "Roboto_400Regular" },
+                // Chevron only: the default back title is the previous route's
+                // name, which for anything pushed from the tabs reads "(tabs)".
+                // (A custom headerBackTitleStyle font forces a static title, so
+                // none is set.)
+                headerBackButtonDisplayMode: "minimal",
                 headerShadowVisible: false,
                 contentStyle: { backgroundColor: isDark ? "#000000" : "#F6F6F9" },
               }}

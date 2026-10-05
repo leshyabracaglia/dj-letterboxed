@@ -1,14 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { View } from "react-native";
 import { Skeleton, Text } from "./ui";
 
-import { useApi } from "../lib/api/client";
-import { queryKeys } from "../lib/api/queryKeys";
+import { useUserStats } from "../lib/api/hooks";
 import type { UserStats } from "../lib/api/types";
 import { DjAvatarRow } from "./DjAvatarRow";
 
-// The user's 3 most-reviewed DJs with how many times they've seen each,
-// laid out like FavoritesShowcase's row so the two read as a pair.
+// The user's 3 most-reviewed DJs with how many times they've seen each.
 function MostSeenDjs({ topDjs }: { topDjs: UserStats["topDjs"] }) {
   return (
     <View className="mt-3">
@@ -29,45 +27,29 @@ function MostSeenDjs({ topDjs }: { topDjs: UserStats["topDjs"] }) {
   );
 }
 
-export function StatsSummary({ username }: { username: string }) {
-  const api = useApi();
-  const { data: stats } = useQuery({
-    queryKey: queryKeys.users.stats(username),
-    queryFn: () => api.get<UserStats>(`/users/${username}/stats`),
-  });
+/** Profile stats below the counts row: most-seen DJs and top venues. The
+ * optional `favorites` slot (FavoritesShowcase, currently unused) renders
+ * above them. */
+export function StatsSummary({ username, favorites }: { username: string; favorites?: ReactNode }) {
+  const { data: stats } = useUserStats(username);
 
   if (!stats) {
     return (
-      <View className="mt-3 flex-row gap-6 border-t border-primary/15 pt-3">
-        <View>
-          <Skeleton className="h-8 w-10" />
-          <Skeleton className="mt-1.5 h-3 w-10" />
-        </View>
-        <View>
-          <Skeleton className="h-8 w-10" />
-          <Skeleton className="mt-1.5 h-3 w-10" />
+      <View className="mt-3 border-t border-primary/15 pt-3">
+        <Skeleton className="h-4 w-20" />
+        <View className="mt-2 flex-row gap-3">
+          <Skeleton className="h-14 w-14 rounded-full" />
+          <Skeleton className="h-14 w-14 rounded-full" />
+          <Skeleton className="h-14 w-14 rounded-full" />
         </View>
       </View>
     );
   }
-  if (stats.totalReviews === 0) return null;
+  if (!favorites && !stats.topDjs.length && !stats.topVenues.length) return null;
 
   return (
     <View className="mt-3 border-t border-primary/15 pt-3">
-      <View className="flex-row gap-6">
-        <View>
-          <Text className="font-numeric text-3xl text-primary dark:text-primary-dark">
-            {stats.totalReviews}
-          </Text>
-          <Text className="text-xs text-muted">shows</Text>
-        </View>
-        <View>
-          <Text className="font-numeric text-3xl text-primary dark:text-primary-dark">
-            {stats.uniqueDjs}
-          </Text>
-          <Text className="text-xs text-muted">DJs</Text>
-        </View>
-      </View>
+      {favorites}
 
       {!!stats.topDjs.length && <MostSeenDjs topDjs={stats.topDjs} />}
 

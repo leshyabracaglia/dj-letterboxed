@@ -52,12 +52,14 @@ func scanVenueSummary(row pgx.Row) (*VenueSummary, error) {
 	return &v, nil
 }
 
-func SearchVenues(ctx context.Context, q DBTX, query string) ([]VenueSummary, error) {
+// SearchVenues matches saved venues by name, busiest first; an empty query
+// returns the busiest venues overall.
+func SearchVenues(ctx context.Context, q DBTX, query string, limit int) ([]VenueSummary, error) {
 	rows, err := q.Query(ctx, venueSummarySelect+`
-		WHERE v.name ILIKE '%' || $1 || '%'
+		WHERE $1 = '' OR v.name ILIKE '%' || $1 || '%'
 		GROUP BY v.id
 		ORDER BY event_count DESC, v.name
-		LIMIT 20`, query)
+		LIMIT $2`, query, limit)
 	if err != nil {
 		return nil, err
 	}

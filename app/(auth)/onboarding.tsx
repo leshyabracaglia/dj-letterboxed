@@ -1,15 +1,14 @@
 import { useAuth, useUser } from "@clerk/expo";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Keyboard, KeyboardAvoidingView, Pressable, ScrollView, TextInput, View } from "react-native";
+import { Keyboard, Pressable, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Avatar, Button, Text } from "../../components/ui";
+import { Avatar, Button, KeyboardScrollView, Text } from "../../components/ui";
 
 import { useCurrentUser, useUpdateProfile } from "../../lib/auth";
 import { pickAndUploadAvatar } from "../../lib/avatarUpload";
 import { ROUTES } from "../../lib/routes";
-import { isIos } from "@/lib/utils";
 
 const USERNAME_RE = /^[a-z0-9_]{3,32}$/;
 
@@ -65,76 +64,73 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink">
-      <KeyboardAvoidingView behavior={isIos ? "padding" : undefined} className="flex-1">
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 24 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Text className="mb-2 text-4xl font-display text-ink dark:text-paper">Set up your profile</Text>
-          <Text className="mb-8 text-center text-muted">
-            Choose a username so people can find you. A photo is optional.
+      <KeyboardScrollView
+        contentContainerStyle={{ flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 24 }}
+      >
+        <Text className="mb-2 text-4xl font-display text-ink dark:text-paper">Set up your profile</Text>
+        <Text className="mb-8 text-center text-muted">
+          Choose a username so people can find you. A photo is optional.
+        </Text>
+
+        <Pressable onPress={onPickPhoto} disabled={uploadingPhoto} className="mb-6">
+          <Avatar uri={avatarUrl} name={displayUsername || me?.username || "?"} size={88} />
+          <Text className="mt-2 text-center text-sm text-muted">
+            {uploadingPhoto ? "Uploading..." : avatarUrl ? "Change photo" : "Add a photo"}
           </Text>
+        </Pressable>
 
-          <Pressable onPress={onPickPhoto} disabled={uploadingPhoto} className="mb-6">
-            <Avatar uri={avatarUrl} name={displayUsername || me?.username || "?"} size={88} />
-            <Text className="mt-2 text-center text-sm text-muted">
-              {uploadingPhoto ? "Uploading..." : avatarUrl ? "Change photo" : "Add a photo"}
+        <View className="w-full max-w-sm">
+          <TextInput
+            autoCapitalize="none"
+            autoCorrect={false}
+            placeholder="Username"
+            value={username}
+            onChangeText={setUsername}
+            returnKeyType="done"
+            onSubmitEditing={() => Keyboard.dismiss()}
+            className="mb-1 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
+          />
+          {!!username.length && !usernameValid ? (
+            <Text className="mb-3 text-xs text-danger dark:text-danger-dark">
+              3-32 characters: lowercase letters, numbers, underscores.
             </Text>
+          ) : (
+            <View className="mb-3" />
+          )}
+
+          <TextInput
+            placeholder="Bio (optional)"
+            value={bio}
+            onChangeText={setBio}
+            multiline
+            numberOfLines={3}
+            blurOnSubmit
+            className="mb-4 min-h-20 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
+          />
+
+          {!!error && <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text>}
+
+          <Button
+            onPress={onSubmit}
+            disabled={submit.isPending || !usernameValid}
+            className="w-full py-3"
+          >
+            <Text className="text-center font-semibold text-paper">
+              {submit.isPending ? "Saving..." : "Continue"}
+            </Text>
+          </Button>
+
+          <Pressable
+            onPress={async () => {
+              await signOut();
+              router.replace(ROUTES.SIGN_IN);
+            }}
+            className="mt-4"
+          >
+            <Text className="text-center text-sm text-muted">Not now — sign out</Text>
           </Pressable>
-
-          <View className="w-full max-w-sm">
-            <TextInput
-              autoCapitalize="none"
-              autoCorrect={false}
-              placeholder="Username"
-              value={username}
-              onChangeText={setUsername}
-              returnKeyType="done"
-              onSubmitEditing={() => Keyboard.dismiss()}
-              className="mb-1 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
-            />
-            {!!username.length && !usernameValid ? (
-              <Text className="mb-3 text-xs text-danger dark:text-danger-dark">
-                3-32 characters: lowercase letters, numbers, underscores.
-              </Text>
-            ) : (
-              <View className="mb-3" />
-            )}
-
-            <TextInput
-              placeholder="Bio (optional)"
-              value={bio}
-              onChangeText={setBio}
-              multiline
-              numberOfLines={3}
-              blurOnSubmit
-              className="mb-4 min-h-20 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
-            />
-
-            {!!error && <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text>}
-
-            <Button
-              onPress={onSubmit}
-              disabled={submit.isPending || !usernameValid}
-              className="w-full py-3"
-            >
-              <Text className="text-center font-semibold text-paper">
-                {submit.isPending ? "Saving..." : "Continue"}
-              </Text>
-            </Button>
-
-            <Pressable
-              onPress={async () => {
-                await signOut();
-                router.replace(ROUTES.SIGN_IN);
-              }}
-              className="mt-4"
-            >
-              <Text className="text-center text-sm text-muted">Not now — sign out</Text>
-            </Pressable>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </View>
+      </KeyboardScrollView>
     </SafeAreaView>
   );
 }

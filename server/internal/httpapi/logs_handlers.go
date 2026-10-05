@@ -36,6 +36,9 @@ type createNightLogRequest struct {
 	PlaceSessionToken *string `json:"placeSessionToken"`
 	City              *string `json:"city"`
 	SeenAt            string  `json:"seenAt"`
+	// When the party ran: day, night, or both. Neither given means night.
+	IsDay   bool `json:"isDay"`
+	IsNight bool `json:"isNight"`
 	// DJs the user saw; added to the night's lineup. DJs in djReviews are
 	// added too, whether or not they're listed here.
 	LineupDjIDs []string `json:"lineupDjIds"`
@@ -182,13 +185,14 @@ func (h *Handlers) CreateNightLog(w http.ResponseWriter, r *http.Request) {
 		name = series.Name
 	}
 
-	event, err := queries.GetNight(ctx, tx, seriesID, venue.ID, seenAt)
+	isNight := req.IsNight || !req.IsDay
+	event, err := queries.GetNight(ctx, tx, seriesID, venue.ID, seenAt, req.IsDay, isNight)
 	if errors.Is(err, queries.ErrNotFound) {
 		city := req.City
 		if city == nil || *city == "" {
 			city = venue.City
 		}
-		event, err = queries.CreateEvent(ctx, tx, name, seriesID, venue, city, seenAt, nil, user.ID)
+		event, err = queries.CreateEvent(ctx, tx, name, seriesID, venue, city, seenAt, req.IsDay, isNight, nil, user.ID)
 	}
 	if err != nil {
 		InternalError(w, err)

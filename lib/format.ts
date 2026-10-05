@@ -30,15 +30,3 @@ export function parseDateInputValue(value: string): Date | null {
   const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
   return Number.isNaN(date.getTime()) ? null : date;
 }
-
-// Tags are stored as plain lowercase names; a few default ones display
-// with an emoji.
-const TAG_EMOJI: Record<string, string> = {
-  day: "☀️",
-  night: "🌙",
-};
-
-export function formatTag(name: string): string {
-  const emoji = TAG_EMOJI[name];
-  return emoji ? `${emoji} ${name}` : name;
-}

@@ -14,7 +14,8 @@ import { ROUTES } from "../lib/routes";
 
 const MAX_FAVORITES = 3;
 
-/** A user's pinned top-3 shows, shown on their profile. Read-only for
+/** A user's pinned top-3 shows, shown on their profile beside the stats
+ * counts (see StatsSummary's `favorites` slot). Read-only for
  * everyone but the profile's owner, who can tap "Edit" to pick from their
  * own reviews - tap order sets the rank (#1 first). */
 export function FavoritesShowcase({
@@ -33,12 +34,12 @@ export function FavoritesShowcase({
 
   if (!data) {
     return (
-      <View className="mt-3 border-t border-primary/15 pt-3">
+      <View>
         <Skeleton className="h-4 w-28" />
-        <View className="mt-2 flex-row gap-3">
+        <View className="mt-2 flex-row gap-2">
           {Array.from({ length: MAX_FAVORITES }).map((_, i) => (
-            <View key={i} className="w-20 items-center">
-              <Skeleton className="h-14 w-14 rounded-full" />
+            <View key={i} className="w-[72px] items-center">
+              <Skeleton className="h-12 w-12 rounded-full" />
               <Skeleton className="mt-1.5 h-3 w-14" />
             </View>
           ))}
@@ -49,7 +50,7 @@ export function FavoritesShowcase({
   if (!data.items.length && !isSelf) return null;
 
   return (
-    <View className="mt-3 border-t border-primary/15 pt-3">
+    <View>
       <View className="flex-row items-center justify-between">
         <Text className="text-sm font-semibold text-ink dark:text-paper">Favorite shows</Text>
         {isSelf && (
@@ -58,7 +59,7 @@ export function FavoritesShowcase({
           </Pressable>
         )}
       </View>
-      <View className="mt-2 flex-row gap-3">
+      <View className="mt-2 flex-row gap-2">
         {Array.from({ length: MAX_FAVORITES }).map((_, i) => {
           const review = data.items[i];
           if (!review) {
@@ -66,7 +67,7 @@ export function FavoritesShowcase({
               <Pressable
                 key={i}
                 onPress={() => setEditing(true)}
-                className="h-20 w-20 items-center justify-center rounded-xl border border-dashed border-primary/30"
+                className="h-[72px] w-[72px] items-center justify-center rounded-xl border border-dashed border-primary/30"
               >
                 <Text className="text-2xl text-primary/40">+</Text>
               </Pressable>
@@ -76,10 +77,10 @@ export function FavoritesShowcase({
             <Pressable
               key={review.id}
               onPress={() => router.push(ROUTES.REVIEW_DETAIL(review.id))}
-              className="w-20 items-center"
+              className="w-[72px] items-center"
             >
-              <Avatar uri={reviewSubject(review).imageUrl} name={reviewSubject(review).name} size={56} />
-              <Text className="mt-1 text-center text-xs text-ink dark:text-paper" numberOfLines={1}>
+              <Avatar uri={reviewSubject(review).imageUrl} name={reviewSubject(review).name} size={48} />
+              <Text className="mt-1 text-center text-xs text-ink dark:text-paper" numberOfLines={2}>
                 {reviewSubject(review).name}
               </Text>
               <Text className="text-xs text-muted">{formatRating(review.rating)}</Text>

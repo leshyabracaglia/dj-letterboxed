@@ -94,6 +94,9 @@ export type CreateNightLogInput = {
   venue?: string;
   city?: string;
   seenAt: string;
+  /** When the party ran: day, night, or both. Neither means night. */
+  isDay?: boolean;
+  isNight?: boolean;
   lineupDjIds: string[];
   night?: { rating: number; reviewText?: string };
   djReviews: { djId: string; rating: number; reviewText?: string }[];

@@ -161,7 +161,7 @@ func (h *Handlers) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event, err := queries.CreateEvent(r.Context(), h.Pool, req.Name, nil, venue, city, eventDate, req.Description, user.ID)
+	event, err := queries.CreateEvent(r.Context(), h.Pool, req.Name, nil, venue, city, eventDate, false, true, req.Description, user.ID)
 	if err != nil {
 		InternalError(w, err)
 		return

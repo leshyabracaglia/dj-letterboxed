@@ -10,11 +10,11 @@ import (
 	"beatboxd/server/internal/db"
 )
 
-const eventCols = "id, name, series_id, venue, venue_id, city, event_date, description, created_by_user_id, created_at"
+const eventCols = "id, name, series_id, venue, venue_id, city, event_date, is_day, is_night, description, created_by_user_id, created_at"
 
 func scanEvent(row pgx.Row) (*db.Event, error) {
 	var e db.Event
-	err := row.Scan(&e.ID, &e.Name, &e.SeriesID, &e.Venue, &e.VenueID, &e.City, &e.EventDate, &e.Description, &e.CreatedByUserID, &e.CreatedAt)
+	err := row.Scan(&e.ID, &e.Name, &e.SeriesID, &e.Venue, &e.VenueID, &e.City, &e.EventDate, &e.IsDay, &e.IsNight, &e.Description, &e.CreatedByUserID, &e.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
@@ -72,24 +72,25 @@ func GetEventsByIDs(ctx context.Context, q DBTX, ids []string) (map[string]db.Ev
 }
 
 // GetNight finds the night a log belongs to: the same series (or no series)
-// at the same venue on the same calendar day. Days compare in UTC, which
+// at the same venue on the same calendar day, and the same day/night timing. Days compare in UTC, which
 // keeps a midday-local seenAt on its own day for nearly every time zone.
-func GetNight(ctx context.Context, q DBTX, seriesID *string, venueID string, date time.Time) (*db.Event, error) {
+func GetNight(ctx context.Context, q DBTX, seriesID *string, venueID string, date time.Time, isDay, isNight bool) (*db.Event, error) {
 	return scanEvent(q.QueryRow(ctx, `
 		SELECT `+eventCols+` FROM events
 		WHERE venue_id = $1
 			AND series_id IS NOT DISTINCT FROM $2
 			AND (event_date AT TIME ZONE 'UTC')::date = ($3::timestamptz AT TIME ZONE 'UTC')::date
+			AND is_day = $4 AND is_night = $5
 		ORDER BY created_at
-		LIMIT 1`, venueID, seriesID, date))
+		LIMIT 1`, venueID, seriesID, date, isDay, isNight))
 }
 
 // CreateEvent stores venue.Name as the event's denormalized venue name.
-func CreateEvent(ctx context.Context, q DBTX, name string, seriesID *string, venue *db.Venue, city *string, eventDate time.Time, description *string, createdByUserID string) (*db.Event, error) {
+func CreateEvent(ctx context.Context, q DBTX, name string, seriesID *string, venue *db.Venue, city *string, eventDate time.Time, isDay, isNight bool, description *string, createdByUserID string) (*db.Event, error) {
 	return scanEvent(q.QueryRow(ctx, `
-		INSERT INTO events (name, series_id, venue, venue_id, city, event_date, description, created_by_user_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		RETURNING `+eventCols, name, seriesID, venue.Name, venue.ID, city, eventDate, description, createdByUserID))
+		INSERT INTO events (name, series_id, venue, venue_id, city, event_date, is_day, is_night, description, created_by_user_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		RETURNING `+eventCols, name, seriesID, venue.Name, venue.ID, city, eventDate, isDay, isNight, description, createdByUserID))
 }
 
 // AddToLineup records DJs as having played a night; already-listed DJs are
@@ -103,6 +104,39 @@ func AddToLineup(ctx context.Context, q DBTX, eventID string, djIDs []string, ad
 		SELECT $1, unnest($2::uuid[]), $3
 		ON CONFLICT DO NOTHING`, eventID, djIDs, addedByUserID)
 	return err
+}
+
+// GetSoloLineupDjs returns, for each of the given nights whose lineup is
+// exactly one DJ, that DJ keyed by event id. Nights with an empty or
+// multi-DJ lineup are left out.
+func GetSoloLineupDjs(ctx context.Context, q DBTX, eventIDs []string) (map[string]db.Dj, error) {
+	out := make(map[string]db.Dj)
+	if len(eventIDs) == 0 {
+		return out, nil
+	}
+	rows, err := q.Query(ctx, `
+		SELECT l.event_id, d.id, d.name, d.slug, d.bio, d.genres, d.image_url, d.spotify_id, d.created_by_user_id, d.created_at, d.updated_at
+		FROM event_lineup l
+		JOIN djs d ON d.id = l.dj_id
+		WHERE l.event_id IN (
+			SELECT event_id FROM event_lineup
+			WHERE event_id = ANY($1)
+			GROUP BY event_id
+			HAVING COUNT(*) = 1
+		)`, eventIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var eventID string
+		var d db.Dj
+		if err := rows.Scan(&eventID, &d.ID, &d.Name, &d.Slug, &d.Bio, &d.Genres, &d.ImageURL, &d.SpotifyID, &d.CreatedByUserID, &d.CreatedAt, &d.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out[eventID] = d
+	}
+	return out, rows.Err()
 }
 
 // ListLineup returns a night's DJs, alphabetically.

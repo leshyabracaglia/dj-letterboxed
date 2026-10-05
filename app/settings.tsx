@@ -1,5 +1,4 @@
 import { Stack } from "expo-router";
-import { ScrollView } from "react-native";
 
 import { isClerkAPIResponseError, useAuth, useUser } from "@clerk/expo";
 import { router } from "expo-router";
@@ -7,7 +6,7 @@ import { useColorScheme } from "nativewind";
 import { useEffect, useState } from "react";
 import { Alert, Pressable, TextInput, View } from "react-native";
 
-import { Avatar, Button, Page, Text, usePageContentStyle } from "../components/ui";
+import { Avatar, Button, KeyboardScrollView, Page, Text, usePageContentStyle } from "../components/ui";
 import { useCurrentUser, useUpdateProfile } from "../lib/auth";
 import { pickAndUploadAvatar } from "../lib/avatarUpload";
 import { ROUTES } from "../lib/routes";
@@ -320,6 +319,16 @@ function AccountSettings() {
         </Pressable>
       )}
 
+      <Pressable
+        onPress={async () => {
+          await signOut();
+          router.replace(ROUTES.SIGN_IN);
+        }}
+        className="mt-8 rounded-xl border border-primary/30 py-3 active:opacity-80"
+      >
+        <Text className="text-center font-semibold text-ink dark:text-paper">Sign out</Text>
+      </Pressable>
+
       <Text className="mb-2 mt-8 text-xl font-display text-danger dark:text-danger-dark">
         Danger zone
       </Text>
@@ -341,11 +350,11 @@ export default function SettingsScreen() {
   return (
     <Page>
       <Stack.Screen options={{ title: "Settings" }} />
-      <ScrollView contentContainerStyle={[contentStyle, { paddingTop: 24 }]}>
+      <KeyboardScrollView contentContainerStyle={[contentStyle, { paddingTop: 24 }]}>
         <EditProfile />
         <AppearanceSettings />
         <AccountSettings />
-      </ScrollView>
+      </KeyboardScrollView>
     </Page>
   );
 }
