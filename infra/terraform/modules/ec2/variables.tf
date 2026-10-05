@@ -58,6 +58,10 @@ variable "spotify_client_secret_secret_arn" {
   type = string
 }
 
+variable "google_places_api_key_secret_arn" {
+  type = string
+}
+
 variable "clerk_jwks_url" {
   type = string
 }

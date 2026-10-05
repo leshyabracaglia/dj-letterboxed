@@ -18,6 +18,10 @@ output "spotify_client_secret_secret_arn" {
   value = aws_secretsmanager_secret.spotify_client_secret.arn
 }
 
+output "google_places_api_key_secret_arn" {
+  value = aws_secretsmanager_secret.google_places_api_key.arn
+}
+
 output "all_secret_arns" {
   value = [
     aws_secretsmanager_secret.database_url.arn,
@@ -25,5 +29,6 @@ output "all_secret_arns" {
     aws_secretsmanager_secret.clerk_webhook_signing_secret.arn,
     aws_secretsmanager_secret.spotify_client_id.arn,
     aws_secretsmanager_secret.spotify_client_secret.arn,
+    aws_secretsmanager_secret.google_places_api_key.arn,
   ]
 }

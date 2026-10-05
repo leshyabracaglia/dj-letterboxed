@@ -13,6 +13,7 @@ import type {
   Review,
   UserProfile,
   VenueDetail,
+  VenueSummary,
 } from "./types";
 
 // The review tab writes a freshly created review into this same cache entry
@@ -33,6 +34,16 @@ export function useDjSearch(query: string, enabled: boolean = true) {
   return useQuery({
     queryKey: queryKeys.djs.search(query),
     queryFn: () => api.get<Dj[]>("/djs/search", { q: query }),
+    enabled: enabled && query.length > 0,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useVenueSearch(query: string, enabled: boolean = true) {
+  const api = useApi();
+  return useQuery({
+    queryKey: queryKeys.venues.search(query),
+    queryFn: () => api.get<VenueSummary[]>("/venues/search", { q: query }),
     enabled: enabled && query.length > 0,
     placeholderData: keepPreviousData,
   });
@@ -62,12 +73,12 @@ export function useEventDetail(id: string | undefined) {
   });
 }
 
-export function useVenueDetail(venue: string | undefined) {
+export function useVenueDetail(id: string | undefined) {
   const api = useApi();
   return useQuery({
-    queryKey: queryKeys.venues.byName(venue!),
-    queryFn: () => api.get<VenueDetail>(`/venues/${encodeURIComponent(venue!)}`),
-    enabled: venue !== undefined,
+    queryKey: queryKeys.venues.byId(id!),
+    queryFn: () => api.get<VenueDetail>(`/venues/${id}`),
+    enabled: id !== undefined,
   });
 }
 

@@ -86,6 +86,7 @@ module "secrets" {
   clerk_webhook_signing_secret = var.clerk_webhook_signing_secret
   spotify_client_id            = var.spotify_client_id
   spotify_client_secret        = var.spotify_client_secret
+  google_places_api_key        = var.google_places_api_key
 }
 
 module "ec2" {
@@ -105,6 +106,7 @@ module "ec2" {
   clerk_webhook_signing_secret_secret_arn = module.secrets.clerk_webhook_signing_secret_secret_arn
   spotify_client_id_secret_arn            = module.secrets.spotify_client_id_secret_arn
   spotify_client_secret_secret_arn        = module.secrets.spotify_client_secret_secret_arn
+  google_places_api_key_secret_arn        = module.secrets.google_places_api_key_secret_arn
   clerk_jwks_url                          = var.clerk_jwks_url
   clerk_issuer                            = var.clerk_issuer
 }

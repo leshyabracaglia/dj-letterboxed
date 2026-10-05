@@ -72,10 +72,8 @@ type EventDetailResponse struct {
 }
 
 type VenueDetailResponse struct {
-	Venue      string     `json:"venue"`
-	City       *string    `json:"city"`
-	EventCount int64      `json:"eventCount"`
-	Events     []db.Event `json:"events"`
+	Venue  queries.VenueSummary `json:"venue"`
+	Events []db.Event           `json:"events"`
 }
 
 type UserProfileResponse struct {

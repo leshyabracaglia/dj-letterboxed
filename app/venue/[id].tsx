@@ -49,24 +49,24 @@ function VenueSkeleton() {
 }
 
 export default function VenueScreen() {
-  // expo-router's LocationProvider already runs every param through
-  // decodeURIComponent before it reaches here - don't decode again.
-  const { venue } = useLocalSearchParams<{ venue: string }>();
-  const { data } = useVenueDetail(venue);
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { data } = useVenueDetail(id);
   const contentStyle = usePageContentStyle();
 
   if (!data) {
     return <VenueSkeleton />;
   }
+  const { venue } = data;
 
   return (
     <Page>
-      <Stack.Screen options={{ title: data.venue }} />
+      <Stack.Screen options={{ title: venue.name }} />
       <PageHeader border="accent">
-        <Text className="text-2xl font-bold text-ink dark:text-paper">{data.venue}</Text>
+        <Text className="text-2xl font-bold text-ink dark:text-paper">{venue.name}</Text>
+        {venue.address ? <Text className="mt-1 text-sm text-muted">{venue.address}</Text> : null}
         <Text className="mt-1 text-muted">
-          {data.city ? `${data.city} · ` : ""}
-          {data.eventCount} {data.eventCount === 1 ? "event" : "events"} reviewed
+          {venue.city && !venue.address ? `${venue.city} · ` : ""}
+          {venue.eventCount} {venue.eventCount === 1 ? "event" : "events"} reviewed
         </Text>
       </PageHeader>
       <FlatList

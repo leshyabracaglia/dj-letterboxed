@@ -23,6 +23,7 @@ export type Event = Schemas["Event"];
 export type Review = Schemas["ReviewDTO"];
 export type ReviewComment = Schemas["ReviewComment"];
 export type SpotifyArtist = Schemas["SpotifyArtist"];
+export type PlaceSuggestion = Schemas["PlaceSuggestion"];
 
 export type Paginated<T> = {
   items: T[];
@@ -42,9 +43,16 @@ export type FavoriteReviewsResponse = Schemas["FavoriteReviewsResponse"];
 
 // Request bodies
 
+/** The venue goes in one of three ways, checked in this order: `venueId`
+ * (a saved venue), `placeId` (a Google Places result, saved as a venue on
+ * first use - send the autocomplete session token with it), or `venue` (a
+ * typed-in name). */
 export type CreateEventInput = {
   name: string;
-  venue: string;
+  venueId?: string;
+  placeId?: string;
+  placeSessionToken?: string;
+  venue?: string;
   city?: string;
   eventDate: string;
   description?: string;

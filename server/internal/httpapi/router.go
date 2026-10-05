@@ -17,11 +17,12 @@ type RouterConfig struct {
 	Pool                      *pgxpool.Pool
 	Verifier                  *auth.Verifier
 	Spotify                   *domain.SpotifyClient
+	Places                    *domain.PlacesClient
 	ClerkWebhookSigningSecret string
 }
 
 func NewRouter(cfg RouterConfig) http.Handler {
-	h := NewHandlers(cfg.Pool, cfg.Spotify)
+	h := NewHandlers(cfg.Pool, cfg.Spotify, cfg.Places)
 	a := &Auth{Verifier: cfg.Verifier, Pool: cfg.Pool}
 
 	r := chi.NewRouter()
@@ -50,7 +51,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/djs/spotify-search", h.SearchSpotify)
 			r.Get("/events/search", h.SearchEvents)
 			r.Get("/venues/search", h.SearchVenues)
-			r.Get("/venues/{venue}", h.GetVenueByName)
+			r.Get("/venues/{id}", h.GetVenueByID)
 			r.Get("/users/search", h.SearchUsers)
 			r.Get("/users/{username}", h.GetUserByUsername)
 			r.Get("/users/{username}/stats", h.GetUserStats)
@@ -78,6 +79,8 @@ func NewRouter(cfg RouterConfig) http.Handler {
 
 			r.Post("/djs", h.CreateDj)
 			r.Post("/events", h.CreateEvent)
+			// Auth-only (unlike Spotify search) since every call is billed.
+			r.Get("/venues/places-search", h.SearchPlaces)
 
 			r.Get("/follows/is-following/{userId}", h.IsFollowing)
 			r.Post("/follows/{userId}", h.Follow)

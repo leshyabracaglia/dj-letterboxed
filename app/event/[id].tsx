@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Link, Stack, useLocalSearchParams } from "expo-router";
 import { FlatList, View } from "react-native";
 
 import {
@@ -12,6 +12,7 @@ import {
 import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
 import { useEventDetail } from "../../lib/api/hooks";
 import { formatDateTime } from "../../lib/format";
+import { ROUTES } from "../../lib/routes";
 
 function EventSkeleton() {
   const contentStyle = usePageContentStyle();
@@ -44,7 +45,13 @@ export default function EventScreen() {
       <PageHeader border="accent">
         <Text className="text-2xl font-bold text-ink dark:text-paper">{data.event.name}</Text>
         <Text className="mt-1 text-muted">
-          {data.event.venue}
+          {data.event.venueId ? (
+            <Link href={ROUTES.VENUE(data.event.venueId)}>
+              <Text className="text-accent-text dark:text-accent-dark">{data.event.venue}</Text>
+            </Link>
+          ) : (
+            data.event.venue
+          )}
           {data.event.city ? ` · ${data.event.city}` : ""}
         </Text>
         <Text className="mt-1 text-xs text-muted">{formatDateTime(data.event.eventDate)}</Text>

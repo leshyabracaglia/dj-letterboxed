@@ -9,6 +9,7 @@ import (
 
 	"beatboxd/server/internal/db"
 	"beatboxd/server/internal/db/queries"
+	"beatboxd/server/internal/domain"
 )
 
 // Referenced only by swag doc comments below (@Success/@Param types) -
@@ -69,17 +70,25 @@ func (h *Handlers) GetEventByID(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, EventDetailResponse{Event: *event, Reviews: dtos})
 }
 
+// The venue is given one of three ways, checked in this order: venueId (a
+// saved venue), placeId (a Google Places result, saved as a venue on first
+// use - pass the autocomplete session token with it), or venue (a typed-in
+// name).
 type createEventRequest struct {
-	Name        string  `json:"name"`
-	Venue       string  `json:"venue"`
-	City        *string `json:"city"`
-	EventDate   string  `json:"eventDate"`
-	Description *string `json:"description"`
+	Name              string  `json:"name"`
+	Venue             string  `json:"venue"`
+	VenueID           *string `json:"venueId"`
+	PlaceID           *string `json:"placeId"`
+	PlaceSessionToken *string `json:"placeSessionToken"`
+	City              *string `json:"city"`
+	EventDate         string  `json:"eventDate"`
+	Description       *string `json:"description"`
 }
 
 // CreateEvent godoc
 //
 //	@Summary	Create an event (or return the existing one, deduped by exact name+venue+date)
+//	@Description	The venue is resolved from venueId, then placeId (a Google Places id, saved as a venue on first use), then the typed venue name.
 //	@Tags		events
 //	@Accept		json
 //	@Produce	json
@@ -100,8 +109,8 @@ func (h *Handlers) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		BadRequest(w, "invalid request body")
 		return
 	}
-	if req.Name == "" || len(req.Name) > 160 || req.Venue == "" || len(req.Venue) > 160 {
-		BadRequest(w, "name and venue are required (max 160 chars)")
+	if req.Name == "" || len(req.Name) > 160 {
+		BadRequest(w, "name is required (max 160 chars)")
 		return
 	}
 	eventDate, err := time.Parse(time.RFC3339, req.EventDate)
@@ -110,7 +119,25 @@ func (h *Handlers) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	existing, err := queries.GetEventByExactMatch(r.Context(), h.Pool, req.Name, req.Venue, eventDate)
+	venue, err := h.resolveVenue(r.Context(), req, user.ID)
+	if err != nil {
+		var inputErr errVenueInput
+		switch {
+		case errors.As(err, &inputErr):
+			BadRequest(w, inputErr.msg)
+		case errors.Is(err, domain.ErrPlacesNotConfigured):
+			WriteError(w, http.StatusServiceUnavailable, "UNAVAILABLE", "place search is not configured")
+		default:
+			InternalError(w, err)
+		}
+		return
+	}
+	city := req.City
+	if city == nil || *city == "" {
+		city = venue.City
+	}
+
+	existing, err := queries.GetEventByExactMatch(r.Context(), h.Pool, req.Name, venue.ID, eventDate)
 	if err != nil && !errors.Is(err, queries.ErrNotFound) {
 		InternalError(w, err)
 		return
@@ -120,7 +147,7 @@ func (h *Handlers) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event, err := queries.CreateEvent(r.Context(), h.Pool, req.Name, req.Venue, req.City, eventDate, req.Description, user.ID)
+	event, err := queries.CreateEvent(r.Context(), h.Pool, req.Name, venue, city, eventDate, req.Description, user.ID)
 	if err != nil {
 		InternalError(w, err)
 		return

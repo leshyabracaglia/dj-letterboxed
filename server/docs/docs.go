@@ -265,6 +265,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "The venue is resolved from venueId, then placeId (a Google Places id, saved as a venue on first use), then the typed venue name.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1329,6 +1330,61 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/venues/places-search": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Pass the same client-generated sessionToken on every keystroke of one search and on the POST /api/events that saves the picked place, so Google bills them as one session.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "venues"
+                ],
+                "summary": "Search Google Places for venues not yet saved",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search query",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Places autocomplete session token",
+                        "name": "sessionToken",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/PlaceSuggestion"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/api/venues/search": {
             "get": {
                 "produces": [
@@ -1337,7 +1393,7 @@ const docTemplate = `{
                 "tags": [
                     "venues"
                 ],
-                "summary": "Search venues by name (derived from events.venue, grouped)",
+                "summary": "Search saved venues by name",
                 "parameters": [
                     {
                         "type": "string",
@@ -1360,7 +1416,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/venues/{venue}": {
+        "/api/venues/{id}": {
             "get": {
                 "produces": [
                     "application/json"
@@ -1368,12 +1424,12 @@ const docTemplate = `{
                 "tags": [
                     "venues"
                 ],
-                "summary": "Get a venue by exact name, with its events",
+                "summary": "Get a venue by id, with its events",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "venue name",
-                        "name": "venue",
+                        "description": "venue id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
@@ -1497,7 +1553,8 @@ const docTemplate = `{
                 "eventDate",
                 "id",
                 "name",
-                "venue"
+                "venue",
+                "venueId"
             ],
             "properties": {
                 "city": {
@@ -1522,6 +1579,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "venue": {
+                    "description": "Venue is the venue's display name, kept denormalized alongside\nVenueID so existing displays don't need a join.",
+                    "type": "string"
+                },
+                "venueId": {
                     "type": "string"
                 }
             }
@@ -1620,6 +1681,26 @@ const docTemplate = `{
                     }
                 },
                 "nextCursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "PlaceSuggestion": {
+            "type": "object",
+            "required": [
+                "name",
+                "placeId",
+                "secondaryText"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "placeId": {
+                    "type": "string"
+                },
+                "secondaryText": {
+                    "description": "SecondaryText is the rest of the place's description, usually its\nstreet address and city.",
                     "type": "string"
                 }
             }
@@ -1955,18 +2036,10 @@ const docTemplate = `{
         "VenueDetailResponse": {
             "type": "object",
             "required": [
-                "city",
-                "eventCount",
                 "events",
                 "venue"
             ],
             "properties": {
-                "city": {
-                    "type": "string"
-                },
-                "eventCount": {
-                    "type": "integer"
-                },
                 "events": {
                     "type": "array",
                     "items": {
@@ -1974,25 +2047,37 @@ const docTemplate = `{
                     }
                 },
                 "venue": {
-                    "type": "string"
+                    "$ref": "#/definitions/VenueSummary"
                 }
             }
         },
         "VenueSummary": {
             "type": "object",
             "required": [
+                "address",
                 "city",
                 "eventCount",
-                "venue"
+                "googlePlaceId",
+                "id",
+                "name"
             ],
             "properties": {
+                "address": {
+                    "type": "string"
+                },
                 "city": {
                     "type": "string"
                 },
                 "eventCount": {
                     "type": "integer"
                 },
-                "venue": {
+                "googlePlaceId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 }
             }
@@ -2060,7 +2145,10 @@ const docTemplate = `{
                 "description",
                 "eventDate",
                 "name",
-                "venue"
+                "placeId",
+                "placeSessionToken",
+                "venue",
+                "venueId"
             ],
             "properties": {
                 "city": {
@@ -2075,7 +2163,16 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "placeId": {
+                    "type": "string"
+                },
+                "placeSessionToken": {
+                    "type": "string"
+                },
                 "venue": {
+                    "type": "string"
+                },
+                "venueId": {
                     "type": "string"
                 }
             }

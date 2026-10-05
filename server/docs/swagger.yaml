@@ -83,6 +83,11 @@ definitions:
       name:
         type: string
       venue:
+        description: |-
+          Venue is the venue's display name, kept denormalized alongside
+          VenueID so existing displays don't need a join.
+        type: string
+      venueId:
         type: string
     required:
     - city
@@ -93,6 +98,7 @@ definitions:
     - id
     - name
     - venue
+    - venueId
     type: object
   EventDetailResponse:
     properties:
@@ -158,6 +164,22 @@ definitions:
     required:
     - items
     - nextCursor
+    type: object
+  PlaceSuggestion:
+    properties:
+      name:
+        type: string
+      placeId:
+        type: string
+      secondaryText:
+        description: |-
+          SecondaryText is the rest of the place's description, usually its
+          street address and city.
+        type: string
+    required:
+    - name
+    - placeId
+    - secondaryText
     type: object
   PopularResponse:
     properties:
@@ -390,34 +412,37 @@ definitions:
     type: object
   VenueDetailResponse:
     properties:
-      city:
-        type: string
-      eventCount:
-        type: integer
       events:
         items:
           $ref: '#/definitions/Event'
         type: array
       venue:
-        type: string
+        $ref: '#/definitions/VenueSummary'
     required:
-    - city
-    - eventCount
     - events
     - venue
     type: object
   VenueSummary:
     properties:
+      address:
+        type: string
       city:
         type: string
       eventCount:
         type: integer
-      venue:
+      googlePlaceId:
+        type: string
+      id:
+        type: string
+      name:
         type: string
     required:
+    - address
     - city
     - eventCount
-    - venue
+    - googlePlaceId
+    - id
+    - name
     type: object
   addCommentRequest:
     properties:
@@ -467,14 +492,23 @@ definitions:
         type: string
       name:
         type: string
+      placeId:
+        type: string
+      placeSessionToken:
+        type: string
       venue:
+        type: string
+      venueId:
         type: string
     required:
     - city
     - description
     - eventDate
     - name
+    - placeId
+    - placeSessionToken
     - venue
+    - venueId
     type: object
   createReviewRequest:
     properties:
@@ -731,6 +765,8 @@ paths:
     post:
       consumes:
       - application/json
+      description: The venue is resolved from venueId, then placeId (a Google Places
+        id, saved as a venue on first use), then the typed venue name.
       parameters:
       - description: event to create
         in: body
@@ -1405,12 +1441,12 @@ paths:
       summary: Search users by username or display name
       tags:
       - users
-  /api/venues/{venue}:
+  /api/venues/{id}:
     get:
       parameters:
-      - description: venue name
+      - description: venue id
         in: path
-        name: venue
+        name: id
         required: true
         type: string
       produces:
@@ -1424,7 +1460,44 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
-      summary: Get a venue by exact name, with its events
+      summary: Get a venue by id, with its events
+      tags:
+      - venues
+  /api/venues/places-search:
+    get:
+      description: Pass the same client-generated sessionToken on every keystroke
+        of one search and on the POST /api/events that saves the picked place, so
+        Google bills them as one session.
+      parameters:
+      - description: search query
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: Places autocomplete session token
+        in: query
+        name: sessionToken
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/PlaceSuggestion'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Search Google Places for venues not yet saved
       tags:
       - venues
   /api/venues/search:
@@ -1444,7 +1517,7 @@ paths:
             items:
               $ref: '#/definitions/VenueSummary'
             type: array
-      summary: Search venues by name (derived from events.venue, grouped)
+      summary: Search saved venues by name
       tags:
       - venues
 securityDefinitions:

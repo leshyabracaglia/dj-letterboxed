@@ -38,3 +38,9 @@ variable "spotify_client_secret" {
   sensitive = true
   default   = ""
 }
+
+variable "google_places_api_key" {
+  type      = string
+  sensitive = true
+  default   = ""
+}

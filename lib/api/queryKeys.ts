@@ -14,7 +14,8 @@ export const queryKeys = {
   },
   venues: {
     search: (q: string) => ["venues", "search", q] as const,
-    byName: (venue: string) => ["venues", venue] as const,
+    byId: (id: string) => ["venues", id] as const,
+    placesSearch: (q: string) => ["venues", "places-search", q] as const,
   },
   users: {
     me: () => ["users", "me"] as const,
