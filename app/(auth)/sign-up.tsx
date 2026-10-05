@@ -59,7 +59,7 @@ export default function SignUpScreen() {
           onChangeText={setCode}
           className="mb-4 w-full max-w-sm rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
         />
-        {error ? <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text> : null}
+        {!!error && <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text>}
         <Button
           onPress={onVerify}
           disabled={fetchStatus === "fetching"}
@@ -89,13 +89,13 @@ export default function SignUpScreen() {
         onChangeText={setPassword}
         className="mb-4 w-full max-w-sm rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
-      {errors.fields.emailAddress ? (
+      {errors.fields.emailAddress && (
         <Text className="mb-3 text-danger dark:text-danger-dark">{errors.fields.emailAddress.message}</Text>
-      ) : null}
-      {errors.fields.password ? (
+      )}
+      {errors.fields.password && (
         <Text className="mb-3 text-danger dark:text-danger-dark">{errors.fields.password.message}</Text>
-      ) : null}
-      {error ? <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text> : null}
+      )}
+      {!!error && <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text>}
       <View nativeID="clerk-captcha" />
       <Button
         onPress={onSubmit}
@@ -107,6 +107,11 @@ export default function SignUpScreen() {
       <View className="mt-10">
         <Link href={ROUTES.SIGN_IN}>
           <Text className="text-primary dark:text-primary-dark">Already have an account? Sign in</Text>
+        </Link>
+      </View>
+      <View className="mt-4">
+        <Link href={ROUTES.FEED} replace>
+          <Text className="text-muted">Continue without an account</Text>
         </Link>
       </View>
     </View>

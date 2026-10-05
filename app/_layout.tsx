@@ -3,18 +3,22 @@ import "../global.css";
 import { ClerkProvider } from "@clerk/expo";
 import { Jersey10_400Regular } from "@expo-google-fonts/jersey-10";
 import { Roboto_400Regular, Roboto_500Medium, Roboto_700Bold } from "@expo-google-fonts/roboto";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import * as Application from "expo-application";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
-import { useEffect, useState } from "react";
-import { Appearance } from "react-native";
+import { useEffect, useState, type ReactNode } from "react";
+import { AppState, Appearance, Linking, Platform, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { useIsDesktopWeb } from "../components/ui";
+import { Button, Page, Text, useIsDesktopWeb } from "../components/ui";
 import { WebNav } from "../components/WebNav";
+import { useApi } from "../lib/api/client";
+import { queryKeys } from "../lib/api/queryKeys";
+import type { AppVersion } from "../lib/api/types";
 import { AuthProvider } from "../lib/auth";
 import { tokenCache } from "../lib/clerk-token-cache";
 import { getStoredThemePreference, resolveColorScheme } from "../lib/theme-storage";
@@ -32,6 +36,51 @@ const publishableKey: string = (() => {
 })();
 
 const queryClient = new QueryClient();
+
+// iOS build number of this binary (CFBundleVersion); null on web/Android.
+const iosBuild = Platform.OS === "ios" ? Number(Application.nativeBuildVersion) : NaN;
+
+// Blocks the app behind an "update required" screen when this iOS build is
+// older than the server's minimum (minIOSBuild in
+// server/internal/httpapi/app_version_handlers.go). Re-checks whenever the
+// app returns to the foreground, so a backgrounded app still gets caught.
+// Fails open: if the check errors, the app stays usable.
+function ForceUpdateGate({ children }: { children: ReactNode }) {
+  const api = useApi();
+  const enabled = Number.isFinite(iosBuild);
+  const { data, refetch } = useQuery({
+    queryKey: queryKeys.appVersion(),
+    queryFn: () => api.get<AppVersion>("/app-version"),
+    enabled,
+  });
+
+  useEffect(() => {
+    if (!enabled) return;
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") refetch();
+    });
+    return () => sub.remove();
+  }, [enabled, refetch]);
+
+  if (!data || iosBuild >= data.minIosBuild) return children;
+
+  return (
+    <Page>
+      <View className="flex-1 items-center justify-center gap-4 px-8">
+        <Text className="text-center text-2xl font-bold">Update required</Text>
+        <Text className="text-center text-muted">
+          A new version of BeatBox&apos;d is available. Update in TestFlight to keep using the app.
+        </Text>
+        <Button
+          onPress={() => Linking.openURL(data.iosUpdateUrl)}
+          className="mt-4 w-full max-w-sm py-3"
+        >
+          <Text className="text-center font-semibold text-paper">Open TestFlight</Text>
+        </Button>
+      </View>
+    </Page>
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -75,6 +124,7 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <StatusBar style={isDark ? "light" : "dark"} />
+            <ForceUpdateGate>
             <Stack
               screenOptions={{
                 // Desktop web gets the same persistent top nav as the tabs group
@@ -93,6 +143,7 @@ export default function RootLayout() {
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             </Stack>
+            </ForceUpdateGate>
           </AuthProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

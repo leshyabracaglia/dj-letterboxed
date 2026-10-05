@@ -11,6 +11,8 @@ import type {
   Paginated,
   PopularResponse,
   Review,
+  SeriesSummary,
+  User,
   UserProfile,
   VenueDetail,
   VenueSummary,
@@ -34,7 +36,7 @@ export function useDjSearch(query: string, enabled: boolean = true) {
   return useQuery({
     queryKey: queryKeys.djs.search(query),
     queryFn: () => api.get<Dj[]>("/djs/search", { q: query }),
-    enabled: enabled && query.length > 0,
+    enabled: enabled && !!query.length,
     placeholderData: keepPreviousData,
   });
 }
@@ -44,7 +46,31 @@ export function useVenueSearch(query: string, enabled: boolean = true) {
   return useQuery({
     queryKey: queryKeys.venues.search(query),
     queryFn: () => api.get<VenueSummary[]>("/venues/search", { q: query }),
-    enabled: enabled && query.length > 0,
+    enabled: enabled && !!query.length,
+    placeholderData: keepPreviousData,
+  });
+}
+
+// Event series by name, most-reviewed first; an empty query lists them all
+// (the browse index). Keeps the previous results while typing.
+export function useSeriesSearch(query: string, enabled: boolean = true) {
+  const api = useApi();
+  return useQuery({
+    queryKey: queryKeys.series.list(query),
+    queryFn: () => api.get<SeriesSummary[]>("/series", query ? { q: query } : undefined),
+    enabled,
+    placeholderData: keepPreviousData,
+  });
+}
+
+// Searches users by username/display name. Idle until `query` reaches
+// `minLength` (and `enabled`); keeps the previous results while typing.
+export function useUserSearch(query: string, { enabled = true, minLength = 1 } = {}) {
+  const api = useApi();
+  return useQuery({
+    queryKey: queryKeys.users.search(query),
+    queryFn: () => api.get<User[]>("/users/search", { q: query }),
+    enabled: enabled && query.length >= minLength,
     placeholderData: keepPreviousData,
   });
 }

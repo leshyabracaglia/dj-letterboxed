@@ -1,13 +1,15 @@
 import { Platform, useWindowDimensions, type ViewStyle } from "react-native";
 
-// Horizontal page gutter. Wider once the viewport stops being phone-sized
-// (tablets, desktop web) so content doesn't hug the window edges.
-const GUTTER = { compact: 24, wide: 400 } as const;
+// Horizontal page gutter. Content is capped at MAX_CONTENT_WIDTH: on wide
+// viewports (tablets, desktop web) the gutter grows to center it, while
+// narrower ones keep the fixed minimum rather than squeezing the content.
+const MIN_GUTTER = 24;
+const MAX_CONTENT_WIDTH = 680;
 const WIDE_BREAKPOINT = 768;
 
 export function usePageGutter(): number {
   const { width } = useWindowDimensions();
-  return width >= WIDE_BREAKPOINT ? GUTTER.wide : GUTTER.compact;
+  return Math.max(MIN_GUTTER, (width - MAX_CONTENT_WIDTH) / 2);
 }
 
 // For a FlatList/ScrollView's contentContainerStyle, so the scroll area

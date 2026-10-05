@@ -2,6 +2,7 @@
 // Infinite queries use the base (no-cursor) key; react-query tracks pages
 // internally via pageParam.
 export const queryKeys = {
+  appVersion: () => ["app-version"] as const,
   djs: {
     search: (q: string) => ["djs", "search", q] as const,
     bySlug: (slug: string) => ["djs", "slug", slug] as const,
@@ -12,10 +13,17 @@ export const queryKeys = {
     search: (q: string) => ["events", "search", q] as const,
     byId: (id: string) => ["events", id] as const,
   },
+  series: {
+    list: (q: string) => ["series", "list", q] as const,
+    bySlug: (slug: string) => ["series", "slug", slug] as const,
+  },
   venues: {
     search: (q: string) => ["venues", "search", q] as const,
     byId: (id: string) => ["venues", id] as const,
     placesSearch: (q: string) => ["venues", "places-search", q] as const,
+  },
+  tags: {
+    list: (q: string) => ["tags", q] as const,
   },
   users: {
     me: () => ["users", "me"] as const,

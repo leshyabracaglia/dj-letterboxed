@@ -19,7 +19,8 @@ type UserTotals struct {
 
 func GetUserTotals(ctx context.Context, q DBTX, userID string) (*UserTotals, error) {
 	var t UserTotals
-	err := q.QueryRow(ctx, "SELECT COUNT(*), COUNT(DISTINCT dj_id) FROM reviews WHERE user_id = $1", userID).Scan(&t.TotalReviews, &t.UniqueDjs)
+	// A night logged with several reviews (the night + its DJs) is one show.
+	err := q.QueryRow(ctx, "SELECT COUNT(DISTINCT COALESCE(event_id, id)), COUNT(DISTINCT dj_id) FROM reviews WHERE user_id = $1", userID).Scan(&t.TotalReviews, &t.UniqueDjs)
 	if err != nil {
 		return nil, err
 	}
@@ -38,8 +39,8 @@ func GetTopDjsForUser(ctx context.Context, q DBTX, userID string) ([]TopDj, erro
 		JOIN djs d ON d.id = r.dj_id
 		WHERE r.user_id = $1
 		GROUP BY d.id
-		ORDER BY review_count DESC
-		LIMIT 5`, userID)
+		ORDER BY review_count DESC, MAX(r.seen_at) DESC, d.name
+		LIMIT 3`, userID)
 	if err != nil {
 		return nil, err
 	}

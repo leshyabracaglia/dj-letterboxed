@@ -47,11 +47,14 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	r.Route("/api", func(r chi.Router) {
 		// Public (no auth required)
 		r.Group(func(r chi.Router) {
+			r.Get("/app-version", h.GetAppVersion)
 			r.Get("/djs/search", h.SearchDjs)
 			r.Get("/djs/spotify-search", h.SearchSpotify)
 			r.Get("/events/search", h.SearchEvents)
 			r.Get("/venues/search", h.SearchVenues)
 			r.Get("/venues/{id}", h.GetVenueByID)
+			r.Get("/series", h.ListSeries)
+			r.Get("/tags", h.ListTags)
 			r.Get("/users/search", h.SearchUsers)
 			r.Get("/users/{username}", h.GetUserByUsername)
 			r.Get("/users/{username}/stats", h.GetUserStats)
@@ -67,6 +70,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/djs/{slug}", h.GetDjBySlug)
 			r.Get("/djs/{id}/reviews", h.ListReviewsByDj)
 			r.Get("/events/{id}", h.GetEventByID)
+			r.Get("/series/{slug}", h.GetSeriesBySlug)
 			r.Get("/reviews/{id}", h.GetReviewByID)
 			r.Get("/users/{username}/reviews", h.ListReviewsByUser)
 			r.Get("/users/{username}/favorites", h.GetFavoriteReviews)
@@ -79,6 +83,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 
 			r.Post("/djs", h.CreateDj)
 			r.Post("/events", h.CreateEvent)
+			r.Post("/logs", h.CreateNightLog)
 			// Auth-only (unlike Spotify search) since every call is billed.
 			r.Get("/venues/places-search", h.SearchPlaces)
 

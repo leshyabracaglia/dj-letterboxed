@@ -11,11 +11,11 @@ import (
 	"beatboxd/server/internal/db"
 )
 
-const reviewCols = "id, user_id, dj_id, event_id, rating, review_text, crowd_vibe, crowd_vibe_note, seen_at, created_at, updated_at"
+const reviewCols = "id, user_id, dj_id, event_id, rating, review_text, seen_at, created_at, updated_at"
 
 func scanReview(row pgx.Row) (*db.Review, error) {
 	var r db.Review
-	err := row.Scan(&r.ID, &r.UserID, &r.DjID, &r.EventID, &r.Rating, &r.ReviewText, &r.CrowdVibe, &r.CrowdVibeNote, &r.SeenAt, &r.CreatedAt, &r.UpdatedAt)
+	err := row.Scan(&r.ID, &r.UserID, &r.DjID, &r.EventID, &r.Rating, &r.ReviewText, &r.SeenAt, &r.CreatedAt, &r.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
@@ -27,36 +27,32 @@ func scanReview(row pgx.Row) (*db.Review, error) {
 
 func scanReviewRow(rows pgx.Rows) (db.Review, error) {
 	var r db.Review
-	err := rows.Scan(&r.ID, &r.UserID, &r.DjID, &r.EventID, &r.Rating, &r.ReviewText, &r.CrowdVibe, &r.CrowdVibeNote, &r.SeenAt, &r.CreatedAt, &r.UpdatedAt)
+	err := rows.Scan(&r.ID, &r.UserID, &r.DjID, &r.EventID, &r.Rating, &r.ReviewText, &r.SeenAt, &r.CreatedAt, &r.UpdatedAt)
 	return r, err
 }
 
 type CreateReviewParams struct {
-	UserID        string
-	DjID          string
-	EventID       *string
-	Rating        *int16
-	ReviewText    *string
-	CrowdVibe     *db.CrowdVibe
-	CrowdVibeNote *string
-	SeenAt        time.Time
+	UserID     string
+	DjID       *string
+	EventID    *string
+	Rating     *int16
+	ReviewText *string
+	SeenAt     time.Time
 }
 
 func CreateReview(ctx context.Context, q DBTX, p CreateReviewParams) (*db.Review, error) {
 	return scanReview(q.QueryRow(ctx, `
-		INSERT INTO reviews (user_id, dj_id, event_id, rating, review_text, crowd_vibe, crowd_vibe_note, seen_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO reviews (user_id, dj_id, event_id, rating, review_text, seen_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING `+reviewCols,
-		p.UserID, p.DjID, p.EventID, p.Rating, p.ReviewText, p.CrowdVibe, p.CrowdVibeNote, p.SeenAt))
+		p.UserID, p.DjID, p.EventID, p.Rating, p.ReviewText, p.SeenAt))
 }
 
 type UpdateReviewParams struct {
-	ID            string
-	Rating        *int16
-	ReviewText    *string
-	CrowdVibe     *db.CrowdVibe
-	CrowdVibeNote *string
-	SeenAt        *time.Time
+	ID         string
+	Rating     *int16
+	ReviewText *string
+	SeenAt     *time.Time
 }
 
 func UpdateReview(ctx context.Context, q DBTX, p UpdateReviewParams) (*db.Review, error) {
@@ -64,13 +60,11 @@ func UpdateReview(ctx context.Context, q DBTX, p UpdateReviewParams) (*db.Review
 		UPDATE reviews SET
 			rating = COALESCE($2, rating),
 			review_text = COALESCE($3, review_text),
-			crowd_vibe = COALESCE($4, crowd_vibe),
-			crowd_vibe_note = COALESCE($5, crowd_vibe_note),
-			seen_at = COALESCE($6, seen_at),
+			seen_at = COALESCE($4, seen_at),
 			updated_at = now()
 		WHERE id = $1
 		RETURNING `+reviewCols,
-		p.ID, p.Rating, p.ReviewText, p.CrowdVibe, p.CrowdVibeNote, p.SeenAt))
+		p.ID, p.Rating, p.ReviewText, p.SeenAt))
 }
 
 func GetReviewByID(ctx context.Context, q DBTX, id string) (*db.Review, error) {
@@ -95,7 +89,9 @@ func listReviewsPage(ctx context.Context, q DBTX, baseWhere, cursorCol string, a
 		sql += " AND " + cursorCol + " < $" + strconv.Itoa(len(queryArgs))
 	}
 	queryArgs = append(queryArgs, limit)
-	sql += " ORDER BY " + cursorCol + " DESC LIMIT $" + strconv.Itoa(len(queryArgs))
+	// created_at breaks ties between reviews of the same day (seen_at is a
+	// calendar day in practice), newest logged first.
+	sql += " ORDER BY " + cursorCol + " DESC, created_at DESC LIMIT $" + strconv.Itoa(len(queryArgs))
 
 	rows, err := q.Query(ctx, sql, queryArgs...)
 	return collectReviews(rows, err)

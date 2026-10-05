@@ -9,9 +9,10 @@ import {
   Text,
   usePageContentStyle,
 } from "../../components/ui";
+import { DjAvatarRow } from "../../components/DjAvatarRow";
 import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
 import { useEventDetail } from "../../lib/api/hooks";
-import { formatDateTime } from "../../lib/format";
+import { formatDate } from "../../lib/format";
 import { ROUTES } from "../../lib/routes";
 
 function EventSkeleton() {
@@ -43,7 +44,13 @@ export default function EventScreen() {
     <Page>
       <Stack.Screen options={{ title: data.event.name }} />
       <PageHeader border="accent">
-        <Text className="text-2xl font-bold text-ink dark:text-paper">{data.event.name}</Text>
+        {data.series ? (
+          <Link href={ROUTES.SERIES(data.series.slug)}>
+            <Text className="text-2xl font-bold text-primary dark:text-primary-dark">{data.series.name}</Text>
+          </Link>
+        ) : (
+          <Text className="text-2xl font-bold text-ink dark:text-paper">{data.event.name}</Text>
+        )}
         <Text className="mt-1 text-muted">
           {data.event.venueId ? (
             <Link href={ROUTES.VENUE(data.event.venueId)}>
@@ -54,17 +61,24 @@ export default function EventScreen() {
           )}
           {data.event.city ? ` · ${data.event.city}` : ""}
         </Text>
-        <Text className="mt-1 text-xs text-muted">{formatDateTime(data.event.eventDate)}</Text>
-        {data.event.description ? (
+        {/* Date only: a night's time is just midday of the logged day. */}
+        <Text className="mt-1 text-xs text-muted">{formatDate(data.event.eventDate)}</Text>
+        {!!data.event.description && (
           <Text className="mt-3 text-ink dark:text-paper">{data.event.description}</Text>
-        ) : null}
+        )}
+        {!!data.lineup.length && (
+          <View className="mt-4">
+            <Text className="mb-2 text-sm font-semibold text-ink dark:text-paper">Lineup</Text>
+            <DjAvatarRow items={data.lineup.map((dj) => ({ dj }))} />
+          </View>
+        )}
       </PageHeader>
       <FlatList
         contentContainerStyle={contentStyle}
         data={data.reviews}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <ReviewCard review={item} />}
-        ListEmptyComponent={<EmptyState message="No reviews yet for this event." />}
+        ListEmptyComponent={<EmptyState message="No reviews yet for this night." />}
       />
     </Page>
   );

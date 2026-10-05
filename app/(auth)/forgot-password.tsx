@@ -122,7 +122,7 @@ export default function ForgotPasswordScreen() {
           onChangeText={setConfirmPassword}
           className={inputClassName}
         />
-        {error ? <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text> : null}
+        {!!error && <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text>}
         <Button onPress={onReset} disabled={busy} className="mt-1 w-full max-w-sm py-3">
           <Text className="text-center font-semibold text-paper">
             {busy ? "Resetting..." : "Reset password"}
@@ -150,7 +150,7 @@ export default function ForgotPasswordScreen() {
         onChangeText={setEmail}
         className={inputClassName}
       />
-      {error ? <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text> : null}
+      {!!error && <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text>}
       <Button onPress={sendCode} disabled={busy} className="mt-1 w-full max-w-sm py-3">
         <Text className="text-center font-semibold text-paper">
           {busy ? "Sending..." : "Send reset code"}

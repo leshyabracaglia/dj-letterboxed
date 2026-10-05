@@ -29,7 +29,7 @@ func SetFavoriteReviews(ctx context.Context, q DBTX, userID string, reviewIDs []
 // "r" alias - required whenever reviews is joined against another table
 // that shares column names (favorite_reviews has its own user_id and
 // created_at), same reasoning as qualifiedUserCols in follows.go.
-const qualifiedReviewCols = "r.id, r.user_id, r.dj_id, r.event_id, r.rating, r.review_text, r.crowd_vibe, r.crowd_vibe_note, r.seen_at, r.created_at, r.updated_at"
+const qualifiedReviewCols = "r.id, r.user_id, r.dj_id, r.event_id, r.rating, r.review_text, r.seen_at, r.created_at, r.updated_at"
 
 // GetFavoriteReviews returns a user's showcased favorite reviews ordered by
 // position (their #1 favorite first).

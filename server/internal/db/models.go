@@ -2,24 +2,6 @@ package db
 
 import "time"
 
-type CrowdVibe string
-
-const (
-	CrowdVibeElectric CrowdVibe = "electric"
-	CrowdVibeGood     CrowdVibe = "good"
-	CrowdVibeAverage  CrowdVibe = "average"
-	CrowdVibeDead     CrowdVibe = "dead"
-)
-
-func (c CrowdVibe) Valid() bool {
-	switch c {
-	case CrowdVibeElectric, CrowdVibeGood, CrowdVibeAverage, CrowdVibeDead:
-		return true
-	default:
-		return false
-	}
-}
-
 type User struct {
 	ID          string    `json:"id"`
 	ClerkID     string    `json:"-"`
@@ -56,9 +38,22 @@ type Venue struct {
 	CreatedAt       time.Time `json:"createdAt"`
 }
 
+// EventSeries is a recurring event ("Innervisions") that nights at
+// different venues and dates belong to.
+type EventSeries struct {
+	ID              string    `json:"id"`
+	Name            string    `json:"name"`
+	Slug            string    `json:"slug"`
+	CreatedByUserID *string   `json:"createdByUserId"`
+	CreatedAt       time.Time `json:"createdAt"`
+}
+
+// Event is one night: a series (or just a venue) on a date.
 type Event struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+	// SeriesID is nil for a night that isn't part of a named event.
+	SeriesID *string `json:"seriesId"`
 	// Venue is the venue's display name, kept denormalized alongside
 	// VenueID so existing displays don't need a join.
 	Venue           string    `json:"venue"`
@@ -71,17 +66,16 @@ type Event struct {
 }
 
 type Review struct {
-	ID            string     `json:"id"`
-	UserID        string     `json:"userId"`
-	DjID          string     `json:"djId"`
-	EventID       *string    `json:"eventId"`
-	Rating        *int16     `json:"rating"`
-	ReviewText    *string    `json:"reviewText"`
-	CrowdVibe     *CrowdVibe `json:"crowdVibe"`
-	CrowdVibeNote *string    `json:"crowdVibeNote"`
-	SeenAt        time.Time  `json:"seenAt"`
-	CreatedAt     time.Time  `json:"createdAt"`
-	UpdatedAt     time.Time  `json:"updatedAt"`
+	ID         string    `json:"id"`
+	UserID string `json:"userId"`
+	// DjID is nil for a review of the night as a whole (EventID is then set).
+	DjID       *string   `json:"djId"`
+	EventID    *string   `json:"eventId"`
+	Rating     *int16    `json:"rating"`
+	ReviewText *string   `json:"reviewText"`
+	SeenAt     time.Time `json:"seenAt"`
+	CreatedAt  time.Time `json:"createdAt"`
+	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
 type ReviewComment struct {

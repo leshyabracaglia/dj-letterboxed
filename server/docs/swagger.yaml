@@ -1,17 +1,15 @@
 basePath: /
 definitions:
-  CrowdVibe:
-    enum:
-    - electric
-    - good
-    - average
-    - dead
-    type: string
-    x-enum-varnames:
-    - CrowdVibeElectric
-    - CrowdVibeGood
-    - CrowdVibeAverage
-    - CrowdVibeDead
+  AppVersionResponse:
+    properties:
+      iosUpdateUrl:
+        type: string
+      minIosBuild:
+        type: integer
+    required:
+    - iosUpdateUrl
+    - minIosBuild
+    type: object
   Dj:
     properties:
       bio:
@@ -82,6 +80,9 @@ definitions:
         type: string
       name:
         type: string
+      seriesId:
+        description: SeriesID is nil for a night that isn't part of a named event.
+        type: string
       venue:
         description: |-
           Venue is the venue's display name, kept denormalized alongside
@@ -97,6 +98,7 @@ definitions:
     - eventDate
     - id
     - name
+    - seriesId
     - venue
     - venueId
     type: object
@@ -104,13 +106,42 @@ definitions:
     properties:
       event:
         $ref: '#/definitions/Event'
+      lineup:
+        items:
+          $ref: '#/definitions/Dj'
+        type: array
       reviews:
         items:
           $ref: '#/definitions/ReviewDTO'
         type: array
+      series:
+        allOf:
+        - $ref: '#/definitions/EventSeries'
+        description: Series is nil for a night that isn't part of a named event.
     required:
     - event
+    - lineup
     - reviews
+    - series
+    type: object
+  EventSeries:
+    properties:
+      createdAt:
+        type: string
+      createdByUserId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+    required:
+    - createdAt
+    - createdByUserId
+    - id
+    - name
+    - slug
     type: object
   FavoriteReviewsResponse:
     properties:
@@ -153,6 +184,21 @@ definitions:
     - reviewCount
     - user
     type: object
+  NightLogResponse:
+    properties:
+      event:
+        $ref: '#/definitions/Event'
+      reviews:
+        items:
+          $ref: '#/definitions/Review'
+        type: array
+      series:
+        $ref: '#/definitions/EventSeries'
+    required:
+    - event
+    - reviews
+    - series
+    type: object
   PaginatedReviews:
     properties:
       items:
@@ -194,11 +240,9 @@ definitions:
     properties:
       createdAt:
         type: string
-      crowdVibe:
-        $ref: '#/definitions/CrowdVibe'
-      crowdVibeNote:
-        type: string
       djId:
+        description: DjID is nil for a review of the night as a whole (EventID is
+          then set).
         type: string
       eventId:
         type: string
@@ -216,8 +260,6 @@ definitions:
         type: string
     required:
     - createdAt
-    - crowdVibe
-    - crowdVibeNote
     - djId
     - eventId
     - id
@@ -254,13 +296,11 @@ definitions:
         type: integer
       createdAt:
         type: string
-      crowdVibe:
-        $ref: '#/definitions/CrowdVibe'
-      crowdVibeNote:
-        type: string
       dj:
         $ref: '#/definitions/Dj'
       djId:
+        description: DjID is nil for a review of the night as a whole (EventID is
+          then set).
         type: string
       event:
         $ref: '#/definitions/Event'
@@ -284,6 +324,10 @@ definitions:
         items:
           $ref: '#/definitions/User'
         type: array
+      tags:
+        items:
+          type: string
+        type: array
       updatedAt:
         type: string
       user:
@@ -292,8 +336,6 @@ definitions:
         type: string
     required:
     - createdAt
-    - crowdVibe
-    - crowdVibeNote
     - djId
     - eventId
     - id
@@ -301,8 +343,103 @@ definitions:
     - reviewText
     - seenAt
     - taggedUsers
+    - tags
     - updatedAt
     - userId
+    type: object
+  SeriesDetailResponse:
+    properties:
+      djs:
+        items:
+          $ref: '#/definitions/SeriesDj'
+        type: array
+      nights:
+        items:
+          $ref: '#/definitions/SeriesNight'
+        type: array
+      recentReviews:
+        items:
+          $ref: '#/definitions/ReviewDTO'
+        type: array
+      series:
+        $ref: '#/definitions/SeriesSummary'
+      venues:
+        items:
+          $ref: '#/definitions/SeriesVenue'
+        type: array
+    required:
+    - djs
+    - nights
+    - recentReviews
+    - series
+    - venues
+    type: object
+  SeriesDj:
+    properties:
+      dj:
+        $ref: '#/definitions/Dj'
+      nightCount:
+        type: integer
+    required:
+    - dj
+    - nightCount
+    type: object
+  SeriesNight:
+    properties:
+      avgRating:
+        type: number
+      event:
+        $ref: '#/definitions/Event'
+      reviewCount:
+        type: integer
+    required:
+    - avgRating
+    - event
+    - reviewCount
+    type: object
+  SeriesSummary:
+    properties:
+      avgRating:
+        type: number
+      createdAt:
+        type: string
+      createdByUserId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      nightCount:
+        type: integer
+      reviewCount:
+        type: integer
+      slug:
+        type: string
+    required:
+    - avgRating
+    - createdAt
+    - createdByUserId
+    - id
+    - name
+    - nightCount
+    - reviewCount
+    - slug
+    type: object
+  SeriesVenue:
+    properties:
+      city:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      nightCount:
+        type: integer
+    required:
+    - city
+    - id
+    - name
+    - nightCount
     type: object
   SpotifyArtist:
     properties:
@@ -328,6 +465,22 @@ definitions:
         type: boolean
     required:
     - success
+    type: object
+  TagSummary:
+    properties:
+      id:
+        type: string
+      isDefault:
+        type: boolean
+      name:
+        type: string
+      useCount:
+        type: integer
+    required:
+    - id
+    - isDefault
+    - name
+    - useCount
     type: object
   TopDj:
     properties:
@@ -510,12 +663,68 @@ definitions:
     - venue
     - venueId
     type: object
+  createNightLogRequest:
+    properties:
+      city:
+        type: string
+      djReviews:
+        items:
+          $ref: '#/definitions/djReviewInput'
+        type: array
+      lineupDjIds:
+        description: |-
+          DJs the user saw; added to the night's lineup. DJs in djReviews are
+          added too, whether or not they're listed here.
+        items:
+          type: string
+        type: array
+      night:
+        allOf:
+        - $ref: '#/definitions/nightReviewInput'
+        description: Review of the night as a whole. Required unless djReviews has
+          one.
+      placeId:
+        type: string
+      placeSessionToken:
+        type: string
+      seenAt:
+        type: string
+      seriesId:
+        type: string
+      seriesName:
+        type: string
+      taggedUserIds:
+        items:
+          type: string
+        type: array
+      tags:
+        description: |-
+          Tag names and tagged friends go on the night review, or on every DJ
+          review when there's no night review.
+        items:
+          type: string
+        type: array
+      venue:
+        type: string
+      venueId:
+        type: string
+    required:
+    - city
+    - djReviews
+    - lineupDjIds
+    - night
+    - placeId
+    - placeSessionToken
+    - seenAt
+    - seriesId
+    - seriesName
+    - taggedUserIds
+    - tags
+    - venue
+    - venueId
+    type: object
   createReviewRequest:
     properties:
-      crowdVibe:
-        type: string
-      crowdVibeNote:
-        type: string
       djId:
         type: string
       eventId:
@@ -530,15 +739,34 @@ definitions:
         items:
           type: string
         type: array
+      tags:
+        description: |-
+          Tag names (new ones are added to the library). Omitted = leave
+          as-is, [] = clear - same contract as TaggedUserIDs.
+        items:
+          type: string
+        type: array
     required:
-    - crowdVibe
-    - crowdVibeNote
     - djId
     - eventId
     - rating
     - reviewText
     - seenAt
     - taggedUserIds
+    - tags
+    type: object
+  djReviewInput:
+    properties:
+      djId:
+        type: string
+      rating:
+        type: integer
+      reviewText:
+        type: string
+    required:
+    - djId
+    - rating
+    - reviewText
     type: object
   errorEnvelope:
     properties:
@@ -546,6 +774,16 @@ definitions:
         $ref: '#/definitions/apiError'
     required:
     - error
+    type: object
+  nightReviewInput:
+    properties:
+      rating:
+        type: integer
+      reviewText:
+        type: string
+    required:
+    - rating
+    - reviewText
     type: object
   setFavoritesRequest:
     properties:
@@ -574,10 +812,6 @@ definitions:
     type: object
   updateReviewRequest:
     properties:
-      crowdVibe:
-        type: string
-      crowdVibeNote:
-        type: string
       rating:
         type: integer
       reviewText:
@@ -588,13 +822,19 @@ definitions:
         items:
           type: string
         type: array
+      tags:
+        description: |-
+          Tag names (new ones are added to the library). Omitted = leave
+          as-is, [] = clear - same contract as TaggedUserIDs.
+        items:
+          type: string
+        type: array
     required:
-    - crowdVibe
-    - crowdVibeNote
     - rating
     - reviewText
     - seenAt
     - taggedUserIds
+    - tags
     type: object
 info:
   contact: {}
@@ -605,6 +845,18 @@ info:
   title: Beatboxd API
   version: "1.0"
 paths:
+  /api/app-version:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/AppVersionResponse'
+      summary: Minimum supported native app build, for the client's force-update check
+      tags:
+      - app
   /api/comments/{id}:
     delete:
       parameters:
@@ -813,7 +1065,7 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
-      summary: Get an event by id, with all its reviews
+      summary: Get a night by id, with its series, lineup, and all its reviews
       tags:
       - events
   /api/events/search:
@@ -976,6 +1228,38 @@ paths:
       summary: Leaderboard scoped to the caller and everyone they follow
       tags:
       - users
+  /api/logs:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: the night to log
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/createNightLogRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/NightLogResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 'Log a night: find or create the night, add DJs to its lineup, and
+        save the night and DJ reviews in one go'
+      tags:
+      - logs
   /api/reviews:
     post:
       consumes:
@@ -1197,6 +1481,76 @@ paths:
       summary: Like a review
       tags:
       - reviews
+  /api/series:
+    get:
+      parameters:
+      - description: name search; omit to list all
+        in: query
+        name: q
+        type: string
+      - description: max results, 1-50, default 20
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/SeriesSummary'
+            type: array
+      summary: List event series (recurring events like "Innervisions"), most-reviewed
+        first
+      tags:
+      - series
+  /api/series/{slug}:
+    get:
+      parameters:
+      - description: series slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SeriesDetailResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: Get an event series with its nights, DJs, venues, and recent reviews
+      tags:
+      - series
+  /api/tags:
+    get:
+      parameters:
+      - description: filter to tags containing this text
+        in: query
+        name: q
+        type: string
+      - description: max results, 1-50, default 30
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/TagSummary'
+            type: array
+      summary: List the tag library (defaults plus every tag users have added), most
+        used first
+      tags:
+      - tags
   /api/users/{userId}/followers:
     get:
       parameters:

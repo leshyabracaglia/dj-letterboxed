@@ -9,6 +9,7 @@ import { useFavoriteReviews } from "../lib/api/hooks";
 import { queryKeys } from "../lib/api/queryKeys";
 import type { FavoriteReviewsResponse, Review } from "../lib/api/types";
 import { formatRating } from "../lib/format";
+import { reviewSubject } from "../lib/review";
 import { ROUTES } from "../lib/routes";
 
 const MAX_FAVORITES = 3;
@@ -45,17 +46,17 @@ export function FavoritesShowcase({
       </View>
     );
   }
-  if (data.items.length === 0 && !isSelf) return null;
+  if (!data.items.length && !isSelf) return null;
 
   return (
     <View className="mt-3 border-t border-primary/15 pt-3">
       <View className="flex-row items-center justify-between">
         <Text className="text-sm font-semibold text-ink dark:text-paper">Favorite shows</Text>
-        {isSelf ? (
+        {isSelf && (
           <Pressable onPress={() => setEditing(true)} hitSlop={6}>
             <Text className="text-xs text-primary dark:text-primary-dark">Edit</Text>
           </Pressable>
-        ) : null}
+        )}
       </View>
       <View className="mt-2 flex-row gap-3">
         {Array.from({ length: MAX_FAVORITES }).map((_, i) => {
@@ -77,16 +78,16 @@ export function FavoritesShowcase({
               onPress={() => router.push(ROUTES.REVIEW_DETAIL(review.id))}
               className="w-20 items-center"
             >
-              <Avatar uri={review.dj?.imageUrl} name={review.dj?.name ?? "?"} size={56} />
+              <Avatar uri={reviewSubject(review).imageUrl} name={reviewSubject(review).name} size={56} />
               <Text className="mt-1 text-center text-xs text-ink dark:text-paper" numberOfLines={1}>
-                {review.dj?.name ?? "Unknown DJ"}
+                {reviewSubject(review).name}
               </Text>
               <Text className="text-xs text-muted">{formatRating(review.rating)}</Text>
             </Pressable>
           );
         })}
       </View>
-      {isSelf ? (
+      {isSelf && (
         <EditFavoritesModal
           visible={editing}
           onClose={() => setEditing(false)}
@@ -94,7 +95,7 @@ export function FavoritesShowcase({
           current={data}
           ownReviews={ownReviews ?? []}
         />
-      ) : null}
+      )}
     </View>
   );
 }
@@ -152,7 +153,7 @@ function EditFavoritesModal({
             Tap to pin, in the order you want them shown. Tap again to unpin.
           </Text>
           <ScrollView className="max-h-96">
-            {ownReviews.length === 0 ? (
+            {!ownReviews.length ? (
               <Text className="py-6 text-center text-muted">
                 Review a show first, then come back to pin your favorites.
               </Text>
@@ -168,16 +169,16 @@ function EditFavoritesModal({
                       isSelected ? "border-primary bg-primary-tint/40 dark:bg-primary-dark/15" : "border-primary/15"
                     }`}
                   >
-                    <Avatar uri={review.dj?.imageUrl} name={review.dj?.name ?? "?"} size={32} />
+                    <Avatar uri={reviewSubject(review).imageUrl} name={reviewSubject(review).name} size={32} />
                     <View className="flex-1">
-                      <Text className="text-ink dark:text-paper">{review.dj?.name ?? "Unknown DJ"}</Text>
+                      <Text className="text-ink dark:text-paper">{reviewSubject(review).name}</Text>
                       <Text className="text-xs text-muted">{formatRating(review.rating)}</Text>
                     </View>
-                    {isSelected ? (
+                    {isSelected && (
                       <View className="h-6 w-6 items-center justify-center rounded-full bg-primary dark:bg-primary-dark">
                         <Text className="text-xs font-semibold text-paper">{rank + 1}</Text>
                       </View>
-                    ) : null}
+                    )}
                   </Pressable>
                 );
               })

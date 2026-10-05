@@ -24,9 +24,9 @@ export function PageHeader({
   const gutter = usePageGutter();
   return (
     <View className={`pt-6 ${BORDER[border]}`} style={{ paddingHorizontal: gutter }}>
-      {title ? (
+      {!!title && (
         <Text className="mb-3 text-3xl font-display text-ink dark:text-paper">{title}</Text>
-      ) : null}
+      )}
       {children}
     </View>
   );

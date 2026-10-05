@@ -143,7 +143,7 @@ function EditProfile() {
         onChangeText={setUsername}
         className="mb-1 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
-      {username.length > 0 && !usernameValid ? (
+      {!!username.length && !usernameValid ? (
         <Text className="mb-3 text-xs text-danger dark:text-danger-dark">
           3-32 characters: lowercase letters, numbers, underscores.
         </Text>
@@ -158,10 +158,10 @@ function EditProfile() {
         numberOfLines={3}
         className="mb-4 min-h-20 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
-      {error ? <Text className="mb-2 text-danger dark:text-danger-dark">{error}</Text> : null}
-      {success ? (
+      {!!error && <Text className="mb-2 text-danger dark:text-danger-dark">{error}</Text>}
+      {success && (
         <Text className="mb-2 text-success dark:text-success-dark">Profile updated.</Text>
-      ) : null}
+      )}
       <Button
         disabled={save.isPending || !usernameValid}
         onPress={onSave}
@@ -271,7 +271,7 @@ function AccountSettings() {
       <Text className="mb-2 text-xl font-display text-ink dark:text-paper">
         {hasPassword ? "Change password" : "Set a password"}
       </Text>
-      {hasPassword ? (
+      {hasPassword && (
         <TextInput
           secureTextEntry
           autoComplete="current-password"
@@ -280,7 +280,7 @@ function AccountSettings() {
           onChangeText={setCurrentPassword}
           className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
         />
-      ) : null}
+      )}
       <TextInput
         secureTextEntry
         autoComplete="new-password"
@@ -297,12 +297,12 @@ function AccountSettings() {
         onChangeText={setConfirmPassword}
         className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
-      {passwordError ? (
+      {!!passwordError && (
         <Text className="mb-2 text-danger dark:text-danger-dark">{passwordError}</Text>
-      ) : null}
-      {passwordSuccess ? (
+      )}
+      {passwordSuccess && (
         <Text className="mb-2 text-success dark:text-success-dark">Password updated. Other devices have been signed out.</Text>
-      ) : null}
+      )}
       <Button
         disabled={passwordPending}
         onPress={onChangePassword}
@@ -312,13 +312,13 @@ function AccountSettings() {
           {passwordPending ? "Saving..." : hasPassword ? "Update password" : "Set password"}
         </Text>
       </Button>
-      {hasPassword ? (
+      {hasPassword && (
         <Pressable onPress={onForgotPassword} className="mt-3 self-center">
           <Text className="text-sm text-primary dark:text-primary-dark">
             Forgot your current password?
           </Text>
         </Pressable>
-      ) : null}
+      )}
 
       <Text className="mb-2 mt-8 text-xl font-display text-danger dark:text-danger-dark">
         Danger zone

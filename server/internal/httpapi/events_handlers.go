@@ -40,7 +40,7 @@ func (h *Handlers) SearchEvents(w http.ResponseWriter, r *http.Request) {
 
 // GetEventByID godoc
 //
-//	@Summary	Get an event by id, with all its reviews
+//	@Summary	Get a night by id, with its series, lineup, and all its reviews
 //	@Tags		events
 //	@Produce	json
 //	@Param		id	path		string	true	"event id"
@@ -67,7 +67,21 @@ func (h *Handlers) GetEventByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, EventDetailResponse{Event: *event, Reviews: dtos})
+	var series *db.EventSeries
+	if event.SeriesID != nil {
+		series, err = queries.GetSeriesByID(r.Context(), h.Pool, *event.SeriesID)
+		if err != nil {
+			InternalError(w, err)
+			return
+		}
+	}
+	lineup, err := queries.ListLineup(r.Context(), h.Pool, event.ID)
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, EventDetailResponse{Event: *event, Series: series, Lineup: orEmpty(lineup), Reviews: dtos})
 }
 
 // The venue is given one of three ways, checked in this order: venueId (a
@@ -147,7 +161,7 @@ func (h *Handlers) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event, err := queries.CreateEvent(r.Context(), h.Pool, req.Name, venue, city, eventDate, req.Description, user.ID)
+	event, err := queries.CreateEvent(r.Context(), h.Pool, req.Name, nil, venue, city, eventDate, req.Description, user.ID)
 	if err != nil {
 		InternalError(w, err)
 		return

@@ -10,11 +10,11 @@ import (
 	"beatboxd/server/internal/db"
 )
 
-const eventCols = "id, name, venue, venue_id, city, event_date, description, created_by_user_id, created_at"
+const eventCols = "id, name, series_id, venue, venue_id, city, event_date, description, created_by_user_id, created_at"
 
 func scanEvent(row pgx.Row) (*db.Event, error) {
 	var e db.Event
-	err := row.Scan(&e.ID, &e.Name, &e.Venue, &e.VenueID, &e.City, &e.EventDate, &e.Description, &e.CreatedByUserID, &e.CreatedAt)
+	err := row.Scan(&e.ID, &e.Name, &e.SeriesID, &e.Venue, &e.VenueID, &e.City, &e.EventDate, &e.Description, &e.CreatedByUserID, &e.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
@@ -71,10 +71,58 @@ func GetEventsByIDs(ctx context.Context, q DBTX, ids []string) (map[string]db.Ev
 	return out, rows.Err()
 }
 
-// CreateEvent stores venue.Name as the event's denormalized venue name.
-func CreateEvent(ctx context.Context, q DBTX, name string, venue *db.Venue, city *string, eventDate time.Time, description *string, createdByUserID string) (*db.Event, error) {
+// GetNight finds the night a log belongs to: the same series (or no series)
+// at the same venue on the same calendar day. Days compare in UTC, which
+// keeps a midday-local seenAt on its own day for nearly every time zone.
+func GetNight(ctx context.Context, q DBTX, seriesID *string, venueID string, date time.Time) (*db.Event, error) {
 	return scanEvent(q.QueryRow(ctx, `
-		INSERT INTO events (name, venue, venue_id, city, event_date, description, created_by_user_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING `+eventCols, name, venue.Name, venue.ID, city, eventDate, description, createdByUserID))
+		SELECT `+eventCols+` FROM events
+		WHERE venue_id = $1
+			AND series_id IS NOT DISTINCT FROM $2
+			AND (event_date AT TIME ZONE 'UTC')::date = ($3::timestamptz AT TIME ZONE 'UTC')::date
+		ORDER BY created_at
+		LIMIT 1`, venueID, seriesID, date))
+}
+
+// CreateEvent stores venue.Name as the event's denormalized venue name.
+func CreateEvent(ctx context.Context, q DBTX, name string, seriesID *string, venue *db.Venue, city *string, eventDate time.Time, description *string, createdByUserID string) (*db.Event, error) {
+	return scanEvent(q.QueryRow(ctx, `
+		INSERT INTO events (name, series_id, venue, venue_id, city, event_date, description, created_by_user_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING `+eventCols, name, seriesID, venue.Name, venue.ID, city, eventDate, description, createdByUserID))
+}
+
+// AddToLineup records DJs as having played a night; already-listed DJs are
+// left alone.
+func AddToLineup(ctx context.Context, q DBTX, eventID string, djIDs []string, addedByUserID string) error {
+	if len(djIDs) == 0 {
+		return nil
+	}
+	_, err := q.Exec(ctx, `
+		INSERT INTO event_lineup (event_id, dj_id, added_by_user_id)
+		SELECT $1, unnest($2::uuid[]), $3
+		ON CONFLICT DO NOTHING`, eventID, djIDs, addedByUserID)
+	return err
+}
+
+// ListLineup returns a night's DJs, alphabetically.
+func ListLineup(ctx context.Context, q DBTX, eventID string) ([]db.Dj, error) {
+	rows, err := q.Query(ctx, `
+		SELECT `+djCols+` FROM djs
+		WHERE id IN (SELECT dj_id FROM event_lineup WHERE event_id = $1)
+		ORDER BY lower(name)`, eventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []db.Dj
+	for rows.Next() {
+		d, err := scanDj(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *d)
+	}
+	return out, rows.Err()
 }

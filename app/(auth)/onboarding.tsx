@@ -93,7 +93,7 @@ export default function OnboardingScreen() {
               onSubmitEditing={() => Keyboard.dismiss()}
               className="mb-1 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
             />
-            {username.length > 0 && !usernameValid ? (
+            {!!username.length && !usernameValid ? (
               <Text className="mb-3 text-xs text-danger dark:text-danger-dark">
                 3-32 characters: lowercase letters, numbers, underscores.
               </Text>
@@ -111,7 +111,7 @@ export default function OnboardingScreen() {
               className="mb-4 min-h-20 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
             />
 
-            {error ? <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text> : null}
+            {!!error && <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text>}
 
             <Button
               onPress={onSubmit}

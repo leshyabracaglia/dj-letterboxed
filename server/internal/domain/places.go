@@ -85,7 +85,10 @@ func (c *PlacesClient) do(ctx context.Context, method, path string, body any, fi
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("google places %s %s failed: %d", method, path, resp.StatusCode)
+		// Google's error body names the actual cause (API not enabled, key
+		// restrictions, billing), which the status code alone doesn't.
+		detail, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return fmt.Errorf("google places %s %s failed: %d: %s", method, path, resp.StatusCode, bytes.TrimSpace(detail))
 	}
 	return json.NewDecoder(resp.Body).Decode(out)
 }

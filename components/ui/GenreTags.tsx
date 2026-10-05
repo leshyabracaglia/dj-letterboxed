@@ -2,7 +2,7 @@ import { View } from "react-native";
 import { Text } from "./Text";
 
 export function GenreTags({ genres, limit }: { genres: string[]; limit?: number }) {
-  if (genres.length === 0) return null;
+  if (!genres.length) return null;
   const shown = limit ? genres.slice(0, limit) : genres;
 
   return (

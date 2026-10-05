@@ -15,6 +15,7 @@ type ReviewDTO struct {
 	Dj           *db.Dj    `json:"dj,omitempty"`
 	Event        *db.Event `json:"event,omitempty"`
 	TaggedUsers  []db.User `json:"taggedUsers"`
+	Tags         []string  `json:"tags"`
 	LikeCount    *int64    `json:"likeCount,omitempty"`
 	CommentCount *int64    `json:"commentCount,omitempty"`
 	IsLikedByMe  *bool     `json:"isLikedByMe,omitempty"`
@@ -22,7 +23,7 @@ type ReviewDTO struct {
 }
 
 func newReviewDTO(r db.Review) ReviewDTO {
-	return ReviewDTO{Review: r, TaggedUsers: []db.User{}}
+	return ReviewDTO{Review: r, TaggedUsers: []db.User{}, Tags: []string{}}
 }
 
 func (d ReviewDTO) withEngagement(e queries.Engagement) ReviewDTO {
@@ -67,8 +68,25 @@ type DjDetailResponse struct {
 }
 
 type EventDetailResponse struct {
-	Event   db.Event    `json:"event"`
-	Reviews []ReviewDTO `json:"reviews"`
+	Event db.Event `json:"event"`
+	// Series is nil for a night that isn't part of a named event.
+	Series  *db.EventSeries `json:"series"`
+	Lineup  []db.Dj         `json:"lineup"`
+	Reviews []ReviewDTO     `json:"reviews"`
+}
+
+type SeriesDetailResponse struct {
+	Series        queries.SeriesSummary `json:"series"`
+	Nights        []queries.SeriesNight `json:"nights"`
+	Djs           []queries.SeriesDj    `json:"djs"`
+	Venues        []queries.SeriesVenue `json:"venues"`
+	RecentReviews []ReviewDTO           `json:"recentReviews"`
+}
+
+type NightLogResponse struct {
+	Event   db.Event        `json:"event"`
+	Series  *db.EventSeries `json:"series"`
+	Reviews []db.Review     `json:"reviews"`
 }
 
 type VenueDetailResponse struct {

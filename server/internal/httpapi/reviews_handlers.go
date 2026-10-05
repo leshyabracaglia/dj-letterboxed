@@ -10,55 +10,73 @@ import (
 
 	"beatboxd/server/internal/db"
 	"beatboxd/server/internal/db/queries"
+	"beatboxd/server/internal/domain"
 )
 
 type createReviewRequest struct {
-	DjID          string    `json:"djId"`
-	EventID       *string   `json:"eventId"`
-	Rating        *int16    `json:"rating"`
-	ReviewText    *string   `json:"reviewText"`
-	CrowdVibe     *string   `json:"crowdVibe"`
-	CrowdVibeNote *string   `json:"crowdVibeNote"`
+	DjID       string  `json:"djId"`
+	EventID    *string `json:"eventId"`
+	Rating     *int16  `json:"rating"`
+	ReviewText *string `json:"reviewText"`
+	// Tag names (new ones are added to the library). Omitted = leave
+	// as-is, [] = clear - same contract as TaggedUserIDs.
+	Tags          *[]string `json:"tags"`
 	SeenAt        string    `json:"seenAt"`
 	TaggedUserIDs *[]string `json:"taggedUserIds"`
 }
 
 // validateReviewFields checks the review fields shared by create and
 // update. Each is optional (nil = "not provided"/"leave unset"), but if
-// present must satisfy these constraints.
-func validateReviewFields(rating *int16, reviewText, crowdVibeNote, crowdVibe *string) (vibe *db.CrowdVibe, errMsg string) {
+// present must satisfy these constraints. Returns the normalized tag names
+// (nil when tags were omitted).
+func validateReviewFields(rating *int16, reviewText *string, tags *[]string) (tagNames []string, errMsg string) {
 	if rating != nil && (*rating < 1 || *rating > 5) {
 		return nil, "rating must be 1-5"
 	}
 	if reviewText != nil && len(*reviewText) > 5000 {
 		return nil, "reviewText too long"
 	}
-	if crowdVibeNote != nil && len(*crowdVibeNote) > 280 {
-		return nil, "crowdVibeNote too long"
-	}
-	if crowdVibe != nil {
-		v := db.CrowdVibe(*crowdVibe)
-		if !v.Valid() {
-			return nil, "invalid crowdVibe"
+	if tags != nil {
+		names, err := domain.NormalizeTags(*tags)
+		if err != nil {
+			return nil, err.Error()
 		}
-		vibe = &v
+		return names, ""
 	}
-	return vibe, ""
+	return nil, ""
 }
 
-func (req createReviewRequest) validate() (seenAt time.Time, vibe *db.CrowdVibe, errMsg string) {
+// seenAtFutureSlack is how far past now a seenAt may land. Clients send
+// midday local time on the day picked, so a set logged this morning can
+// legitimately be a few hours in the future depending on time zone; a day
+// covers every zone while still rejecting sets that haven't happened yet.
+const seenAtFutureSlack = 24 * time.Hour
+
+// parseSeenAt parses an RFC3339 seenAt and rejects dates in the future.
+func parseSeenAt(s string, now time.Time) (time.Time, string) {
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return time.Time{}, "seenAt must be an RFC3339 timestamp"
+	}
+	if t.After(now.Add(seenAtFutureSlack)) {
+		return time.Time{}, "seenAt can't be in the future"
+	}
+	return t, ""
+}
+
+func (req createReviewRequest) validate() (seenAt time.Time, tagNames []string, errMsg string) {
 	if req.DjID == "" {
 		return time.Time{}, nil, "djId is required"
 	}
-	t, err := time.Parse(time.RFC3339, req.SeenAt)
-	if err != nil {
-		return time.Time{}, nil, "seenAt must be an RFC3339 timestamp"
-	}
-	vibe, errMsg = validateReviewFields(req.Rating, req.ReviewText, req.CrowdVibeNote, req.CrowdVibe)
+	t, errMsg := parseSeenAt(req.SeenAt, time.Now())
 	if errMsg != "" {
 		return time.Time{}, nil, errMsg
 	}
-	return t, vibe, ""
+	tagNames, errMsg = validateReviewFields(req.Rating, req.ReviewText, req.Tags)
+	if errMsg != "" {
+		return time.Time{}, nil, errMsg
+	}
+	return t, tagNames, ""
 }
 
 // CreateReview godoc
@@ -84,7 +102,7 @@ func (h *Handlers) CreateReview(w http.ResponseWriter, r *http.Request) {
 		BadRequest(w, "invalid request body")
 		return
 	}
-	seenAt, vibe, errMsg := req.validate()
+	seenAt, tagNames, errMsg := req.validate()
 	if errMsg != "" {
 		BadRequest(w, errMsg)
 		return
@@ -98,9 +116,9 @@ func (h *Handlers) CreateReview(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(r.Context())
 
 	review, err := queries.CreateReview(r.Context(), tx, queries.CreateReviewParams{
-		UserID: user.ID, DjID: req.DjID, EventID: req.EventID,
+		UserID: user.ID, DjID: &req.DjID, EventID: req.EventID,
 		Rating: req.Rating, ReviewText: req.ReviewText,
-		CrowdVibe: vibe, CrowdVibeNote: req.CrowdVibeNote, SeenAt: seenAt,
+		SeenAt: seenAt,
 	})
 	if err != nil {
 		InternalError(w, err)
@@ -109,6 +127,13 @@ func (h *Handlers) CreateReview(w http.ResponseWriter, r *http.Request) {
 
 	if req.TaggedUserIDs != nil {
 		if err := queries.SetReviewTags(r.Context(), tx, review.ID, *req.TaggedUserIDs); err != nil {
+			InternalError(w, err)
+			return
+		}
+	}
+
+	if tagNames != nil {
+		if err := queries.SetReviewTagLinks(r.Context(), tx, review.ID, user.ID, tagNames); err != nil {
 			InternalError(w, err)
 			return
 		}
@@ -123,10 +148,11 @@ func (h *Handlers) CreateReview(w http.ResponseWriter, r *http.Request) {
 }
 
 type updateReviewRequest struct {
-	Rating        *int16    `json:"rating"`
-	ReviewText    *string   `json:"reviewText"`
-	CrowdVibe     *string   `json:"crowdVibe"`
-	CrowdVibeNote *string   `json:"crowdVibeNote"`
+	Rating     *int16  `json:"rating"`
+	ReviewText *string `json:"reviewText"`
+	// Tag names (new ones are added to the library). Omitted = leave
+	// as-is, [] = clear - same contract as TaggedUserIDs.
+	Tags          *[]string `json:"tags"`
 	SeenAt        *string   `json:"seenAt"`
 	TaggedUserIDs *[]string `json:"taggedUserIds"`
 }
@@ -177,16 +203,16 @@ func (h *Handlers) UpdateReview(w http.ResponseWriter, r *http.Request) {
 		BadRequest(w, "invalid request body")
 		return
 	}
-	vibe, errMsg := validateReviewFields(req.Rating, req.ReviewText, req.CrowdVibeNote, req.CrowdVibe)
+	tagNames, errMsg := validateReviewFields(req.Rating, req.ReviewText, req.Tags)
 	if errMsg != "" {
 		BadRequest(w, errMsg)
 		return
 	}
 	var seenAt *time.Time
 	if req.SeenAt != nil {
-		t, err := time.Parse(time.RFC3339, *req.SeenAt)
-		if err != nil {
-			BadRequest(w, "seenAt must be an RFC3339 timestamp")
+		t, errMsg := parseSeenAt(*req.SeenAt, time.Now())
+		if errMsg != "" {
+			BadRequest(w, errMsg)
 			return
 		}
 		seenAt = &t
@@ -201,7 +227,7 @@ func (h *Handlers) UpdateReview(w http.ResponseWriter, r *http.Request) {
 
 	updated, err := queries.UpdateReview(r.Context(), tx, queries.UpdateReviewParams{
 		ID: id, Rating: req.Rating, ReviewText: req.ReviewText,
-		CrowdVibe: vibe, CrowdVibeNote: req.CrowdVibeNote, SeenAt: seenAt,
+		SeenAt: seenAt,
 	})
 	if err != nil {
 		InternalError(w, err)
@@ -210,6 +236,13 @@ func (h *Handlers) UpdateReview(w http.ResponseWriter, r *http.Request) {
 
 	if req.TaggedUserIDs != nil {
 		if err := queries.SetReviewTags(r.Context(), tx, id, *req.TaggedUserIDs); err != nil {
+			InternalError(w, err)
+			return
+		}
+	}
+
+	if tagNames != nil {
+		if err := queries.SetReviewTagLinks(r.Context(), tx, id, user.ID, tagNames); err != nil {
 			InternalError(w, err)
 			return
 		}

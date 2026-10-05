@@ -2,8 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { Redirect, useSegments } from "expo-router";
 import { Tabs } from "expo-router/js-tabs";
 import { useColorScheme } from "nativewind";
+import { useState } from "react";
 import { ColorValue } from "react-native";
 
+import { SignInPromptModal } from "../../components/SignInPromptModal";
 import { useIsDesktopWeb } from "../../components/ui";
 import { WebNav } from "../../components/WebNav";
 import { useCurrentUser } from "../../lib/auth";
@@ -34,6 +36,19 @@ export default function TabsLayout() {
   // graph) work without an account; Review and Profile redirect to sign-in.
   const activeTab = segments[segments.length - 1];
   const isPublicTab = activeTab === "browse" || activeTab === "feed";
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
+
+  // Signed out, tapping Review or Profile pops the sign-in/sign-up prompt
+  // (same as the web navbar) instead of switching to a tab that would just
+  // redirect away. The Redirect below still catches deep links to them.
+  const gatedTabListeners = isSignedIn
+    ? undefined
+    : {
+        tabPress: (e: { preventDefault: () => void }) => {
+          e.preventDefault();
+          setShowSignInPrompt(true);
+        },
+      };
 
   if (!isLoaded) {
     return null;
@@ -48,6 +63,7 @@ export default function TabsLayout() {
   }
 
   return (
+    <>
     <Tabs
       initialRouteName="feed"
       // Bottom tabs read as a mobile pattern; on desktop web, a horizontal navbar
@@ -81,6 +97,7 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="review"
+        listeners={gatedTabListeners}
         options={{
           title: "Review a Set",
           tabBarIcon: ({ color, size }) => (
@@ -90,11 +107,14 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="profile"
+        listeners={gatedTabListeners}
         options={{
           title: "Profile",
           tabBarIcon: ({ color, size }) => <TabIcon name="person" color={color} size={size} />,
         }}
       />
     </Tabs>
+    <SignInPromptModal visible={showSignInPrompt} onClose={() => setShowSignInPrompt(false)} />
+    </>
   );
 }

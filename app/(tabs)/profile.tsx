@@ -32,12 +32,11 @@ export default function ProfileScreen() {
           <View className="flex-row items-center gap-3">
             {me ? (
               <>
-                <Avatar uri={me.avatarUrl} name={me.displayName ?? me.username} size={72} />
+                <Avatar uri={me.avatarUrl} name={me.username} size={72} />
                 <View>
                   <Text className="text-2xl font-bold text-ink dark:text-paper">
-                    {me.displayName ?? me.username}
+                    {me.username}
                   </Text>
-                  <Text className="text-muted">@{me.username}</Text>
                 </View>
               </>
             ) : (
@@ -68,11 +67,11 @@ export default function ProfileScreen() {
             </Pressable>
           </View>
         </View>
-        {me?.bio ? <Text className="mt-2 text-ink dark:text-paper">{me.bio}</Text> : null}
-        {me?.username ? <StatsSummary username={me.username} /> : null}
-        {me?.username ? (
+        {!!me?.bio && <Text className="mt-2 text-ink dark:text-paper">{me.bio}</Text>}
+        {!!me?.username && <StatsSummary username={me.username} />}
+        {!!me?.username && (
           <FavoritesShowcase username={me.username} isSelf ownReviews={data?.items ?? []} />
-        ) : null}
+        )}
       </PageHeader>
       <FlatList
         contentContainerStyle={contentStyle}

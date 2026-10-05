@@ -20,7 +20,9 @@ export const ROUTES = {
   PROFILE: "/(tabs)/profile" as Href,
   SETTINGS: "/settings" as Href,
   DJ: (slug: string): Href => `/dj/${slug}` as Href,
+  // One night (an events row); SERIES is the recurring event it belongs to.
   EVENT: (id: string): Href => `/event/${id}` as Href,
+  SERIES: (slug: string): Href => `/series/${slug}` as Href,
   VENUE: (id: string): Href => `/venue/${id}` as Href,
   // `justLogged` marks the landing right after creating the review, so the
   // page can prompt the author to share it.

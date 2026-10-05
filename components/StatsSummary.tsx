@@ -5,6 +5,29 @@ import { Skeleton, Text } from "./ui";
 import { useApi } from "../lib/api/client";
 import { queryKeys } from "../lib/api/queryKeys";
 import type { UserStats } from "../lib/api/types";
+import { DjAvatarRow } from "./DjAvatarRow";
+
+// The user's 3 most-reviewed DJs with how many times they've seen each,
+// laid out like FavoritesShowcase's row so the two read as a pair.
+function MostSeenDjs({ topDjs }: { topDjs: UserStats["topDjs"] }) {
+  return (
+    <View className="mt-3">
+      <Text className="text-sm font-semibold text-ink dark:text-paper">Most seen</Text>
+      <View className="mt-2">
+        <DjAvatarRow
+          items={topDjs.map(({ dj, reviewCount }) => ({
+            dj,
+            caption: (
+              <Text className="text-xs text-muted">
+                seen <Text className="font-numeric text-sm text-muted">{reviewCount}</Text>×
+              </Text>
+            ),
+          }))}
+        />
+      </View>
+    </View>
+  );
+}
 
 export function StatsSummary({ username }: { username: string }) {
   const api = useApi();
@@ -46,7 +69,9 @@ export function StatsSummary({ username }: { username: string }) {
         </View>
       </View>
 
-      {stats.topVenues.length > 0 ? (
+      {!!stats.topDjs.length && <MostSeenDjs topDjs={stats.topDjs} />}
+
+      {!!stats.topVenues.length && (
         <View className="mt-3">
           <Text className="mb-1 text-sm font-semibold text-ink dark:text-paper">Top venues</Text>
           {stats.topVenues.map((row) => (
@@ -55,7 +80,7 @@ export function StatsSummary({ username }: { username: string }) {
             </Text>
           ))}
         </View>
-      ) : null}
+      )}
     </View>
   );
 }

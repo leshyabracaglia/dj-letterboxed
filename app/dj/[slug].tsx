@@ -68,12 +68,12 @@ export default function DjProfileScreen() {
             </View>
           </View>
         </View>
-        {data.dj.genres && data.dj.genres.length > 0 ? (
+        {!!data.dj.genres?.length && (
           <View className="mt-3">
             <GenreTags genres={data.dj.genres} />
           </View>
-        ) : null}
-        {data.dj.bio ? <Text className="mt-3 text-ink dark:text-paper">{data.dj.bio}</Text> : null}
+        )}
+        {!!data.dj.bio && <Text className="mt-3 text-ink dark:text-paper">{data.dj.bio}</Text>}
       </PageHeader>
       <FlatList
         contentContainerStyle={contentStyle}

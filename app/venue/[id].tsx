@@ -63,7 +63,7 @@ export default function VenueScreen() {
       <Stack.Screen options={{ title: venue.name }} />
       <PageHeader border="accent">
         <Text className="text-2xl font-bold text-ink dark:text-paper">{venue.name}</Text>
-        {venue.address ? <Text className="mt-1 text-sm text-muted">{venue.address}</Text> : null}
+        {!!venue.address && <Text className="mt-1 text-sm text-muted">{venue.address}</Text>}
         <Text className="mt-1 text-muted">
           {venue.city && !venue.address ? `${venue.city} · ` : ""}
           {venue.eventCount} {venue.eventCount === 1 ? "event" : "events"} reviewed

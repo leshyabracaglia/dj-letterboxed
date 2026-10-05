@@ -2,7 +2,14 @@ import { useAuth } from "@clerk/expo";
 import { useState } from "react";
 import { FlatList, Pressable, View } from "react-native";
 
-import { EmptyState, Page, Text, usePageContentStyle } from "../../components/ui";
+import {
+  EmptyState,
+  Page,
+  PageHeader,
+  Text,
+  useIsDesktopWeb,
+  usePageContentStyle,
+} from "../../components/ui";
 import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
 import { useFeed, usePopularFeed } from "../../lib/api/hooks";
 
@@ -22,6 +29,7 @@ export default function FeedScreen() {
   const { isSignedIn } = useAuth();
   const [tab, setTab] = useState<IFeedTab>(FEED_TABS.FOLLOWING);
   const contentStyle = usePageContentStyle();
+  const isDesktopWeb = useIsDesktopWeb();
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useFeed(
     !!isSignedIn,
@@ -41,31 +49,47 @@ export default function FeedScreen() {
     effectiveTab === FEED_TABS.POPULAR,
   );
 
+  const tabs = isSignedIn ? (
+    <View className="flex-row gap-2">
+      {Object.values(FEED_TABS).map((t) => {
+        // Following has nothing to show until they follow someone, so it
+        // reads as unavailable rather than a tab that silently does nothing.
+        const disabled = t === FEED_TABS.FOLLOWING && noFollowing;
+        return (
+          <Pressable
+            key={t}
+            onPress={() => setTab(t)}
+            disabled={disabled}
+            accessibilityState={{ disabled, selected: effectiveTab === t }}
+            className={`rounded-full px-3 py-1.5 ${
+              disabled ? "opacity-40" : "active:opacity-80"
+            } ${
+              effectiveTab === t ? "bg-primary" : "bg-white dark:bg-surface-dark border border-primary/20"
+            }`}
+          >
+            <Text className={effectiveTab === t ? "text-paper" : "text-ink dark:text-paper"}>
+              {FEED_TAB_LABELS[t]}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  ) : null;
+
   return (
-    <Page
-      ambient
-      title="Feed"
-      header={
-        isSignedIn ? (
-          <View className="flex-row gap-2">
-            {Object.values(FEED_TABS).map((t) => (
-              <Pressable
-                key={t}
-                onPress={() => setTab(t)}
-                className={`rounded-full px-3 py-1.5 active:opacity-80 ${
-                  effectiveTab === t ? "bg-primary" : "bg-white dark:bg-surface-dark border border-primary/20"
-                }`}
-              >
-                <Text className={effectiveTab === t ? "text-paper" : "text-ink dark:text-paper"}>
-                  {FEED_TAB_LABELS[t]}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        ) : null
-      }
-    >
-      {effectiveTab === "popular" ? (
+    // Desktop web already shows the BeatBox'd wordmark in its top navbar;
+    // phone widths have no navbar, so the wordmark heads the feed instead
+    // (the bottom tab bar already says "Feed").
+    <Page ambient title={isDesktopWeb ? "Feed" : undefined} header={tabs}>
+      {!isDesktopWeb && (
+        <PageHeader>
+          <Text className="mb-3 font-display text-4xl text-primary dark:text-primary-dark">
+            BeatBox&apos;d
+          </Text>
+          {tabs}
+        </PageHeader>
+      )}
+      {effectiveTab === FEED_TABS.POPULAR ? (
         <FlatList
           contentContainerStyle={contentStyle}
           data={popularData?.items ?? []}

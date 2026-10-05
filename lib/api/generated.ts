@@ -4,6 +4,42 @@
  */
 
 export interface paths {
+    "/api/app-version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Minimum supported native app build, for the client's force-update check */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AppVersionResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/comments/{id}": {
         parameters: {
             query?: never;
@@ -416,7 +452,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get an event by id, with all its reviews */
+        /** Get a night by id, with its series, lineup, and all its reviews */
         get: {
             parameters: {
                 query?: never;
@@ -722,6 +758,65 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Log a night: find or create the night, add DJs to its lineup, and save the night and DJ reviews in one go */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description the night to log */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["createNightLogRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NightLogResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -1091,6 +1186,136 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List event series (recurring events like "Innervisions"), most-reviewed first */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description name search; omit to list all */
+                    q?: string;
+                    /** @description max results, 1-50, default 20 */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SeriesSummary"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/series/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an event series with its nights, DJs, venues, and recent reviews */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description series slug */
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SeriesDetailResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the tag library (defaults plus every tag users have added), most used first */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description filter to tags containing this text */
+                    q?: string;
+                    /** @description max results, 1-50, default 30 */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TagSummary"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1728,8 +1953,10 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @enum {string} */
-        CrowdVibe: "electric" | "good" | "average" | "dead";
+        AppVersionResponse: {
+            iosUpdateUrl: string;
+            minIosBuild: number;
+        };
         Dj: {
             bio: string;
             createdAt: string;
@@ -1756,6 +1983,8 @@ export interface components {
             eventDate: string;
             id: string;
             name: string;
+            /** @description SeriesID is nil for a night that isn't part of a named event. */
+            seriesId: string;
             /**
              * @description Venue is the venue's display name, kept denormalized alongside
              *     VenueID so existing displays don't need a join.
@@ -1765,7 +1994,17 @@ export interface components {
         };
         EventDetailResponse: {
             event: components["schemas"]["Event"];
+            lineup: components["schemas"]["Dj"][];
             reviews: components["schemas"]["ReviewDTO"][];
+            /** @description Series is nil for a night that isn't part of a named event. */
+            series: components["schemas"]["EventSeries"];
+        };
+        EventSeries: {
+            createdAt: string;
+            createdByUserId: string;
+            id: string;
+            name: string;
+            slug: string;
         };
         FavoriteReviewsResponse: {
             items: components["schemas"]["ReviewDTO"][];
@@ -1781,6 +2020,11 @@ export interface components {
         LeaderboardEntry: {
             reviewCount: number;
             user: components["schemas"]["User"];
+        };
+        NightLogResponse: {
+            event: components["schemas"]["Event"];
+            reviews: components["schemas"]["Review"][];
+            series: components["schemas"]["EventSeries"];
         };
         PaginatedReviews: {
             items: components["schemas"]["ReviewDTO"][];
@@ -1800,8 +2044,7 @@ export interface components {
         };
         Review: {
             createdAt: string;
-            crowdVibe: components["schemas"]["CrowdVibe"];
-            crowdVibeNote: string;
+            /** @description DjID is nil for a review of the night as a whole (EventID is then set). */
             djId: string;
             eventId: string;
             id: string;
@@ -1822,9 +2065,8 @@ export interface components {
         ReviewDTO: {
             commentCount?: number;
             createdAt: string;
-            crowdVibe: components["schemas"]["CrowdVibe"];
-            crowdVibeNote: string;
             dj?: components["schemas"]["Dj"];
+            /** @description DjID is nil for a review of the night as a whole (EventID is then set). */
             djId: string;
             event?: components["schemas"]["Event"];
             eventId: string;
@@ -1836,9 +2078,42 @@ export interface components {
             reviewText: string;
             seenAt: string;
             taggedUsers: components["schemas"]["User"][];
+            tags: string[];
             updatedAt: string;
             user?: components["schemas"]["User"];
             userId: string;
+        };
+        SeriesDetailResponse: {
+            djs: components["schemas"]["SeriesDj"][];
+            nights: components["schemas"]["SeriesNight"][];
+            recentReviews: components["schemas"]["ReviewDTO"][];
+            series: components["schemas"]["SeriesSummary"];
+            venues: components["schemas"]["SeriesVenue"][];
+        };
+        SeriesDj: {
+            dj: components["schemas"]["Dj"];
+            nightCount: number;
+        };
+        SeriesNight: {
+            avgRating: number;
+            event: components["schemas"]["Event"];
+            reviewCount: number;
+        };
+        SeriesSummary: {
+            avgRating: number;
+            createdAt: string;
+            createdByUserId: string;
+            id: string;
+            name: string;
+            nightCount: number;
+            reviewCount: number;
+            slug: string;
+        };
+        SeriesVenue: {
+            city: string;
+            id: string;
+            name: string;
+            nightCount: number;
         };
         SpotifyArtist: {
             genres: string[];
@@ -1848,6 +2123,12 @@ export interface components {
         };
         SuccessResponse: {
             success: boolean;
+        };
+        TagSummary: {
+            id: string;
+            isDefault: boolean;
+            name: string;
+            useCount: number;
         };
         TopDj: {
             dj: components["schemas"]["Dj"];
@@ -1914,18 +2195,54 @@ export interface components {
             venue: string;
             venueId: string;
         };
+        createNightLogRequest: {
+            city: string;
+            djReviews: components["schemas"]["djReviewInput"][];
+            /**
+             * @description DJs the user saw; added to the night's lineup. DJs in djReviews are
+             *     added too, whether or not they're listed here.
+             */
+            lineupDjIds: string[];
+            /** @description Review of the night as a whole. Required unless djReviews has one. */
+            night: components["schemas"]["nightReviewInput"];
+            placeId: string;
+            placeSessionToken: string;
+            seenAt: string;
+            seriesId: string;
+            seriesName: string;
+            taggedUserIds: string[];
+            /**
+             * @description Tag names and tagged friends go on the night review, or on every DJ
+             *     review when there's no night review.
+             */
+            tags: string[];
+            venue: string;
+            venueId: string;
+        };
         createReviewRequest: {
-            crowdVibe: string;
-            crowdVibeNote: string;
             djId: string;
             eventId: string;
             rating: number;
             reviewText: string;
             seenAt: string;
             taggedUserIds: string[];
+            /**
+             * @description Tag names (new ones are added to the library). Omitted = leave
+             *     as-is, [] = clear - same contract as TaggedUserIDs.
+             */
+            tags: string[];
+        };
+        djReviewInput: {
+            djId: string;
+            rating: number;
+            reviewText: string;
         };
         errorEnvelope: {
             error: components["schemas"]["apiError"];
+        };
+        nightReviewInput: {
+            rating: number;
+            reviewText: string;
         };
         setFavoritesRequest: {
             reviewIds: string[];
@@ -1937,12 +2254,15 @@ export interface components {
             username: string;
         };
         updateReviewRequest: {
-            crowdVibe: string;
-            crowdVibeNote: string;
             rating: number;
             reviewText: string;
             seenAt: string;
             taggedUserIds: string[];
+            /**
+             * @description Tag names (new ones are added to the library). Omitted = leave
+             *     as-is, [] = clear - same contract as TaggedUserIDs.
+             */
+            tags: string[];
         };
     };
     responses: never;

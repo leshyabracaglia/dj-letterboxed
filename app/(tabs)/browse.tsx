@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "expo-router";
 import { FlatList, Pressable, TextInput, View } from "react-native";
 
 import {
@@ -7,12 +8,16 @@ import {
   EmptyState,
   GenreTags,
   Page,
+  RatingStars,
   Skeleton,
   Text,
   usePageContentStyle,
 } from "../../components/ui";
-import { useDjSearch, useVenueSearch } from "../../lib/api/hooks";
-import type { Dj, VenueSummary } from "../../lib/api/types";
+import { FollowButton } from "../../components/FollowButton";
+import { useDjSearch, useSeriesSearch, useUserSearch, useVenueSearch } from "../../lib/api/hooks";
+import type { Dj, SeriesSummary, User, VenueSummary } from "../../lib/api/types";
+import { formatRating } from "../../lib/format";
+import { useCurrentUser } from "../../lib/auth";
 import { ROUTES } from "../../lib/routes";
 
 function DjCard({ dj }: { dj: Dj }) {
@@ -24,11 +29,11 @@ function DjCard({ dj }: { dj: Dj }) {
           <Text className="text-lg font-semibold text-primary dark:text-primary-dark">
             {dj.name}
           </Text>
-          {dj.genres && dj.genres.length > 0 ? (
+          {!!dj.genres?.length && (
             <View className="mt-1.5">
               <GenreTags genres={dj.genres} limit={3} />
             </View>
-          ) : null}
+          )}
         </View>
       </View>
     </Card>
@@ -47,13 +52,50 @@ function VenueCard({ venue }: { venue: VenueSummary }) {
   );
 }
 
-function BrowseCardSkeleton({ tint }: { tint: "primary" | "accent" }) {
+// A recurring event ("Innervisions") with its totals across all nights.
+function SeriesCard({ series }: { series: SeriesSummary }) {
+  return (
+    <Card href={ROUTES.SERIES(series.slug)} tint="primary">
+      <Text className="text-lg font-semibold text-primary dark:text-primary-dark">{series.name}</Text>
+      <View className="mt-1 flex-row flex-wrap items-center gap-2">
+        {series.avgRating !== null && <RatingStars value={series.avgRating} size={12} />}
+        <Text className="text-sm text-muted">
+          {series.avgRating !== null ? `${formatRating(series.avgRating)} · ` : ""}
+          {series.nightCount} {series.nightCount === 1 ? "night" : "nights"} · {series.reviewCount}{" "}
+          {series.reviewCount === 1 ? "review" : "reviews"}
+        </Text>
+      </View>
+    </Card>
+  );
+}
+
+// Not a Card href: the follow button sits inside, and a pressable nested in
+// a Link would trigger both. Only the avatar/name side navigates.
+function UserCard({ user, isSelf }: { user: User; isSelf: boolean }) {
+  return (
+    <Card>
+      <View className="flex-row items-center gap-3">
+        <Link href={ROUTES.USER(user.username)} asChild>
+          <Pressable className="flex-1 flex-row items-center gap-3 active:opacity-80">
+            <Avatar uri={user.avatarUrl} name={user.username} size={48} />
+            <View className="flex-1">
+              <Text className="text-lg font-semibold text-ink dark:text-paper">{user.username}</Text>
+            </View>
+          </Pressable>
+        </Link>
+        {isSelf ? null : <FollowButton userId={user.id} />}
+      </View>
+    </Card>
+  );
+}
+
+function BrowseCardSkeleton({ tint }: { tint: "primary" | "accent" | "neutral" }) {
   return (
     <>
       {Array.from({ length: 4 }).map((_, i) => (
         <Card key={i} tint={tint}>
           <View className="flex-row items-center gap-3">
-            {tint === "primary" ? <Skeleton className="h-12 w-12 rounded-full" /> : null}
+            {tint !== "accent" && <Skeleton className="h-12 w-12 rounded-full" />}
             <View className="flex-1">
               <Skeleton className="h-5 w-40" />
               <Skeleton className="mt-2 h-3.5 w-28" />
@@ -67,22 +109,35 @@ function BrowseCardSkeleton({ tint }: { tint: "primary" | "accent" }) {
 
 const TABS = [
   { value: "djs", label: "DJs" },
+  { value: "events", label: "Events" },
   { value: "venues", label: "Venues" },
+  { value: "people", label: "People" },
 ] as const;
+
+const COPY = {
+  djs: { title: "Browse DJs", placeholder: "Search DJs..." },
+  events: { title: "Browse Events", placeholder: "Search events like Innervisions..." },
+  venues: { title: "Browse Venues", placeholder: "Search venues..." },
+  people: { title: "Find People", placeholder: "Search by name or username..." },
+} as const;
 
 export default function BrowseScreen() {
   const [tab, setTab] = useState<(typeof TABS)[number]["value"]>("djs");
   const [query, setQuery] = useState("");
   const contentStyle = usePageContentStyle();
+  const { me } = useCurrentUser();
 
   const { data: djs } = useDjSearch(query, tab === "djs");
+  // Lists every event until a search is typed - this tab doubles as the index.
+  const { data: series } = useSeriesSearch(query.trim(), tab === "events");
+  const { data: users } = useUserSearch(query.trim(), { enabled: tab === "people" });
 
   const { data: venues } = useVenueSearch(query, tab === "venues");
 
   return (
     <Page
       ambient
-      title={tab === "djs" ? "Browse DJs" : "Browse Venues"}
+      title={COPY[tab].title}
       header={
         <>
           <View className="mb-3 flex-row gap-2">
@@ -101,7 +156,7 @@ export default function BrowseScreen() {
             ))}
           </View>
           <TextInput
-            placeholder={tab === "djs" ? "Search DJs..." : "Search venues..."}
+            placeholder={COPY[tab].placeholder}
             value={query}
             onChangeText={setQuery}
             className="rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
@@ -116,12 +171,44 @@ export default function BrowseScreen() {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <DjCard dj={item} />}
           ListEmptyComponent={
-            query.length > 0 && !djs ? (
+            !!query.length && !djs ? (
               <BrowseCardSkeleton tint="primary" />
-            ) : query.length > 0 ? (
+            ) : query.length ? (
               <EmptyState message="No DJs found. Add one when you review a set." />
             ) : (
               <EmptyState message="Search for a DJ to see their profile and reviews." />
+            )
+          }
+        />
+      ) : tab === "events" ? (
+        <FlatList
+          contentContainerStyle={contentStyle}
+          data={series ?? []}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <SeriesCard series={item} />}
+          ListEmptyComponent={
+            !series ? (
+              <BrowseCardSkeleton tint="primary" />
+            ) : query.trim().length ? (
+              <EmptyState message="No events found. Add one when you review a set." />
+            ) : (
+              <EmptyState message="No events yet. Name one when you review a set." />
+            )
+          }
+        />
+      ) : tab === "people" ? (
+        <FlatList
+          contentContainerStyle={contentStyle}
+          data={users ?? []}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <UserCard user={item} isSelf={item.id === me?.id} />}
+          ListEmptyComponent={
+            !!query.trim().length && !users ? (
+              <BrowseCardSkeleton tint="neutral" />
+            ) : query.trim().length ? (
+              <EmptyState message="No people found." />
+            ) : (
+              <EmptyState message="Search for people to follow and see their sets in your feed." />
             )
           }
         />
@@ -132,9 +219,9 @@ export default function BrowseScreen() {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <VenueCard venue={item} />}
           ListEmptyComponent={
-            query.length > 0 && !venues ? (
+            !!query.length && !venues ? (
               <BrowseCardSkeleton tint="accent" />
-            ) : query.length > 0 ? (
+            ) : query.length ? (
               <EmptyState message="No venues found. Add one when you review a set." />
             ) : (
               <EmptyState message="Search for a venue to see events reviewed there." />

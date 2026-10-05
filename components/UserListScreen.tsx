@@ -41,10 +41,9 @@ export function UserListScreen({ mode }: { mode: "followers" | "following" }) {
         renderItem={({ item }) => (
           <Link href={ROUTES.USER(item.username)} asChild>
             <Pressable className="mb-2 flex-row items-center gap-3 rounded-2xl border border-primary/15 bg-white dark:bg-surface-dark p-4 shadow-sm active:opacity-90">
-              <Avatar uri={item.avatarUrl} name={item.displayName ?? item.username} size={36} />
+              <Avatar uri={item.avatarUrl} name={item.username} size={36} />
               <View>
-                <Text className="font-semibold text-ink dark:text-paper">{item.displayName ?? item.username}</Text>
-                <Text className="text-muted">@{item.username}</Text>
+                <Text className="font-semibold text-ink dark:text-paper">{item.username}</Text>
               </View>
             </Pressable>
           </Link>

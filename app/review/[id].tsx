@@ -19,10 +19,12 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import {
   Avatar,
   Button,
+  Icon,
   Page,
   RatingStars,
   Skeleton,
   Text,
+  useIsDesktopWeb,
   usePageContentStyle,
 } from "../../components/ui";
 import { useCurrentUser } from "../../lib/auth";
@@ -30,9 +32,11 @@ import { useApi } from "../../lib/api/client";
 import { queryKeys } from "../../lib/api/queryKeys";
 import type { Dj, Event, Review, ReviewComment, User } from "../../lib/api/types";
 import { formatDate } from "../../lib/format";
+import { reviewSubject } from "../../lib/review";
 import { ROUTES } from "../../lib/routes";
 import { captureStory, shareStory, WEB_URL, type CapturedStory } from "../../lib/shareStory";
-import { CrowdVibeBadge } from "../../components/CrowdVibeBadge";
+import { ReviewTags } from "../../components/ReviewTags";
+import { isIos } from "@/lib/utils";
 
 function CommentSection({ reviewId }: { reviewId: string }) {
   const { isSignedIn } = useAuth();
@@ -100,7 +104,7 @@ function CommentSection({ reviewId }: { reviewId: string }) {
           <View className="flex-1 flex-row items-start gap-2 pr-2">
             <Avatar
               uri={comment.user?.avatarUrl}
-              name={comment.user?.displayName ?? comment.user?.username ?? "?"}
+              name={comment.user?.username ?? "?"}
               size={24}
             />
             <View className="flex-1">
@@ -108,11 +112,11 @@ function CommentSection({ reviewId }: { reviewId: string }) {
               <Text className="text-sm text-ink dark:text-paper">{comment.body}</Text>
             </View>
           </View>
-          {me?.id === comment.userId ? (
+          {me?.id === comment.userId && (
             <Pressable onPress={() => deleteComment.mutate(comment.id)}>
               <Text className="text-xs text-muted">Delete</Text>
             </Pressable>
-          ) : null}
+          )}
         </View>
       ))}
       {!comments ? (
@@ -125,7 +129,7 @@ function CommentSection({ reviewId }: { reviewId: string }) {
             </View>
           </View>
         ))
-      ) : comments.length === 0 ? (
+      ) : !comments.length ? (
         <Text className="mb-3 text-sm text-muted">No comments yet.</Text>
       ) : null}
       {isSignedIn ? (
@@ -212,16 +216,22 @@ function LikeButton({
         isLiked ? "bg-accent/15" : "bg-muted/10"
       }`}
     >
+      <Icon
+        name={isLiked ? "heart" : "heart-outline"}
+        size={16}
+        className={isLiked ? "text-accent-text dark:text-accent-dark" : "text-ink dark:text-paper"}
+      />
       <Text className={isLiked ? "text-accent-text dark:text-accent-dark" : "text-ink dark:text-paper"}>
-        {isLiked ? "♥" : "♡"} {likeCount}
+        {likeCount}
       </Text>
     </Pressable>
   );
 }
 
 // getById always hydrates these relations, so narrow them to required here.
+// dj stays nullable: a review of the night as a whole has none.
 type ReviewDetail = Review & {
-  dj: Dj;
+  dj: Dj | null;
   event: Event | null;
   taggedUsers: User[];
   user: User;
@@ -263,7 +273,8 @@ function StoryCard({
 }) {
   const u = (n: number) => (n * width) / 360;
   const height = (width * 16) / 9;
-  const djName = review.dj.name;
+  const subject = reviewSubject(review);
+  const djName = subject.name;
   const seen = new Date(review.seenAt).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -325,9 +336,9 @@ function StoryCard({
               justifyContent: "center",
             }}
           >
-            {review.dj.imageUrl ? (
+            {subject.imageUrl ? (
               <Image
-                source={{ uri: review.dj.imageUrl }}
+                source={{ uri: subject.imageUrl }}
                 onLoad={onImageSettled}
                 onError={onImageSettled}
                 style={{ width: "100%", height: "100%" }}
@@ -351,19 +362,19 @@ function StoryCard({
           >
             {djName}
           </Text>
-          {review.event ? (
+          {review.event && (
             <Text style={{ fontSize: u(13), color: "#BA95E4", textAlign: "center", marginTop: u(4) }}>
               {review.event.name} · {review.event.venue}
             </Text>
-          ) : null}
+          )}
           <Text style={{ fontSize: u(12), color: "#A4A0B1", marginTop: u(2) }}>{seen}</Text>
-          {review.rating ? (
+          {!!review.rating && (
             <View style={{ marginTop: u(8) }}>
               <RatingStars value={review.rating} size={u(22)} />
             </View>
-          ) : null}
+          )}
 
-          {review.reviewText ? (
+          {!!review.reviewText && (
             <View
               style={{
                 marginTop: u(14),
@@ -380,7 +391,7 @@ function StoryCard({
                 “{snippet(review.reviewText)}”
               </Text>
             </View>
-          ) : null}
+          )}
         </View>
 
         <View style={{ alignItems: "center" }}>
@@ -412,11 +423,11 @@ function ShareStorySheet({ review, onClose }: { review: ReviewDetail; onClose: (
     Math.floor(Math.min(297, windowWidth - 64, ((windowHeight - 280) * 9) / 16) / 9) * 9;
   const cardRef = useRef<View>(null);
   const prepared = useRef<CapturedStory | null>(null);
-  const [imageSettled, setImageSettled] = useState(!review.dj.imageUrl);
+  const [imageSettled, setImageSettled] = useState(!review.dj?.imageUrl);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const filename = `beatboxd-${review.dj.slug}.png`;
+  const filename = `beatboxd-${review.dj?.slug ?? "night"}.png`;
   const link = `${WEB_URL}${ROUTES.REVIEW_DETAIL(review.id) as string}`;
 
   // On web, render the PNG as soon as the preview has settled: html2canvas is
@@ -504,17 +515,17 @@ function ShareStoryButton({ review, justLogged }: { review: ReviewDetail; justLo
         justLogged ? "border border-accent/40 bg-accent/10" : ""
       }`}
     >
-      {justLogged ? (
+      {justLogged && (
         <Text className="mb-3 text-center text-base text-ink dark:text-paper">
           Set logged! Let your followers know who you saw.
         </Text>
-      ) : null}
+      )}
       <Button onPress={() => setOpen(true)} className="w-full flex-row gap-2 py-3">
         <Ionicons name="logo-instagram" size={18} color="#F6F6F9" />
         <Text className="font-semibold text-paper">Share to Instagram story</Text>
       </Button>
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        {open ? <ShareStorySheet review={review} onClose={() => setOpen(false)} /> : null}
+        {open && <ShareStorySheet review={review} onClose={() => setOpen(false)} />}
       </Modal>
     </View>
   );
@@ -552,6 +563,8 @@ export default function ReviewDetailScreen() {
   const { id, justLogged } = useLocalSearchParams<{ id: string; justLogged?: string }>();
   const api = useApi();
   const contentStyle = usePageContentStyle();
+  // Stars sit under the DJ name on phone widths, beside it on desktop web.
+  const isDesktopWeb = useIsDesktopWeb();
   const { me } = useCurrentUser();
   const { data: review } = useQuery({
     queryKey: queryKeys.reviews.byId(id!),
@@ -561,17 +574,20 @@ export default function ReviewDetailScreen() {
   if (!review) {
     return <ReviewDetailSkeleton />;
   }
+  const subject = reviewSubject(review);
 
   return (
     <Page>
-      <Stack.Screen options={{ title: review.dj.name }} />
+      <Stack.Screen options={{ title: subject.name }} />
       <ScrollView contentContainerStyle={[contentStyle, { paddingTop: 24, alignItems: "center" }]}>
         <View className="w-full max-w-xl rounded-2xl border border-primary/15 bg-white dark:bg-surface-dark p-5 shadow-sm">
-          <View className="flex-row items-start justify-between gap-3">
-            <View className="flex-1">
-              <Link href={ROUTES.DJ(review.dj.slug)}>
+          <View
+            className={isDesktopWeb ? "flex-row items-start justify-between gap-3" : "items-start gap-2"}
+          >
+            <View className={isDesktopWeb ? "flex-1" : ""}>
+              <Link href={subject.href ?? ROUTES.REVIEW_DETAIL(review.id)}>
                 <Text className="text-2xl font-bold text-primary dark:text-primary-dark">
-                  {review.dj.name}
+                  {subject.name}
                 </Text>
               </Link>
             </View>
@@ -581,16 +597,16 @@ export default function ReviewDetailScreen() {
           {review.event && (
             <Link href={ROUTES.EVENT(review.event.id)}>
               <Text className="mt-2 text-sm font-medium text-accent-text dark:text-accent-dark">
-                {review.event.name} · {review.event.venue}
+                {subject.isNight ? "Whole night" : review.event.name} · {review.event.venue}
               </Text>
             </Link>
           )}
 
           <Text className="mt-1 text-sm text-muted">Seen {formatDate(review.seenAt)}</Text>
 
-          {review.crowdVibe && (
+          {!!review.tags?.length && (
             <View className="mt-3">
-              <CrowdVibeBadge vibe={review.crowdVibe} />
+              <ReviewTags tags={review.tags} />
             </View>
           )}
 
@@ -598,7 +614,7 @@ export default function ReviewDetailScreen() {
             <Text className="mt-4 text-base text-ink dark:text-paper">{review.reviewText}</Text>
           )}
 
-          {review.taggedUsers && review.taggedUsers.length > 0 && (
+          {!!review.taggedUsers?.length && (
             <Text className="mt-3 text-sm text-muted">
               With {review.taggedUsers.map((u) => `@${u.username}`).join(", ")}
             </Text>
@@ -609,7 +625,7 @@ export default function ReviewDetailScreen() {
               <Pressable className="flex-row items-center gap-2 active:opacity-80">
                 <Avatar
                   uri={review.user.avatarUrl}
-                  name={review.user.displayName ?? review.user.username}
+                  name={review.user.username}
                   size={28}
                 />
                 <Text className="text-sm text-muted">Reviewed by @{review.user.username}</Text>
@@ -619,9 +635,11 @@ export default function ReviewDetailScreen() {
           </View>
         </View>
 
-        {me?.id === review.userId ? (
+        {/* Story sharing hands the image to Instagram via the OS share sheet,
+            which only works well from the native iOS app. */}
+        {isIos && me?.id === review.userId && (
           <ShareStoryButton review={review} justLogged={justLogged === "1"} />
-        ) : null}
+        )}
 
         <View className="w-full max-w-xl">
           <CommentSection reviewId={review.id} />

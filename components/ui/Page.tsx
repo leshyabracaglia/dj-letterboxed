@@ -66,8 +66,8 @@ export function Page({
 }) {
   return (
     <SafeAreaView className={`flex-1 bg-paper dark:bg-ink ${className}`}>
-      {ambient ? <AmbientBackground /> : null}
-      {title ? <PageHeader title={title}>{header}</PageHeader> : null}
+      {ambient && <AmbientBackground />}
+      {!!title && <PageHeader title={title}>{header}</PageHeader>}
       {children}
     </SafeAreaView>
   );

@@ -24,6 +24,18 @@ func (h *Handlers) hydrateReviews(ctx context.Context, reviews []db.Review, opts
 		return dtos, nil
 	}
 
+	// Tags are cheap (one query) and every review display shows them, so
+	// they're always attached rather than opt-in.
+	tags, err := queries.ListTagNamesByReviewIDs(ctx, h.Pool, mapField(reviews, func(r db.Review) string { return r.ID }))
+	if err != nil {
+		return nil, err
+	}
+	for i, r := range reviews {
+		if t, ok := tags[r.ID]; ok {
+			dtos[i].Tags = t
+		}
+	}
+
 	if opts.IncludeUser {
 		ids := queries.DedupeStrings(mapField(reviews, func(r db.Review) string { return r.UserID }))
 		users, err := queries.GetUsersByIDs(ctx, h.Pool, ids)
@@ -39,13 +51,22 @@ func (h *Handlers) hydrateReviews(ctx context.Context, reviews []db.Review, opts
 	}
 
 	if opts.IncludeDj {
-		ids := queries.DedupeStrings(mapField(reviews, func(r db.Review) string { return r.DjID }))
-		djs, err := queries.GetDjsByIDs(ctx, h.Pool, ids)
+		// Night reviews have no DJ.
+		var ids []string
+		for _, r := range reviews {
+			if r.DjID != nil {
+				ids = append(ids, *r.DjID)
+			}
+		}
+		djs, err := queries.GetDjsByIDs(ctx, h.Pool, queries.DedupeStrings(ids))
 		if err != nil {
 			return nil, err
 		}
 		for i, r := range reviews {
-			if d, ok := djs[r.DjID]; ok {
+			if r.DjID == nil {
+				continue
+			}
+			if d, ok := djs[*r.DjID]; ok {
 				dd := d
 				dtos[i].Dj = &dd
 			}

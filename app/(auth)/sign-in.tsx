@@ -76,7 +76,7 @@ export default function SignInScreen() {
           onChangeText={setCode}
           className="mb-4 w-full max-w-sm rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
         />
-        {error ? <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text> : null}
+        {!!error && <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text>}
         <Button
           onPress={onVerify}
           disabled={fetchStatus === "fetching"}
@@ -111,13 +111,13 @@ export default function SignInScreen() {
           <Text className="text-sm text-primary dark:text-primary-dark">Forgot password?</Text>
         </Link>
       </View>
-      {errors.fields.identifier ? (
+      {errors.fields.identifier && (
         <Text className="mb-3 text-danger dark:text-danger-dark">{errors.fields.identifier.message}</Text>
-      ) : null}
-      {errors.fields.password ? (
+      )}
+      {errors.fields.password && (
         <Text className="mb-3 text-danger dark:text-danger-dark">{errors.fields.password.message}</Text>
-      ) : null}
-      {error ? <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text> : null}
+      )}
+      {!!error && <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text>}
       <Button
         onPress={onSubmit}
         disabled={fetchStatus === "fetching"}
@@ -128,6 +128,11 @@ export default function SignInScreen() {
       <View className="mt-10">
         <Link href={ROUTES.SIGN_UP}>
           <Text className="text-primary dark:text-primary-dark">Don&apos;t have an account? Sign up</Text>
+        </Link>
+      </View>
+      <View className="mt-4">
+        <Link href={ROUTES.FEED} replace>
+          <Text className="text-muted">Continue without an account</Text>
         </Link>
       </View>
     </View>

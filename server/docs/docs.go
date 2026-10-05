@@ -15,6 +15,25 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/app-version": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "app"
+                ],
+                "summary": "Minimum supported native app build, for the client's force-update check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/AppVersionResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/comments/{id}": {
             "delete": {
                 "security": [
@@ -348,7 +367,7 @@ const docTemplate = `{
                 "tags": [
                     "events"
                 ],
-                "summary": "Get an event by id, with all its reviews",
+                "summary": "Get a night by id, with its series, lineup, and all its reviews",
                 "parameters": [
                     {
                         "type": "string",
@@ -588,6 +607,56 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/LeaderboardEntry"
                             }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/logs": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "logs"
+                ],
+                "summary": "Log a night: find or create the night, add DJs to its lineup, and save the night and DJ reviews in one go",
+                "parameters": [
+                    {
+                        "description": "the night to log",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/createNightLogRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/NightLogResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
                         }
                     },
                     "401": {
@@ -944,6 +1013,112 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/series": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "series"
+                ],
+                "summary": "List event series (recurring events like \"Innervisions\"), most-reviewed first",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "name search; omit to list all",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "max results, 1-50, default 20",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/SeriesSummary"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/series/{slug}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "series"
+                ],
+                "summary": "Get an event series with its nights, DJs, venues, and recent reviews",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "series slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SeriesDetailResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tags": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tags"
+                ],
+                "summary": "List the tag library (defaults plus every tag users have added), most used first",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "filter to tags containing this text",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "max results, 1-50, default 30",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/TagSummary"
+                            }
                         }
                     }
                 }
@@ -1452,20 +1627,20 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "CrowdVibe": {
-            "type": "string",
-            "enum": [
-                "electric",
-                "good",
-                "average",
-                "dead"
+        "AppVersionResponse": {
+            "type": "object",
+            "required": [
+                "iosUpdateUrl",
+                "minIosBuild"
             ],
-            "x-enum-varnames": [
-                "CrowdVibeElectric",
-                "CrowdVibeGood",
-                "CrowdVibeAverage",
-                "CrowdVibeDead"
-            ]
+            "properties": {
+                "iosUpdateUrl": {
+                    "type": "string"
+                },
+                "minIosBuild": {
+                    "type": "integer"
+                }
+            }
         },
         "Dj": {
             "type": "object",
@@ -1553,6 +1728,7 @@ const docTemplate = `{
                 "eventDate",
                 "id",
                 "name",
+                "seriesId",
                 "venue",
                 "venueId"
             ],
@@ -1578,6 +1754,10 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "seriesId": {
+                    "description": "SeriesID is nil for a night that isn't part of a named event.",
+                    "type": "string"
+                },
                 "venue": {
                     "description": "Venue is the venue's display name, kept denormalized alongside\nVenueID so existing displays don't need a join.",
                     "type": "string"
@@ -1591,17 +1771,60 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "event",
-                "reviews"
+                "lineup",
+                "reviews",
+                "series"
             ],
             "properties": {
                 "event": {
                     "$ref": "#/definitions/Event"
+                },
+                "lineup": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Dj"
+                    }
                 },
                 "reviews": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/ReviewDTO"
                     }
+                },
+                "series": {
+                    "description": "Series is nil for a night that isn't part of a named event.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/EventSeries"
+                        }
+                    ]
+                }
+            }
+        },
+        "EventSeries": {
+            "type": "object",
+            "required": [
+                "createdAt",
+                "createdByUserId",
+                "id",
+                "name",
+                "slug"
+            ],
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "createdByUserId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
                 }
             }
         },
@@ -1667,6 +1890,28 @@ const docTemplate = `{
                 }
             }
         },
+        "NightLogResponse": {
+            "type": "object",
+            "required": [
+                "event",
+                "reviews",
+                "series"
+            ],
+            "properties": {
+                "event": {
+                    "$ref": "#/definitions/Event"
+                },
+                "reviews": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Review"
+                    }
+                },
+                "series": {
+                    "$ref": "#/definitions/EventSeries"
+                }
+            }
+        },
         "PaginatedReviews": {
             "type": "object",
             "required": [
@@ -1723,8 +1968,6 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "createdAt",
-                "crowdVibe",
-                "crowdVibeNote",
                 "djId",
                 "eventId",
                 "id",
@@ -1738,13 +1981,8 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
-                "crowdVibe": {
-                    "$ref": "#/definitions/CrowdVibe"
-                },
-                "crowdVibeNote": {
-                    "type": "string"
-                },
                 "djId": {
+                    "description": "DjID is nil for a review of the night as a whole (EventID is then set).",
                     "type": "string"
                 },
                 "eventId": {
@@ -1804,8 +2042,6 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "createdAt",
-                "crowdVibe",
-                "crowdVibeNote",
                 "djId",
                 "eventId",
                 "id",
@@ -1813,6 +2049,7 @@ const docTemplate = `{
                 "reviewText",
                 "seenAt",
                 "taggedUsers",
+                "tags",
                 "updatedAt",
                 "userId"
             ],
@@ -1823,16 +2060,11 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
-                "crowdVibe": {
-                    "$ref": "#/definitions/CrowdVibe"
-                },
-                "crowdVibeNote": {
-                    "type": "string"
-                },
                 "dj": {
                     "$ref": "#/definitions/Dj"
                 },
                 "djId": {
+                    "description": "DjID is nil for a review of the night as a whole (EventID is then set).",
                     "type": "string"
                 },
                 "event": {
@@ -1868,6 +2100,12 @@ const docTemplate = `{
                         "$ref": "#/definitions/User"
                     }
                 },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "updatedAt": {
                     "type": "string"
                 },
@@ -1876,6 +2114,141 @@ const docTemplate = `{
                 },
                 "userId": {
                     "type": "string"
+                }
+            }
+        },
+        "SeriesDetailResponse": {
+            "type": "object",
+            "required": [
+                "djs",
+                "nights",
+                "recentReviews",
+                "series",
+                "venues"
+            ],
+            "properties": {
+                "djs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/SeriesDj"
+                    }
+                },
+                "nights": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/SeriesNight"
+                    }
+                },
+                "recentReviews": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ReviewDTO"
+                    }
+                },
+                "series": {
+                    "$ref": "#/definitions/SeriesSummary"
+                },
+                "venues": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/SeriesVenue"
+                    }
+                }
+            }
+        },
+        "SeriesDj": {
+            "type": "object",
+            "required": [
+                "dj",
+                "nightCount"
+            ],
+            "properties": {
+                "dj": {
+                    "$ref": "#/definitions/Dj"
+                },
+                "nightCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "SeriesNight": {
+            "type": "object",
+            "required": [
+                "avgRating",
+                "event",
+                "reviewCount"
+            ],
+            "properties": {
+                "avgRating": {
+                    "type": "number"
+                },
+                "event": {
+                    "$ref": "#/definitions/Event"
+                },
+                "reviewCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "SeriesSummary": {
+            "type": "object",
+            "required": [
+                "avgRating",
+                "createdAt",
+                "createdByUserId",
+                "id",
+                "name",
+                "nightCount",
+                "reviewCount",
+                "slug"
+            ],
+            "properties": {
+                "avgRating": {
+                    "type": "number"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "createdByUserId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nightCount": {
+                    "type": "integer"
+                },
+                "reviewCount": {
+                    "type": "integer"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "SeriesVenue": {
+            "type": "object",
+            "required": [
+                "city",
+                "id",
+                "name",
+                "nightCount"
+            ],
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nightCount": {
+                    "type": "integer"
                 }
             }
         },
@@ -1913,6 +2286,29 @@ const docTemplate = `{
             "properties": {
                 "success": {
                     "type": "boolean"
+                }
+            }
+        },
+        "TagSummary": {
+            "type": "object",
+            "required": [
+                "id",
+                "isDefault",
+                "name",
+                "useCount"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "isDefault": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "useCount": {
+                    "type": "integer"
                 }
             }
         },
@@ -2177,25 +2573,96 @@ const docTemplate = `{
                 }
             }
         },
+        "createNightLogRequest": {
+            "type": "object",
+            "required": [
+                "city",
+                "djReviews",
+                "lineupDjIds",
+                "night",
+                "placeId",
+                "placeSessionToken",
+                "seenAt",
+                "seriesId",
+                "seriesName",
+                "taggedUserIds",
+                "tags",
+                "venue",
+                "venueId"
+            ],
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "djReviews": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/djReviewInput"
+                    }
+                },
+                "lineupDjIds": {
+                    "description": "DJs the user saw; added to the night's lineup. DJs in djReviews are\nadded too, whether or not they're listed here.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "night": {
+                    "description": "Review of the night as a whole. Required unless djReviews has one.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/nightReviewInput"
+                        }
+                    ]
+                },
+                "placeId": {
+                    "type": "string"
+                },
+                "placeSessionToken": {
+                    "type": "string"
+                },
+                "seenAt": {
+                    "type": "string"
+                },
+                "seriesId": {
+                    "type": "string"
+                },
+                "seriesName": {
+                    "type": "string"
+                },
+                "taggedUserIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "tags": {
+                    "description": "Tag names and tagged friends go on the night review, or on every DJ\nreview when there's no night review.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "venue": {
+                    "type": "string"
+                },
+                "venueId": {
+                    "type": "string"
+                }
+            }
+        },
         "createReviewRequest": {
             "type": "object",
             "required": [
-                "crowdVibe",
-                "crowdVibeNote",
                 "djId",
                 "eventId",
                 "rating",
                 "reviewText",
                 "seenAt",
-                "taggedUserIds"
+                "taggedUserIds",
+                "tags"
             ],
             "properties": {
-                "crowdVibe": {
-                    "type": "string"
-                },
-                "crowdVibeNote": {
-                    "type": "string"
-                },
                 "djId": {
                     "type": "string"
                 },
@@ -2216,6 +2683,32 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "tags": {
+                    "description": "Tag names (new ones are added to the library). Omitted = leave\nas-is, [] = clear - same contract as TaggedUserIDs.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "djReviewInput": {
+            "type": "object",
+            "required": [
+                "djId",
+                "rating",
+                "reviewText"
+            ],
+            "properties": {
+                "djId": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "integer"
+                },
+                "reviewText": {
+                    "type": "string"
                 }
             }
         },
@@ -2227,6 +2720,21 @@ const docTemplate = `{
             "properties": {
                 "error": {
                     "$ref": "#/definitions/apiError"
+                }
+            }
+        },
+        "nightReviewInput": {
+            "type": "object",
+            "required": [
+                "rating",
+                "reviewText"
+            ],
+            "properties": {
+                "rating": {
+                    "type": "integer"
+                },
+                "reviewText": {
+                    "type": "string"
                 }
             }
         },
@@ -2270,20 +2778,13 @@ const docTemplate = `{
         "updateReviewRequest": {
             "type": "object",
             "required": [
-                "crowdVibe",
-                "crowdVibeNote",
                 "rating",
                 "reviewText",
                 "seenAt",
-                "taggedUserIds"
+                "taggedUserIds",
+                "tags"
             ],
             "properties": {
-                "crowdVibe": {
-                    "type": "string"
-                },
-                "crowdVibeNote": {
-                    "type": "string"
-                },
                 "rating": {
                     "type": "integer"
                 },
@@ -2294,6 +2795,13 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "taggedUserIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "tags": {
+                    "description": "Tag names (new ones are added to the library). Omitted = leave\nas-is, [] = clear - same contract as TaggedUserIDs.",
                     "type": "array",
                     "items": {
                         "type": "string"
