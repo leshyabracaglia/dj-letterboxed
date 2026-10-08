@@ -17,7 +17,8 @@ function resolveApiUrl() {
       ? globalThis.location?.hostname
       : Constants.expoConfig?.hostUri?.split(":")[0];
   if (!host || host.endsWith(".exp.direct")) return configured;
-  return `http://${host}:8080`;
+  // The e2e suite runs its own API (on its own seeded DB) on another port.
+  return `http://${host}:${process.env.EXPO_PUBLIC_DEV_API_PORT ?? "8080"}`;
 }
 
 const API_URL = resolveApiUrl();

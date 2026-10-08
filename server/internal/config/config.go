@@ -17,6 +17,9 @@ type Config struct {
 	// Optional: without it place search returns 503 and venues can only be
 	// typed in by hand.
 	GooglePlacesAPIKey string
+	// Optional: only needed if the Expo project has enhanced push security
+	// turned on. Push notifications send without it otherwise.
+	ExpoAccessToken string
 }
 
 func Load() (*Config, error) {
@@ -30,6 +33,7 @@ func Load() (*Config, error) {
 		SpotifyClientID:           os.Getenv("SPOTIFY_CLIENT_ID"),
 		SpotifyClientSecret:       os.Getenv("SPOTIFY_CLIENT_SECRET"),
 		GooglePlacesAPIKey:        os.Getenv("GOOGLE_PLACES_API_KEY"),
+		ExpoAccessToken:           os.Getenv("EXPO_ACCESS_TOKEN"),
 	}
 	// Terraform stores "unset" when no key was given (Secrets Manager
 	// rejects empty strings); treat it as not configured.

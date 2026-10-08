@@ -20,23 +20,24 @@ import {
   KEYBOARD_DISMISS_PROPS,
   KeyboardScrollView,
   Page,
-  RatingStars,
+  RatingStamp,
+  RatingStampPicker,
   Skeleton,
   Text,
   usePageContentStyle,
 } from "../../components/ui";
-import { useDjSearch, useSeriesSearch, useUserSearch, useVenueSearch } from "../../lib/api/hooks";
+import { useDjSearch, useEventSearch, useUserSearch, useVenueSearch } from "../../lib/api/hooks";
 import { useCurrentUser } from "../../lib/auth";
 import { useApi } from "../../lib/api/client";
 import { queryKeys } from "../../lib/api/queryKeys";
 import type {
   CreateNightLogInput,
   Dj,
+  EventSummary,
   NightLogResponse,
   Paginated,
   PlaceSuggestion,
   Review,
-  SeriesSummary,
   SpotifyArtist,
   TagSummary,
   User,
@@ -68,9 +69,9 @@ type ILineupEntry = {
   expanded: boolean;
 };
 
-// An existing event series ("Innervisions"), or a new one created by name
-// when the night is saved.
-type ISeriesPick = { type: "existing"; series: SeriesSummary } | { type: "new"; name: string };
+// An existing event ("Innervisions NY"), or a new one created by name when
+// the night is saved.
+type IEventPick = { type: "existing"; event: EventSummary } | { type: "new"; name: string };
 
 // An already-saved venue, a Google Places result (saved as a venue when the
 // night is saved), or a name typed in by hand.
@@ -82,7 +83,8 @@ type IVenuePick =
 // Form fields as typed; turned into the POST /logs body on submit. rating,
 // tags and reviewText are the review of the night as a whole.
 type IReviewDraft = {
-  seriesPick?: ISeriesPick;
+  // The event, if the night had a name; none is a night at the venue.
+  eventPick?: IEventPick;
   venuePick?: IVenuePick;
   // Only asked for (and sent) for a typed-in venue; saved and Google venues
   // already know their city.
@@ -124,7 +126,7 @@ function artistPickKey(pick: IArtistPick) {
 }
 
 const INPUT_CLASS =
-  "rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted";
+  "rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-3 text-ink dark:text-paper placeholder:text-muted";
 
 // Fixed row height so the dropdown can cap itself at exactly five rows.
 const RESULT_ROW_HEIGHT = 64;
@@ -223,11 +225,11 @@ function ArtistSearchInput({
         className={INPUT_CLASS}
       />
       {enabled && (
-        <View className="mt-1 overflow-hidden rounded-xl border border-primary/20 bg-white dark:bg-surface-dark">
+        <View className="mt-1 overflow-hidden rounded-md border-2 border-white/15 bg-zine-panel/90">
           <ScrollView
             style={{ maxHeight: RESULT_ROW_HEIGHT * VISIBLE_RESULT_ROWS }}
             nestedScrollEnabled
-            keyboardShouldPersistTaps="handled"
+            {...KEYBOARD_DISMISS_PROPS}
           >
             {showSkeleton && (
               <View
@@ -310,7 +312,7 @@ function LineupEntryRow({
             {name}
           </Text>
           {entry.rating ? (
-            <RatingStars value={entry.rating} size={12} />
+            <RatingStamp value={entry.rating} size={34} />
           ) : (
             <Text className="text-xs text-muted">Not rated</Text>
           )}
@@ -332,7 +334,7 @@ function LineupEntryRow({
       {entry.expanded && (
         <View className="mt-3 border-t border-muted/10 pt-3">
           <View className="flex-row items-center justify-between">
-            <RatingStars value={entry.rating} onChange={(rating) => onChange({ rating })} size={22} />
+            <RatingStampPicker value={entry.rating} onChange={(rating) => onChange({ rating })} size={48} />
             {!!entry.rating && (
               <Pressable onPress={() => onChange({ rating: undefined })} hitSlop={8}>
                 <Text className="text-xs text-muted">Clear</Text>
@@ -352,84 +354,16 @@ function LineupEntryRow({
   );
 }
 
-// Search existing event series ("Innervisions") or create one by name.
-function SeriesSearchInput({ onSelect }: { onSelect: (pick: ISeriesPick) => void }) {
-  const [value, setValue] = useState("");
-  const query = value.trim();
-  const enabled = query.length > 1;
-  const { data, isFetching } = useSeriesSearch(query, enabled);
-  const results = enabled ? (data ?? []) : [];
-  const exactMatch = results.some((s) => s.name.toLowerCase() === query.toLowerCase());
-
+function SelectedEventCard({ pick, onClear }: { pick: IEventPick; onClear: () => void }) {
   return (
-    <View>
-      <TextInput
-        placeholder="e.g. Innervisions, Boiler Room"
-        value={value}
-        onChangeText={setValue}
-        className={INPUT_CLASS}
-      />
-      {enabled && (
-        <View className="mt-1 overflow-hidden rounded-xl border border-primary/20 bg-white dark:bg-surface-dark">
-          <ScrollView
-            style={{ maxHeight: RESULT_ROW_HEIGHT * VISIBLE_RESULT_ROWS }}
-            nestedScrollEnabled
-            keyboardShouldPersistTaps="handled"
-          >
-            {results.map((series) => (
-              <Pressable
-                key={series.id}
-                onPress={() => onSelect({ type: "existing", series })}
-                style={{ height: RESULT_ROW_HEIGHT }}
-                className="justify-center border-b border-muted/10 px-4 active:bg-primary-tint/40 dark:active:bg-primary/10"
-              >
-                <Text numberOfLines={1} className="text-ink dark:text-paper">
-                  {series.name}
-                </Text>
-                <Text className="text-xs text-muted">
-                  {series.nightCount} {series.nightCount === 1 ? "night" : "nights"} logged
-                </Text>
-              </Pressable>
-            ))}
-            {isFetching && !results.length && (
-              <View
-                style={{ height: RESULT_ROW_HEIGHT }}
-                className="justify-center border-b border-muted/10 px-4"
-              >
-                <Skeleton className="h-4 w-40" />
-                <Skeleton className="mt-1.5 h-3 w-24" />
-              </View>
-            )}
-          </ScrollView>
-          {!exactMatch && (
-            <Pressable
-              onPress={() => onSelect({ type: "new", name: query })}
-              className="flex-row items-center gap-3 px-4 py-3 active:bg-primary-tint/40 dark:active:bg-primary/10"
-            >
-              <View className="h-10 w-10 items-center justify-center rounded-lg border border-dashed border-accent/60">
-                <Text className="text-lg text-accent-text dark:text-accent-dark">+</Text>
-              </View>
-              <Text numberOfLines={1} className="flex-1 font-medium text-accent-text dark:text-accent-dark">
-                Create event &ldquo;{query}&rdquo;
-              </Text>
-            </Pressable>
-          )}
-        </View>
-      )}
-    </View>
-  );
-}
-
-function SelectedSeriesCard({ pick, onClear }: { pick: ISeriesPick; onClear: () => void }) {
-  return (
-    <View className="flex-row items-center gap-3 rounded-xl border border-primary/20 bg-white px-4 py-3 dark:bg-surface-dark">
+    <View className="flex-row items-center gap-3 rounded-md border-2 border-white/15 bg-zine-panel/90 px-4 py-3">
       <View className="flex-1">
         <Text numberOfLines={1} className="font-semibold text-ink dark:text-paper">
-          {pick.type === "existing" ? pick.series.name : pick.name}
+          {pick.type === "existing" ? pick.event.name : pick.name}
         </Text>
         <Text numberOfLines={1} className="text-xs text-muted">
           {pick.type === "existing"
-            ? `${pick.series.nightCount} ${pick.series.nightCount === 1 ? "night" : "nights"} logged`
+            ? `${pick.event.logCount} ${pick.event.logCount === 1 ? "night" : "nights"} logged`
             : "New event"}
         </Text>
       </View>
@@ -505,7 +439,7 @@ function CreateArtistModal({
                 <Avatar uri={trimmedImageUrl || null} name={name || "?"} size={88} />
               </View>
 
-              <Text className="mb-1 text-sm font-medium text-muted">Name</Text>
+              <Text className="mb-1 font-display text-lg uppercase text-paper/70">Name</Text>
               <TextInput
                 placeholder="Artist name"
                 value={name}
@@ -513,7 +447,7 @@ function CreateArtistModal({
                 className={`mb-3 ${INPUT_CLASS}`}
               />
 
-              <Text className="mb-1 text-sm font-medium text-muted">Image link (optional)</Text>
+              <Text className="mb-1 font-display text-lg uppercase text-paper/70">Image link (optional)</Text>
               <TextInput
                 placeholder="https://…"
                 value={imageUrl}
@@ -524,7 +458,7 @@ function CreateArtistModal({
                 className={`mb-3 ${INPUT_CLASS}`}
               />
 
-              <Text className="mb-1 text-sm font-medium text-muted">Genres (optional)</Text>
+              <Text className="mb-1 font-display text-lg uppercase text-paper/70">Genres (optional)</Text>
               <TextInput
                 placeholder="techno, house, dubstep"
                 value={genresText}
@@ -533,7 +467,7 @@ function CreateArtistModal({
                 className={`mb-3 ${INPUT_CLASS}`}
               />
 
-              <Text className="mb-1 text-sm font-medium text-muted">Quick bio (optional)</Text>
+              <Text className="mb-1 font-display text-lg uppercase text-paper/70">Quick bio (optional)</Text>
               <TextInput
                 placeholder="A sentence or two about them"
                 value={bio}
@@ -596,7 +530,7 @@ function venuePickSubtitle(pick: IVenuePick) {
   return "Added by you";
 }
 
-function VenueResultRow({
+function ResultRow({
   name,
   subtitle,
   onPress,
@@ -670,14 +604,14 @@ function VenueSearchInput({
         className={INPUT_CLASS}
       />
       {enabled && (
-        <View className="mt-1 overflow-hidden rounded-xl border border-primary/20 bg-white dark:bg-surface-dark">
+        <View className="mt-1 overflow-hidden rounded-md border-2 border-white/15 bg-zine-panel/90">
           <ScrollView
             style={{ maxHeight: RESULT_ROW_HEIGHT * VISIBLE_RESULT_ROWS }}
             nestedScrollEnabled
-            keyboardShouldPersistTaps="handled"
+            {...KEYBOARD_DISMISS_PROPS}
           >
             {rows.map((row) => (
-              <VenueResultRow
+              <ResultRow
                 key={venuePickKey(row)}
                 name={venuePickName(row)}
                 subtitle={venuePickSubtitle(row)}
@@ -729,6 +663,69 @@ function SelectedVenueCard({ pick, onClear }: { pick: IVenuePick; onClear: () =>
   );
 }
 
+// The Event field, searched like the DJ field: pick an event someone already
+// logged ("Innervisions NY"), or create one by name. Optional - a night with
+// no event name is just the venue below.
+function EventInput({ onPick }: { onPick: (pick: IEventPick) => void }) {
+  const [value, setValue] = useState("");
+  const query = useDebouncedValue(value.trim(), 200);
+  const enabled = query.length > 1;
+  const { data, isFetching } = useEventSearch(query, enabled);
+  const results = enabled ? (data ?? []) : [];
+  const exactMatch = results.some((e) => e.name.toLowerCase() === query.toLowerCase());
+
+  return (
+    <View>
+      <TextInput
+        placeholder="e.g. Innervisions NY, Boiler Room"
+        value={value}
+        onChangeText={setValue}
+        className={INPUT_CLASS}
+      />
+      {enabled && (
+        <View className="mt-1 overflow-hidden rounded-md border-2 border-white/15 bg-zine-panel/90">
+          <ScrollView
+            style={{ maxHeight: RESULT_ROW_HEIGHT * VISIBLE_RESULT_ROWS }}
+            nestedScrollEnabled
+            {...KEYBOARD_DISMISS_PROPS}
+          >
+            {results.map((event) => (
+              <ResultRow
+                key={event.id}
+                name={event.name}
+                subtitle={`${event.logCount} ${event.logCount === 1 ? "night" : "nights"} logged`}
+                onPress={() => onPick({ type: "existing", event })}
+              />
+            ))}
+            {isFetching && !results.length && (
+              <View
+                style={{ height: RESULT_ROW_HEIGHT }}
+                className="justify-center border-b border-muted/10 px-4"
+              >
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="mt-1.5 h-3 w-24" />
+              </View>
+            )}
+          </ScrollView>
+          {!exactMatch && (
+            <Pressable
+              onPress={() => onPick({ type: "new", name: query })}
+              className="flex-row items-center gap-3 px-4 py-3 active:bg-primary-tint/40 dark:active:bg-primary/10"
+            >
+              <View className="h-10 w-10 items-center justify-center rounded-lg border border-dashed border-accent/60">
+                <Text className="text-lg text-accent-text dark:text-accent-dark">+</Text>
+              </View>
+              <Text numberOfLines={1} className="flex-1 font-medium text-accent-text dark:text-accent-dark">
+                Create event &ldquo;{query}&rdquo;
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
 function TagFriendsPicker({
   taggedUsers,
   onAdd,
@@ -753,7 +750,7 @@ function TagFriendsPicker({
             <Pressable
               key={u.id}
               onPress={() => onRemove(u.id)}
-              className="flex-row items-center gap-1.5 rounded-full border border-accent/40 bg-accent-tint px-3 py-1.5 active:opacity-80 dark:bg-accent/20"
+              className="flex-row items-center gap-1.5 rounded-md border border-accent/40 bg-accent-tint px-3 py-1.5 active:opacity-80 dark:bg-accent/20"
             >
               <Avatar uri={u.avatarUrl} name={u.username} size={16} />
               <Text className="text-accent-text dark:text-accent-dark">@{u.username}</Text>
@@ -769,7 +766,7 @@ function TagFriendsPicker({
         className={INPUT_CLASS}
       />
       {trimmed.length > 1 && !!results?.length && (
-        <View className="mt-1 overflow-hidden rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary">
+        <View className="mt-1 overflow-hidden rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper">
           {results
             .filter((u) => !taggedIds.has(u.id))
             .map((u) => (
@@ -840,7 +837,7 @@ function TagPicker({
             <Pressable
               key={tag}
               onPress={() => onRemove(tag)}
-              className="flex-row items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 active:opacity-80"
+              className="flex-row items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 active:opacity-80"
             >
               <Text className="text-paper">{tag}</Text>
               <Icon name="close" size={14} className="text-paper" />
@@ -868,7 +865,7 @@ function TagPicker({
               {canCreate && (
                 <Pressable
                   onPress={() => add(typed)}
-                  className="flex-row items-center gap-1 rounded-full border border-dashed border-primary px-3 py-1.5 active:opacity-80"
+                  className="flex-row items-center gap-1 rounded-md border border-dashed border-primary px-3 py-1.5 active:opacity-80"
                 >
                   <Icon name="add" size={14} className="text-primary dark:text-primary-dark" />
                   <Text className="text-primary dark:text-primary-dark">Add "{typed}"</Text>
@@ -878,7 +875,7 @@ function TagPicker({
                 <Pressable
                   key={t.id}
                   onPress={() => add(t.name)}
-                  className="rounded-full border border-primary/20 bg-white px-3 py-1.5 active:opacity-80 dark:bg-surface-dark"
+                  className="rounded-md border border-primary/20 bg-white px-3 py-1.5 active:opacity-80 dark:bg-surface-dark"
                 >
                   <Text className="text-ink dark:text-paper">{t.name}</Text>
                 </Pressable>
@@ -943,7 +940,7 @@ export default function CreateReviewScreen() {
       setError("Must be logged in to create a review");
       return;
     }
-    const { venuePick } = draft;
+    const { eventPick, venuePick } = draft;
     if (!venuePick) {
       setError("Pick the venue you were at");
       return;
@@ -967,6 +964,21 @@ export default function CreateReviewScreen() {
     // calendar day in any time zone (UTC midnight shows as the day before
     // across the Americas).
     seenAtDate.setHours(12);
+    const where: Omit<CreateNightLogInput, "lineupDjIds" | "night" | "djReviews" | "tags" | "taggedUserIds"> = {
+      ...(eventPick?.type === "existing"
+        ? { eventId: eventPick.event.id }
+        : eventPick?.type === "new"
+          ? { eventName: eventPick.name }
+          : {}),
+      ...(venuePick.type === "existing"
+        ? { venueId: venuePick.venue.id }
+        : venuePick.type === "place"
+          ? { placeId: venuePick.place.placeId, placeSessionToken: placesSessionToken }
+          : { venue: venuePick.name, city: draft.city.trim() || undefined }),
+      seenAt: seenAtDate.toISOString(),
+      isDay: draft.isDay,
+      isNight: draft.isNight,
+    };
     if (!draft.rating && !anyDjRated) {
       setError("Rate the night, or at least one DJ");
       return;
@@ -997,21 +1009,8 @@ export default function CreateReviewScreen() {
       const djFor = (entry: ILineupEntry) => djsByKey.get(entry.key)!;
       const rated = lineup.filter((e) => !!e.rating);
 
-      const { seriesPick } = draft;
       const result = await createLog.mutateAsync({
-        ...(seriesPick?.type === "existing"
-          ? { seriesId: seriesPick.series.id }
-          : seriesPick?.type === "new"
-            ? { seriesName: seriesPick.name }
-            : {}),
-        ...(venuePick.type === "existing"
-          ? { venueId: venuePick.venue.id }
-          : venuePick.type === "place"
-            ? { placeId: venuePick.place.placeId, placeSessionToken: placesSessionToken }
-            : { venue: venuePick.name, city: draft.city.trim() || undefined }),
-        seenAt: seenAtDate.toISOString(),
-        isDay: draft.isDay,
-        isNight: draft.isNight,
+        ...where,
         lineupDjIds: lineup.map((e) => djFor(e).id),
         night: draft.rating
           ? { rating: draft.rating, reviewText: draft.reviewText.trim() || undefined }
@@ -1031,12 +1030,17 @@ export default function CreateReviewScreen() {
       // review, or on every DJ review when the night wasn't rated (as the
       // server does).
       const djsById = new Map([...djsByKey.values()].map((dj) => [dj.id, dj]));
+      const log = {
+        ...result.log,
+        event: result.event,
+        lineup: lineup.map(djFor).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase())),
+      };
       const fullReviews: Review[] = result.reviews.map((r, i) => {
         const carriesTags = !draft.rating || i === 0;
         return {
           ...r,
           dj: r.djId ? djsById.get(r.djId) : undefined,
-          event: result.event,
+          log,
           user: me,
           taggedUsers: carriesTags ? draft.taggedUsers : [],
           tags: carriesTags ? [...draft.tags].sort() : [],
@@ -1058,16 +1062,15 @@ export default function CreateReviewScreen() {
         queryClient.setQueryData<Review>(queryKeys.reviews.byId(review.id), review);
       }
 
-      const { event } = result;
       queryClient.invalidateQueries({ queryKey: reviewsKey });
       queryClient.invalidateQueries({ queryKey: queryKeys.users.stats(me.username) });
       for (const dj of djsById.values()) {
         queryClient.invalidateQueries({ queryKey: queryKeys.djs.bySlug(dj.slug) });
       }
-      queryClient.invalidateQueries({ queryKey: queryKeys.events.byId(event.id) });
-      if (event.venueId) queryClient.invalidateQueries({ queryKey: queryKeys.venues.byId(event.venueId) });
+      if (result.event) queryClient.invalidateQueries({ queryKey: queryKeys.events.bySlug(result.event.slug) });
+      if (result.log.venueId) queryClient.invalidateQueries({ queryKey: queryKeys.venues.byId(result.log.venueId) });
       queryClient.invalidateQueries({ queryKey: ["venues", "search"] });
-      queryClient.invalidateQueries({ queryKey: ["series"] });
+      queryClient.invalidateQueries({ queryKey: ["events", "list"] });
       queryClient.invalidateQueries({ queryKey: queryKeys.feed.activity() });
       queryClient.invalidateQueries({ queryKey: queryKeys.feed.popular() });
       queryClient.invalidateQueries({ queryKey: ["tags"] });
@@ -1085,77 +1088,21 @@ export default function CreateReviewScreen() {
   const editingEntry = lineup.find((e) => e.key === artistModal?.editingKey);
 
   return (
-    <Page title="Review a Set">
+    <Page title="Log a night" channel="CH 03 · Log">
       <KeyboardScrollView contentContainerStyle={contentStyle}>
-        <Text className="mb-1 text-sm font-medium text-muted">Event (optional)</Text>
+        <Text className="mb-1 font-display text-lg uppercase text-paper/70">Event (optional)</Text>
         <View className="mb-4">
-          {draft.seriesPick ? (
-            <SelectedSeriesCard
-              pick={draft.seriesPick}
-              onClear={() => updateDraft({ seriesPick: undefined })}
-            />
+          {draft.eventPick ? (
+            <SelectedEventCard pick={draft.eventPick} onClear={() => updateDraft({ eventPick: undefined })} />
           ) : (
-            <SeriesSearchInput onSelect={(seriesPick) => updateDraft({ seriesPick })} />
+            <>
+              <EventInput onPick={(eventPick) => updateDraft({ eventPick })} />
+              <Text className="mt-1 text-xs text-muted">Leave it blank for a one-off night and just add the venue.</Text>
+            </>
           )}
         </View>
 
-        <Text className="mb-1 text-sm font-medium text-muted">Venue</Text>
-        <View className="mb-4">
-          {draft.venuePick ? (
-            <SelectedVenueCard
-              pick={draft.venuePick}
-              onClear={() => {
-                updateDraft({ venuePick: undefined });
-                // A new search is a new Google billing session.
-                setPlacesSessionToken(newPlacesSessionToken());
-              }}
-            />
-          ) : (
-            <VenueSearchInput
-              sessionToken={placesSessionToken}
-              onSelect={(venuePick) => updateDraft({ venuePick })}
-            />
-          )}
-          {draft.venuePick?.type === "typed" && (
-            <TextInput
-              placeholder="City"
-              value={draft.city}
-              onChangeText={(city) => updateDraft({ city })}
-              className={`mt-2 ${INPUT_CLASS}`}
-            />
-          )}
-        </View>
-
-        <Text className="mb-1 text-sm font-medium text-muted">Date</Text>
-        <View className="mb-4">
-          <DateInput
-            value={draft.seenAt}
-            onChange={(seenAt) => updateDraft({ seenAt })}
-            maximumDate={new Date()}
-            className={INPUT_CLASS}
-          />
-        </View>
-
-        <Text className="mb-1 text-sm font-medium text-muted">Day or night</Text>
-        <View className="mb-4 flex-row gap-2">
-          {DAY_NIGHT_OPTIONS.map(({ field, label, icon }) => {
-            const selected = draft[field];
-            return (
-              <Pressable
-                key={field}
-                onPress={() => updateDraft({ [field]: !selected })}
-                className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-full py-2 active:opacity-80 ${
-                  selected ? "bg-primary" : "border border-primary/20 bg-white dark:bg-surface-dark"
-                }`}
-              >
-                <Icon name={icon} size={16} className={selected ? "text-paper" : "text-ink dark:text-paper"} />
-                <Text className={selected ? "font-medium text-paper" : "text-ink dark:text-paper"}>{label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <Text className="mb-1 text-sm font-medium text-muted">DJs you saw</Text>
+        <Text className="mb-1 font-display text-lg uppercase text-paper/70">DJs you saw</Text>
         <View className="mb-4">
           {lineup.map((entry) => (
             <LineupEntryRow
@@ -1198,13 +1145,69 @@ export default function CreateReviewScreen() {
           />
         )}
 
-        <View className="mb-4 border-t border-primary/15 pt-4">
-          <Text className="text-base font-semibold text-ink dark:text-paper">The night overall</Text>
+        <Text className="mb-1 font-display text-lg uppercase text-paper/70">Venue</Text>
+        <View className="mb-4">
+          {draft.venuePick ? (
+            <SelectedVenueCard
+              pick={draft.venuePick}
+              onClear={() => {
+                updateDraft({ venuePick: undefined });
+                // A new search is a new Google billing session.
+                setPlacesSessionToken(newPlacesSessionToken());
+              }}
+            />
+          ) : (
+            <VenueSearchInput
+              sessionToken={placesSessionToken}
+              onSelect={(venuePick) => updateDraft({ venuePick })}
+            />
+          )}
+          {draft.venuePick?.type === "typed" && (
+            <TextInput
+              placeholder="City"
+              value={draft.city}
+              onChangeText={(city) => updateDraft({ city })}
+              className={`mt-2 ${INPUT_CLASS}`}
+            />
+          )}
         </View>
 
-        <Text className="mb-1 text-sm font-medium text-muted">Rating</Text>
+        <Text className="mb-1 font-display text-lg uppercase text-paper/70">Date</Text>
+        <View className="mb-4">
+          <DateInput
+            value={draft.seenAt}
+            onChange={(seenAt) => updateDraft({ seenAt })}
+            maximumDate={new Date()}
+            className={INPUT_CLASS}
+          />
+        </View>
+
+        <Text className="mb-1 font-display text-lg uppercase text-paper/70">Day or night</Text>
+        <View className="mb-4 flex-row gap-2">
+          {DAY_NIGHT_OPTIONS.map(({ field, label, icon }) => {
+            const selected = draft[field];
+            return (
+              <Pressable
+                key={field}
+                onPress={() => updateDraft({ [field]: !selected })}
+                className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-md py-2 active:opacity-80 ${
+                  selected ? "bg-primary" : "border-2 border-white/15 bg-zine-panel/90"
+                }`}
+              >
+                <Icon name={icon} size={16} className={selected ? "text-paper" : "text-ink dark:text-paper"} />
+                <Text className={selected ? "font-medium text-paper" : "text-ink dark:text-paper"}>{label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <View className="mb-4 border-t border-primary/15 pt-4">
+          <Text className="font-display text-2xl uppercase text-paper">The night overall</Text>
+        </View>
+
+        <Text className="mb-1 font-display text-lg uppercase text-paper/70">Rating</Text>
         <View className="mb-4 flex-row items-center justify-between">
-          <RatingStars value={draft.rating} onChange={(rating) => updateDraft({ rating })} size={22} />
+          <RatingStampPicker value={draft.rating} onChange={(rating) => updateDraft({ rating })} />
           {!!draft.rating && anyDjRated && (
             <Pressable onPress={() => updateDraft({ rating: undefined })} hitSlop={8}>
               <Text className="text-xs text-muted">Clear</Text>
@@ -1212,7 +1215,7 @@ export default function CreateReviewScreen() {
           )}
         </View>
 
-        <Text className="mb-1 text-sm font-medium text-muted">Tags (optional)</Text>
+        <Text className="mb-1 font-display text-lg uppercase text-paper/70">Tags (optional)</Text>
         <View className="mb-4">
           <TagPicker
             tags={draft.tags}
@@ -1223,7 +1226,7 @@ export default function CreateReviewScreen() {
           />
         </View>
 
-        <Text className="mb-1 text-sm font-medium text-muted">Review</Text>
+        <Text className="mb-1 font-display text-lg uppercase text-paper/70">Review</Text>
         <TextInput
           placeholder="How was the night?"
           value={draft.reviewText}
@@ -1233,7 +1236,7 @@ export default function CreateReviewScreen() {
           className={`mb-4 min-h-24 ${INPUT_CLASS}`}
         />
 
-        <Text className="mb-1 text-sm font-medium text-muted">Tag friends (optional)</Text>
+        <Text className="mb-1 font-display text-lg uppercase text-paper/70">Tag friends (optional)</Text>
         <View className="mb-4">
           <TagFriendsPicker
             taggedUsers={draft.taggedUsers}

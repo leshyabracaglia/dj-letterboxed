@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { BlurView } from "expo-blur";
-import { cssInterop, useColorScheme } from "nativewind";
-import { Platform, StyleSheet, View, type ViewStyle } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { cssInterop } from "nativewind";
+import { Image, StyleSheet, View } from "react-native";
 
 import { PageHeader } from "./PageHeader";
 
@@ -14,61 +14,69 @@ import { PageHeader } from "./PageHeader";
 // SafeAreaView in the app gets it, not just Page's.
 cssInterop(SafeAreaView, { className: "style" });
 
-// Web-only; cast because RN's ViewStyle doesn't declare CSS filter strings.
-const DARK_GLOW = { filter: "blur(90px)" } as ViewStyle;
+const WALL = require("../../assets/concrete-wall.jpg");
 
-// A blur over a flat single-color page looks identical to that flat color —
-// there's nothing for it to distort. Real glass needs something colorful
-// moving underneath to reveal. These are large, fairly saturated color
-// blobs smeared into soft glows by a heavy blur layered on top, giving
-// Card/GlassSurface something to actually show through when they sit above
-// this. Uses tint="default" (not "dark"/"light") — those cap their own
-// built-in overlay at 78% opacity at high intensity, which was smothering
-// the blobs almost entirely; "default" caps at 30% regardless of intensity.
-//
-// Dark mode on web gets a much fainter version — just enough violet behind
-// the cards for their blur/saturate to have something to pick up, while
-// the page still reads as black. The blobs are blurred with a CSS filter
-// directly rather than a BlurView overlay, since every BlurView tint lays
-// its own gray/white wash over the page, which would lift it off true
-// black. Native dark mode skips this entirely.
-function AmbientBackground() {
-  const { colorScheme } = useColorScheme();
-  if (colorScheme === "dark") {
-    if (Platform.OS !== "web") return null;
-    return (
-      <View className="absolute inset-0 overflow-hidden" pointerEvents="none">
-        <View className="absolute -left-20 -top-24 h-80 w-80 rounded-full bg-accent/25" style={DARK_GLOW} />
-        <View className="absolute -right-16 top-52 h-72 w-72 rounded-full bg-accent/15" style={DARK_GLOW} />
-        <View className="absolute bottom-0 left-1/4 h-96 w-96 rounded-full bg-accent/20" style={DARK_GLOW} />
-      </View>
-    );
-  }
-
+/** The concrete wall every screen sits on: the (white) wall photo under a
+ * heavy warm-black wash, so its cracks and pitting read as faint texture,
+ * with a dim red glow from the top like a club light. Also used by screens
+ * that don't render inside a Page (e.g. full-bleed detail headers). */
+export function WallBackground() {
   return (
-    <View className="absolute inset-0 overflow-hidden" pointerEvents="none">
-      <View className="absolute -left-20 -top-24 h-80 w-80 rounded-full bg-accent/50" />
-      <View className="absolute -right-16 top-52 h-72 w-72 rounded-full bg-primary/45" />
-      <View className="absolute bottom-0 left-1/4 h-96 w-96 rounded-full bg-accent/40" />
-      <BlurView intensity={100} tint="default" style={StyleSheet.absoluteFill} />
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {/* Explicit 100% size: react-native-web's ImageBackground sized the
+          photo to its own pixels, so it didn't stretch over wide windows. */}
+      <Image
+        source={WALL}
+        resizeMode="cover"
+        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
+      />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(22,14,15,0.7)" }]} />
+      <LinearGradient
+        colors={["rgba(150,48,56,0.38)", "rgba(150,48,56,0)"]}
+        locations={[0, 0.55]}
+        style={StyleSheet.absoluteFill}
+      />
+      <LinearGradient
+        colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.45)"]}
+        locations={[0.6, 1]}
+        style={StyleSheet.absoluteFill}
+      />
     </View>
   );
 }
 
-// Standard screen shell: safe area, themed background, optional ambient glow
-// and optional title header. Put a FlatList/ScrollView (with
-// usePageContentStyle) or a PageHeader + list inside as children.
+/** A full-screen View on the wall, for screens that lay themselves out
+ * instead of using Page (the centered auth forms). Each screen needs its
+ * own: the navigators paint an opaque theme background behind every screen,
+ * so a wall drawn behind the navigator never shows through. */
+export function WallView({ children }: { children?: ReactNode }) {
+  return (
+    <View className="flex-1 bg-ink">
+      <WallBackground />
+      {children}
+    </View>
+  );
+}
+
+// Standard screen shell: safe area, the concrete wall background and an
+// optional title header. Put a FlatList/ScrollView (with usePageContentStyle)
+// or a PageHeader + list inside as children.
 export function Page({
   title,
+  channel,
   header,
-  ambient = false,
+  fullBleed = false,
   className = "",
   children,
 }: {
   title?: string;
+  // Small right-aligned label beside the title ("CH 02 · BROWSE").
+  channel?: string;
   // Extra header content rendered under the title (tabs, search box…).
   header?: ReactNode;
-  ambient?: boolean;
+  // Let the content run up under the status bar (a full-bleed photo hero);
+  // the screen then handles the top inset itself.
+  fullBleed?: boolean;
   className?: string;
   children?: ReactNode;
 }) {
@@ -78,11 +86,15 @@ export function Page({
     // above the tabs. Scroll content picks the inset up instead (see
     // usePageContentStyle) so it can still scroll clear of the indicator.
     <SafeAreaView
-      edges={["top", "left", "right"]}
-      className={`flex-1 bg-paper dark:bg-ink ${className}`}
+      edges={fullBleed ? ["left", "right"] : ["top", "left", "right"]}
+      className={`flex-1 bg-ink ${className}`}
     >
-      {ambient && <AmbientBackground />}
-      {!!title && <PageHeader title={title}>{header}</PageHeader>}
+      <WallBackground />
+      {!!title && (
+        <PageHeader title={title} channel={channel}>
+          {header}
+        </PageHeader>
+      )}
       {children}
     </SafeAreaView>
   );

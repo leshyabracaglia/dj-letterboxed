@@ -1,72 +1,16 @@
 import { Stack } from "expo-router";
 
-import { isClerkAPIResponseError, useAuth, useUser } from "@clerk/expo";
+import { isClerkAPIResponseError, useUser } from "@clerk/expo";
 import { router } from "expo-router";
-import { useColorScheme } from "nativewind";
 import { useEffect, useState } from "react";
 import { Alert, Pressable, TextInput, View } from "react-native";
 
 import { Avatar, Button, KeyboardScrollView, Page, Text, usePageContentStyle } from "../components/ui";
 import { useCurrentUser, useUpdateProfile } from "../lib/auth";
 import { pickAndUploadAvatar } from "../lib/avatarUpload";
+import { useSignOut } from "../lib/push";
 import { ROUTES } from "../lib/routes";
-import {
-  getStoredThemePreference,
-  resolveColorScheme,
-  setStoredThemePreference,
-  type ThemePreference,
-} from "../lib/theme-storage";
 import { isWeb } from "@/lib/utils";
-
-const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
-  { value: "system", label: "System" },
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
-];
-
-function AppearanceSettings() {
-  const { setColorScheme } = useColorScheme();
-  const [preference, setPreference] = useState<ThemePreference>("system");
-
-  useEffect(() => {
-    getStoredThemePreference().then((pref) => {
-      if (pref) setPreference(pref);
-    });
-  }, []);
-
-  const choose = (value: ThemePreference) => {
-    setPreference(value);
-    setColorScheme(resolveColorScheme(value));
-    setStoredThemePreference(value);
-  };
-
-  return (
-    <View className="mt-6 border-t border-primary/15 pt-4">
-      <Text className="mb-2 text-xl font-display text-ink dark:text-paper">Appearance</Text>
-      <View className="flex-row gap-2">
-        {THEME_OPTIONS.map((opt) => (
-          <Pressable
-            key={opt.value}
-            onPress={() => choose(opt.value)}
-            className={`flex-1 items-center rounded-xl border py-2 ${
-              preference === opt.value ? "border-primary bg-primary" : "border-primary/20"
-            }`}
-          >
-            <Text
-              className={
-                preference === opt.value
-                  ? "font-semibold text-paper"
-                  : "text-ink dark:text-paper"
-              }
-            >
-              {opt.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-    </View>
-  );
-}
 
 const USERNAME_RE = /^[a-z0-9_]{3,32}$/;
 
@@ -127,7 +71,7 @@ function EditProfile() {
 
   return (
     <View>
-      <Text className="mb-4 text-xl font-display text-ink dark:text-paper">Edit profile</Text>
+      <Text className="mb-4 font-display text-2xl uppercase text-paper">Edit profile</Text>
       <Pressable onPress={onPickPhoto} disabled={uploadingPhoto} className="mb-4 items-center">
         <Avatar uri={avatarUrl} name={displayUsername || "?"} size={72} />
         <Text className="mt-2 text-sm text-muted">
@@ -140,7 +84,7 @@ function EditProfile() {
         placeholder="Username"
         value={username}
         onChangeText={setUsername}
-        className="mb-1 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
+        className="mb-1 rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
       {!!username.length && !usernameValid ? (
         <Text className="mb-3 text-xs text-danger dark:text-danger-dark">
@@ -155,7 +99,7 @@ function EditProfile() {
         onChangeText={setBio}
         multiline
         numberOfLines={3}
-        className="mb-4 min-h-20 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
+        className="mb-4 min-h-20 rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
       {!!error && <Text className="mb-2 text-danger dark:text-danger-dark">{error}</Text>}
       {success && (
@@ -183,7 +127,7 @@ function clerkErrorMessage(err: unknown, fallback: string) {
 
 function AccountSettings() {
   const { user } = useUser();
-  const { signOut } = useAuth();
+  const signOut = useSignOut();
   // Accounts created via a social provider have no password yet, so there's
   // no current one to confirm — Clerk lets them set one directly.
   const hasPassword = user?.passwordEnabled ?? true;
@@ -267,7 +211,7 @@ function AccountSettings() {
 
   return (
     <View className="mt-6 border-t border-primary/15 pt-4">
-      <Text className="mb-2 text-xl font-display text-ink dark:text-paper">
+      <Text className="mb-2 font-display text-2xl uppercase text-paper">
         {hasPassword ? "Change password" : "Set a password"}
       </Text>
       {hasPassword && (
@@ -277,7 +221,7 @@ function AccountSettings() {
           placeholder="Current password"
           value={currentPassword}
           onChangeText={setCurrentPassword}
-          className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
+          className="mb-2 rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
         />
       )}
       <TextInput
@@ -286,7 +230,7 @@ function AccountSettings() {
         placeholder="New password"
         value={newPassword}
         onChangeText={setNewPassword}
-        className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
+        className="mb-2 rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
       <TextInput
         secureTextEntry
@@ -294,7 +238,7 @@ function AccountSettings() {
         placeholder="Confirm new password"
         value={confirmPassword}
         onChangeText={setConfirmPassword}
-        className="mb-2 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
+        className="mb-2 rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
       {!!passwordError && (
         <Text className="mb-2 text-danger dark:text-danger-dark">{passwordError}</Text>
@@ -352,7 +296,6 @@ export default function SettingsScreen() {
       <Stack.Screen options={{ title: "Settings" }} />
       <KeyboardScrollView contentContainerStyle={[contentStyle, { paddingTop: 24 }]}>
         <EditProfile />
-        <AppearanceSettings />
         <AccountSettings />
       </KeyboardScrollView>
     </Page>

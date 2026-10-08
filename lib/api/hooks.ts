@@ -6,12 +6,12 @@ import type {
   Dj,
   DjDetail,
   EventDetail,
+  EventSummary,
   FavoriteReviewsResponse,
   FeedResponse,
   Paginated,
   PopularResponse,
   Review,
-  SeriesSummary,
   User,
   UserProfile,
   UserStats,
@@ -71,13 +71,13 @@ export function useVenueSearch(
   });
 }
 
-// Event series by name, most-reviewed first; an empty query lists them all
-// (the browse index). Keeps the previous results while typing.
-export function useSeriesSearch(query: string, enabled: boolean = true) {
+// Events by name, most-reviewed first; an empty query lists them all (the
+// browse index). Keeps the previous results while typing.
+export function useEventSearch(query: string, enabled: boolean = true) {
   const api = useApi();
   return useQuery({
-    queryKey: queryKeys.series.list(query),
-    queryFn: () => api.get<SeriesSummary[]>("/series", query ? { q: query } : undefined),
+    queryKey: queryKeys.events.list(query),
+    queryFn: () => api.get<EventSummary[]>("/events", query ? { q: query } : undefined),
     enabled,
     placeholderData: keepPreviousData,
   });
@@ -117,11 +117,12 @@ export function useDjDetail(slug: string | undefined) {
   });
 }
 
-export function useEventDetail(id: string | undefined) {
+export function useEventDetail(slug: string | undefined) {
   const api = useApi();
   return useQuery({
-    queryKey: queryKeys.events.byId(id!),
-    queryFn: () => api.get<EventDetail>(`/events/${id}`),
+    queryKey: queryKeys.events.bySlug(slug!),
+    queryFn: () => api.get<EventDetail>(`/events/${slug}`),
+    enabled: !!slug,
   });
 }
 

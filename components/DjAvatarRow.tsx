@@ -14,7 +14,7 @@ export function DjAvatarRow({ items }: { items: { dj: Dj; caption?: ReactNode }[
       {items.map(({ dj, caption }) => (
         <Pressable key={dj.id} onPress={() => router.push(ROUTES.DJ(dj.slug))} className="w-20 items-center">
           <Avatar uri={dj.imageUrl} name={dj.name} size={56} />
-          <Text className="mt-1 text-center text-xs text-ink dark:text-paper" numberOfLines={1}>
+          <Text className="mt-1 text-center font-display text-base uppercase leading-5 text-paper" numberOfLines={1}>
             {dj.name}
           </Text>
           {caption}

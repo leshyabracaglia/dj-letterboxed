@@ -18,11 +18,12 @@ type RouterConfig struct {
 	Verifier                  *auth.Verifier
 	Spotify                   *domain.SpotifyClient
 	Places                    *domain.PlacesClient
+	Push                      *domain.PushClient
 	ClerkWebhookSigningSecret string
 }
 
 func NewRouter(cfg RouterConfig) http.Handler {
-	h := NewHandlers(cfg.Pool, cfg.Spotify, cfg.Places)
+	h := NewHandlers(cfg.Pool, cfg.Spotify, cfg.Places, cfg.Push)
 	a := &Auth{Verifier: cfg.Verifier, Pool: cfg.Pool}
 
 	r := chi.NewRouter()
@@ -50,10 +51,9 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/app-version", h.GetAppVersion)
 			r.Get("/djs/search", h.SearchDjs)
 			r.Get("/djs/spotify-search", h.SearchSpotify)
-			r.Get("/events/search", h.SearchEvents)
+			r.Get("/events", h.ListEvents)
 			r.Get("/venues/search", h.SearchVenues)
 			r.Get("/venues/{id}", h.GetVenueByID)
-			r.Get("/series", h.ListSeries)
 			r.Get("/tags", h.ListTags)
 			r.Get("/users/search", h.SearchUsers)
 			r.Get("/users/{username}", h.GetUserByUsername)
@@ -69,8 +69,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Use(a.OptionalAuth)
 			r.Get("/djs/{slug}", h.GetDjBySlug)
 			r.Get("/djs/{id}/reviews", h.ListReviewsByDj)
-			r.Get("/events/{id}", h.GetEventByID)
-			r.Get("/series/{slug}", h.GetSeriesBySlug)
+			r.Get("/events/{slug}", h.GetEventBySlug)
 			r.Get("/reviews/{id}", h.GetReviewByID)
 			r.Get("/users/{username}/reviews", h.ListReviewsByUser)
 			r.Get("/users/{username}/favorites", h.GetFavoriteReviews)
@@ -82,7 +81,6 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Use(a.RequireAuth)
 
 			r.Post("/djs", h.CreateDj)
-			r.Post("/events", h.CreateEvent)
 			r.Post("/logs", h.CreateNightLog)
 			// Auth-only (unlike Spotify search) since every call is billed.
 			r.Get("/venues/places-search", h.SearchPlaces)
@@ -91,7 +89,6 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Post("/follows/{userId}", h.Follow)
 			r.Delete("/follows/{userId}", h.Unfollow)
 
-			r.Post("/reviews", h.CreateReview)
 			r.Patch("/reviews/{id}", h.UpdateReview)
 			r.Delete("/reviews/{id}", h.DeleteReview)
 			r.Post("/reviews/{id}/like", h.LikeReview)
@@ -102,6 +99,8 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/users/me", h.Me)
 			r.Patch("/users/me", h.UpdateProfile)
 			r.Patch("/users/me/favorites", h.SetFavoriteReviews)
+			r.Post("/users/me/push-tokens", h.RegisterPushToken)
+			r.Delete("/users/me/push-tokens", h.UnregisterPushToken)
 			r.Get("/leaderboard", h.GetLeaderboard)
 
 			r.Get("/feed", h.GetActivity)

@@ -68,3 +68,8 @@ crash.log
 server/bin/
 *.exe
 *.test
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/

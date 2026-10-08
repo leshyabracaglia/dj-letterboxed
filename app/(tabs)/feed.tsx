@@ -1,11 +1,13 @@
 import { useAuth } from "@clerk/expo";
 import { useState } from "react";
-import { FlatList, Pressable, View } from "react-native";
+import { FlatList, View } from "react-native";
 
 import {
+  ChannelLabel,
   EmptyState,
   Page,
   PageHeader,
+  SegmentedTabs,
   Text,
   useIsDesktopWeb,
   usePageContentStyle,
@@ -21,10 +23,10 @@ const FEED_TABS = {
 
 type IFeedTab = (typeof FEED_TABS)[keyof typeof FEED_TABS];
 
-const FEED_TAB_LABELS: Record<IFeedTab, string> = {
-  [FEED_TABS.FOLLOWING]: "Following",
-  [FEED_TABS.POPULAR]: "Popular",
-};
+const FEED_TAB_OPTIONS: { value: IFeedTab; label: string }[] = [
+  { value: FEED_TABS.FOLLOWING, label: "Following" },
+  { value: FEED_TABS.POPULAR, label: "Popular" },
+];
 
 export default function FeedScreen() {
   const { isSignedIn } = useAuth();
@@ -54,32 +56,20 @@ export default function FeedScreen() {
   // hidden entirely (also while loading, so it doesn't flash in and out).
   const showTabs = !!isSignedIn && !isLoading && !!followingCount;
   const tabs = showTabs && (
-    <View className="flex-row gap-2">
-      {Object.values(FEED_TABS).map((t) => (
-        <Pressable
-          key={t}
-          onPress={() => setTab(t)}
-          accessibilityState={{ selected: effectiveTab === t }}
-          className={`rounded-full px-3 py-1.5 active:opacity-80 ${
-            effectiveTab === t ? "bg-primary" : "bg-white dark:bg-surface-dark border border-primary/20"
-          }`}
-        >
-          <Text className={effectiveTab === t ? "text-paper" : "text-ink dark:text-paper"}>
-            {FEED_TAB_LABELS[t]}
-          </Text>
-        </Pressable>
-      ))}
-    </View>
+    <SegmentedTabs tabs={FEED_TAB_OPTIONS} value={effectiveTab} onChange={setTab} />
   );
 
   return (
     // Desktop web already shows the BeatBox'd wordmark in its top navbar;
     // phone widths have no navbar, so the wordmark heads the feed instead
     // (the bottom tab bar already says "Feed").
-    <Page ambient title={isDesktopWeb ? "Feed" : undefined} header={tabs}>
+    <Page title={isDesktopWeb ? "Feed" : undefined} channel="CH 01 · Feed" header={tabs}>
       {!isDesktopWeb && (
         <PageHeader>
-          <BrandWordmark className="mb-3" />
+          <View className="mb-4 flex-row items-center justify-between">
+            <BrandWordmark dot />
+            <ChannelLabel label="CH 01 · Feed" />
+          </View>
           {tabs}
         </PageHeader>
       )}
@@ -88,10 +78,10 @@ export default function FeedScreen() {
           contentContainerStyle={contentStyle}
           data={popularData?.items ?? []}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ReviewCard review={item} />}
+          renderItem={({ item, index }) => <ReviewCard review={item} index={index} />}
           ListHeaderComponent={
             noFollowing ? (
-              <Text className="mb-4 text-center text-muted">
+              <Text className="mb-4 text-center text-paper/60">
                 {isSignedIn
                   ? "Follow some people to see their reviews here."
                   : "Sign up to follow people and see their reviews here."}
@@ -104,7 +94,7 @@ export default function FeedScreen() {
             ) : (
               <EmptyState
                 message="No reviews yet — be the first to review a set."
-                className="mt-4 text-center text-muted"
+                className="mt-4 text-center text-paper/60"
               />
             )
           }
@@ -114,7 +104,7 @@ export default function FeedScreen() {
           contentContainerStyle={contentStyle}
           data={items}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ReviewCard review={item} />}
+          renderItem={({ item, index }) => <ReviewCard review={item} index={index} />}
           onEndReachedThreshold={0.5}
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) {

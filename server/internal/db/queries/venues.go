@@ -11,7 +11,7 @@ import (
 
 // A venue is either linked to a Google Places place (google_place_id set,
 // unique) or was typed in by hand (no place id, unique by lower(name)).
-// Events point at one via events.venue_id.
+// Logs point at one via logs.venue_id.
 
 const venueCols = "id, name, city, address, google_place_id, latitude, longitude, created_by_user_id, created_at"
 
@@ -33,17 +33,18 @@ type VenueSummary struct {
 	City          *string `json:"city"`
 	Address       *string `json:"address"`
 	GooglePlaceID *string `json:"googlePlaceId"`
-	EventCount    int64   `json:"eventCount"`
+	// LogCount is how many nights out people have logged there.
+	LogCount int64 `json:"logCount"`
 }
 
 const venueSummarySelect = `
-	SELECT v.id, v.name, v.city, v.address, v.google_place_id, COUNT(e.id) AS event_count
+	SELECT v.id, v.name, v.city, v.address, v.google_place_id, COUNT(l.id) AS log_count
 	FROM venues v
-	LEFT JOIN events e ON e.venue_id = v.id`
+	LEFT JOIN logs l ON l.venue_id = v.id`
 
 func scanVenueSummary(row pgx.Row) (*VenueSummary, error) {
 	var v VenueSummary
-	if err := row.Scan(&v.ID, &v.Name, &v.City, &v.Address, &v.GooglePlaceID, &v.EventCount); err != nil {
+	if err := row.Scan(&v.ID, &v.Name, &v.City, &v.Address, &v.GooglePlaceID, &v.LogCount); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
 		}
@@ -58,7 +59,7 @@ func SearchVenues(ctx context.Context, q DBTX, query string, limit int) ([]Venue
 	rows, err := q.Query(ctx, venueSummarySelect+`
 		WHERE $1 = '' OR v.name ILIKE '%' || $1 || '%'
 		GROUP BY v.id
-		ORDER BY event_count DESC, v.name
+		ORDER BY log_count DESC, v.name
 		LIMIT $2`, query, limit)
 	if err != nil {
 		return nil, err
@@ -123,20 +124,35 @@ func UpsertUnlinkedVenue(ctx context.Context, q DBTX, name string, city *string,
 		RETURNING `+venueCols, name, city, createdByUserID))
 }
 
-func ListEventsByVenue(ctx context.Context, q DBTX, venueID string) ([]db.Event, error) {
-	rows, err := q.Query(ctx, "SELECT "+eventCols+" FROM events WHERE venue_id = $1 ORDER BY event_date DESC", venueID)
+// VenueEvent is a named event logged at a venue, with how many logs there.
+type VenueEvent struct {
+	Event    db.Event `json:"event"`
+	LogCount int64    `json:"logCount"`
+}
+
+// ListVenueEvents returns the events people have logged at a venue, most
+// logged first.
+func ListVenueEvents(ctx context.Context, q DBTX, venueID string) ([]VenueEvent, error) {
+	rows, err := q.Query(ctx, `
+		SELECT e.id, e.name, e.slug, e.created_by_user_id, e.created_at, COUNT(l.id) AS log_count
+		FROM logs l
+		JOIN events e ON e.id = l.event_id
+		WHERE l.venue_id = $1
+		GROUP BY e.id
+		ORDER BY log_count DESC, MAX(l.seen_at) DESC`, venueID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var out []db.Event
+	var out []VenueEvent
 	for rows.Next() {
-		e, err := scanEvent(rows)
-		if err != nil {
+		var v VenueEvent
+		e := &v.Event
+		if err := rows.Scan(&e.ID, &e.Name, &e.Slug, &e.CreatedByUserID, &e.CreatedAt, &v.LogCount); err != nil {
 			return nil, err
 		}
-		out = append(out, *e)
+		out = append(out, v)
 	}
 	return out, rows.Err()
 }

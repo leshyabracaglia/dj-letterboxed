@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { Link, router, Stack, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator,
@@ -18,21 +18,25 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import {
   Avatar,
   Button,
+  Card,
+  FitText,
   Icon,
   KeyboardScrollView,
   Page,
+  paperFor,
+  RatingStamp,
   RatingStars,
   Skeleton,
+  Tape,
   Text,
-  useIsDesktopWeb,
   usePageContentStyle,
 } from "../../components/ui";
 import { useCurrentUser } from "../../lib/auth";
 import { useApi } from "../../lib/api/client";
 import { queryKeys } from "../../lib/api/queryKeys";
-import type { Dj, Event, Review, ReviewComment, User } from "../../lib/api/types";
-import { formatDate } from "../../lib/format";
-import { reviewSubject } from "../../lib/review";
+import type { Dj, Review, ReviewComment, User } from "../../lib/api/types";
+import { formatCardDate, formatEventTiming } from "../../lib/format";
+import { logWhere, reviewSubject } from "../../lib/review";
 import { ROUTES } from "../../lib/routes";
 import { captureStory, shareStory, WEB_URL, type CapturedStory } from "../../lib/shareStory";
 import { ReviewTags } from "../../components/ReviewTags";
@@ -98,7 +102,7 @@ function CommentSection({ reviewId }: { reviewId: string }) {
 
   return (
     <View className="mt-4">
-      <Text className="mb-2 text-xl font-display text-ink dark:text-paper">Comments</Text>
+      <Text className="mb-3 mt-2 font-display text-2xl uppercase text-paper/85">Comments</Text>
       {(comments ?? []).map((comment) => (
         <View key={comment.id} className="mb-3 flex-row items-start justify-between">
           <View className="flex-1 flex-row items-start gap-2 pr-2">
@@ -108,7 +112,7 @@ function CommentSection({ reviewId }: { reviewId: string }) {
               size={24}
             />
             <View className="flex-1">
-              <Text className="text-sm font-medium text-ink dark:text-paper">@{comment.user?.username}</Text>
+              <Text className="font-display text-base uppercase text-paper/80">@{comment.user?.username}</Text>
               <Text className="text-sm text-ink dark:text-paper">{comment.body}</Text>
             </View>
           </View>
@@ -130,7 +134,7 @@ function CommentSection({ reviewId }: { reviewId: string }) {
           </View>
         ))
       ) : !comments.length ? (
-        <Text className="mb-3 text-sm text-muted">No comments yet.</Text>
+        <Text className="mb-3 text-sm text-paper/60">No comments yet.</Text>
       ) : null}
       {isSignedIn ? (
         <View className="flex-row items-center gap-2">
@@ -138,7 +142,8 @@ function CommentSection({ reviewId }: { reviewId: string }) {
             placeholder="Add a comment..."
             value={body}
             onChangeText={setBody}
-            className="flex-1 rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-2 text-ink dark:text-paper placeholder:text-muted"
+            className="flex-1 rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-2 text-paper"
+            placeholderTextColor="rgba(246,246,249,0.4)"
           />
           <Button
             disabled={!body.trim() || addComment.isPending}
@@ -161,10 +166,14 @@ function LikeButton({
   reviewId,
   likeCount,
   isLiked,
+  disabled = false,
 }: {
   reviewId: string;
   likeCount: number;
   isLiked: boolean;
+  // While the screen shows a list's copy of the review, there's no detail
+  // query entry yet for the optimistic update to write to.
+  disabled?: boolean;
 }) {
   const { isSignedIn } = useAuth();
   const api = useApi();
@@ -208,22 +217,16 @@ function LikeButton({
 
   return (
     <Pressable
-      disabled={pending}
+      disabled={pending || disabled}
       onPress={() =>
         isSignedIn ? (isLiked ? unlike.mutate() : like.mutate()) : router.push(ROUTES.SIGN_IN)
       }
-      className={`flex-row items-center gap-1 rounded-full px-3 py-1.5 active:opacity-80 ${
-        isLiked ? "bg-accent/15" : "bg-muted/10"
+      className={`flex-row items-center gap-1.5 rounded-lg px-3 py-1.5 active:opacity-80 ${
+        isLiked ? "bg-black/60" : "bg-black/25"
       }`}
     >
-      <Icon
-        name={isLiked ? "heart" : "heart-outline"}
-        size={16}
-        className={isLiked ? "text-accent-text dark:text-accent-dark" : "text-ink dark:text-paper"}
-      />
-      <Text className={isLiked ? "text-accent-text dark:text-accent-dark" : "text-ink dark:text-paper"}>
-        {likeCount}
-      </Text>
+      <Icon name={isLiked ? "heart" : "heart-outline"} size={16} className="text-paper" />
+      <Text className="font-numeric text-lg leading-5 text-paper">{likeCount}</Text>
     </Pressable>
   );
 }
@@ -232,12 +235,49 @@ function LikeButton({
 // dj stays nullable: a review of the night as a whole has none.
 type ReviewDetail = Review & {
   dj: Dj | null;
-  event: Event | null;
   taggedUsers: User[];
   user: User;
   likeCount: number;
   isLikedByMe: boolean;
 };
+
+// A review some list already loaded (feed, popular, a profile's or a DJ's/
+// night's/series' reviews), so tapping its card opens the detail at once
+// while the full fetch runs. Lists store reviews in different shapes (pages,
+// items, recentReviews, …), so walk every cached reviews/feed/detail query
+// for a review with this id. Profile lists omit `user`, so the reviewer is
+// looked up from any cached user the walk passed.
+function findCachedReview(queryClient: QueryClient, id: string): ReviewDetail | undefined {
+  let found: Review | undefined;
+  const users = new Map<string, User>();
+  const walk = (value: unknown, depth: number) => {
+    if (!value || typeof value !== "object" || depth > 6) return;
+    if (Array.isArray(value)) {
+      for (const item of value) walk(item, depth + 1);
+      return;
+    }
+    const obj = value as Record<string, unknown>;
+    if (typeof obj.id === "string") {
+      if (obj.id === id && "rating" in obj && "userId" in obj && !found) found = obj as unknown as Review;
+      if (typeof obj.username === "string") users.set(obj.id, obj as unknown as User);
+    }
+    for (const child of Object.values(obj)) walk(child, depth + 1);
+  };
+  for (const prefix of ["feed", "reviews", "users", "djs", "events", "series"]) {
+    for (const [, data] of queryClient.getQueriesData({ queryKey: [prefix] })) walk(data, 0);
+  }
+  if (!found) return undefined;
+  const user = found.user ?? users.get(found.userId);
+  if (!user) return undefined;
+  // dj/event stay as the list had them; the screen guards both already.
+  return {
+    ...found,
+    user,
+    taggedUsers: found.taggedUsers ?? [],
+    likeCount: found.likeCount ?? 0,
+    isLikedByMe: found.isLikedByMe ?? false,
+  } as ReviewDetail;
+}
 
 // Word-boundary truncation for the story card. Done in JS rather than with
 // numberOfLines because web capture (html2canvas) ignores CSS line clamping.
@@ -362,9 +402,9 @@ function StoryCard({
           >
             {djName}
           </Text>
-          {review.event && (
+          {!!logWhere(review.log).length && (
             <Text style={{ fontSize: u(13), color: "#BA95E4", textAlign: "center", marginTop: u(4) }}>
-              {review.event.name} · {review.event.venue}
+              {logWhere(review.log).join(" · ")}
             </Text>
           )}
           <Text style={{ fontSize: u(12), color: "#A4A0B1", marginTop: u(2) }}>{seen}</Text>
@@ -531,28 +571,31 @@ function ShareStoryButton({ review, justLogged }: { review: ReviewDetail; justLo
   );
 }
 
-function ReviewDetailSkeleton() {
+// Blank paper laid out like the detail card below: label, big name, event
+// line, a few lines of text, and the reviewer/like row.
+function ReviewDetailSkeleton({ tint }: { tint: string | undefined }) {
   const contentStyle = usePageContentStyle();
   return (
     <Page>
       <View style={[contentStyle, { paddingTop: 24, alignItems: "center" }]}>
-        <View className="w-full max-w-xl rounded-2xl border border-primary/15 bg-white dark:bg-surface-dark p-5 shadow-sm">
-          <View className="flex-row items-start justify-between gap-3">
-            <Skeleton className="h-7 w-44" />
-            <Skeleton className="h-4 w-24" />
-          </View>
-          <Skeleton className="mt-3 h-4 w-52" />
-          <Skeleton className="mt-2 h-3.5 w-28" />
-          <Skeleton className="mt-5 h-4 w-full" />
-          <Skeleton className="mt-2 h-4 w-full" />
-          <Skeleton className="mt-2 h-4 w-2/3" />
-          <View className="mt-4 flex-row items-center justify-between border-t border-primary/10 pt-4">
-            <View className="flex-row items-center gap-2">
-              <Skeleton className="h-7 w-7 rounded-full" />
-              <Skeleton className="h-3.5 w-32" />
+        <View className="w-full max-w-xl">
+          <Card blank tint={paperFor(tint).tint} torn tilt={-0.6} className="pb-7">
+            <View className="pr-24">
+              <Skeleton tone="paper" className="h-4 w-44" />
+              <Skeleton tone="paper" className="mt-3 h-14 w-56" />
+              <Skeleton tone="paper" className="mt-2 h-5 w-40" />
             </View>
-            <Skeleton className="h-8 w-14 rounded-full" />
-          </View>
+            <Skeleton tone="paper" className="mt-5 h-4 w-full" />
+            <Skeleton tone="paper" className="mt-2.5 h-4 w-full" />
+            <Skeleton tone="paper" className="mt-2.5 h-4 w-2/3" />
+            <View className="mt-5 flex-row items-center justify-between border-t-2 border-black/15 pt-4">
+              <View className="flex-row items-center gap-2">
+                <Skeleton tone="paper" className="h-[30px] w-[30px] rounded-full" />
+                <Skeleton tone="paper" className="h-4 w-32" />
+              </View>
+              <Skeleton tone="paper" className="h-8 w-14 rounded-lg" />
+            </View>
+          </Card>
         </View>
       </View>
     </Page>
@@ -560,84 +603,107 @@ function ReviewDetailSkeleton() {
 }
 
 export default function ReviewDetailScreen() {
-  const { id, justLogged } = useLocalSearchParams<{ id: string; justLogged?: string }>();
+  const { id, justLogged, tint } = useLocalSearchParams<{ id: string; justLogged?: string; tint?: string }>();
   const api = useApi();
   const contentStyle = usePageContentStyle();
-  // Stars sit under the DJ name on phone widths, beside it on desktop web.
-  const isDesktopWeb = useIsDesktopWeb();
   const { me } = useCurrentUser();
-  const { data: review } = useQuery({
+  const queryClient = useQueryClient();
+  const { data: review, isPlaceholderData } = useQuery({
     queryKey: queryKeys.reviews.byId(id!),
     queryFn: () => api.get<ReviewDetail>(`/reviews/${id}`),
+    placeholderData: () => findCachedReview(queryClient, id!),
   });
 
   if (!review) {
-    return <ReviewDetailSkeleton />;
+    return <ReviewDetailSkeleton tint={tint} />;
   }
   const subject = reviewSubject(review);
+  // The color of the card it was opened from (purple when opened from
+  // anywhere else, like a notification or a shared link).
+  const paper = paperFor(tint);
 
   return (
     <Page>
       <Stack.Screen options={{ title: subject.name }} />
       <KeyboardScrollView contentContainerStyle={[contentStyle, { paddingTop: 24, alignItems: "center" }]}>
-        <View className="w-full max-w-xl rounded-2xl border border-primary/15 bg-white dark:bg-surface-dark p-5 shadow-sm">
-          <View
-            className={isDesktopWeb ? "flex-row items-start justify-between gap-3" : "items-start gap-2"}
-          >
-            <View className={isDesktopWeb ? "flex-1" : ""}>
-              <Link href={subject.href ?? ROUTES.REVIEW_DETAIL(review.id)}>
-                <Text className="text-2xl font-bold text-primary dark:text-primary-dark">
-                  {subject.name}
-                </Text>
-              </Link>
-            </View>
-            <RatingStars value={review.rating} size={16} />
-          </View>
-
-          {review.event && (
-            <Link href={ROUTES.EVENT(review.event.id)}>
-              <Text className="mt-2 text-sm font-medium text-accent-text dark:text-accent-dark">
-                {subject.isNight ? "Whole night" : review.event.name} · {review.event.venue}
+        <View className="w-full max-w-xl">
+          <Card tint={paper.tint} torn tilt={-0.6} className="pb-7">
+            <Tape style={{ top: -10, left: 28 }} rotate={-4} />
+            <View className="pr-24">
+              <Text
+                className={`font-display text-base uppercase ${paper.inkClassName}`}
+              >
+                {[formatCardDate(review.seenAt), review.log && formatEventTiming(review.log), subject.isNight && "Whole night"]
+                  .filter(Boolean)
+                  .join(" · ")}
               </Text>
-            </Link>
-          )}
-
-          <Text className="mt-1 text-sm text-muted">Seen {formatDate(review.seenAt)}</Text>
-
-          {!!review.tags?.length && (
-            <View className="mt-3">
-              <ReviewTags tags={review.tags} />
+              <Link href={subject.href ?? ROUTES.REVIEW_DETAIL(review.id)} asChild>
+                <Pressable className="mt-2 active:opacity-80">
+                  <FitText fontSize={60} className="text-paper">
+                    {subject.name}
+                  </FitText>
+                </Pressable>
+              </Link>
+              {/* The event (on a DJ review - a night review's title already
+                  links there) and the venue, each to its own page. */}
+              {!!review.log?.venue && (
+                <Text className="mt-1 font-display text-xl uppercase leading-6 text-paper">
+                  {!subject.isNight && !!review.log.event && (
+                    <>
+                      <Link href={ROUTES.EVENT(review.log.event.slug)}>
+                        <Text className="underline">{review.log.event.name}</Text>
+                      </Link>{" "}
+                    </>
+                  )}
+                  @{" "}
+                  {review.log.venueId ? (
+                    <Link href={ROUTES.VENUE(review.log.venueId)}>
+                      <Text className="underline">{review.log.venue}</Text>
+                    </Link>
+                  ) : (
+                    review.log.venue
+                  )}
+                </Text>
+              )}
             </View>
-          )}
+            <View className="absolute right-3 top-3">
+              <RatingStamp value={review.rating} size={84} />
+            </View>
 
-          {review.reviewText && (
-            <Text className="mt-4 text-base text-ink dark:text-paper">{review.reviewText}</Text>
-          )}
+            {review.reviewText && <Text className="mt-4 text-lg leading-7 text-paper">{review.reviewText}</Text>}
 
-          {!!review.taggedUsers?.length && (
-            <Text className="mt-3 text-sm text-muted">
-              With {review.taggedUsers.map((u) => `@${u.username}`).join(", ")}
-            </Text>
-          )}
+            {!!review.tags?.length && (
+              <View className="mt-4">
+                <ReviewTags tags={review.tags} />
+              </View>
+            )}
 
-          <View className="mt-4 flex-row items-center justify-between border-t border-primary/10 pt-4">
-            <Link href={ROUTES.USER(review.user.username)} asChild>
-              <Pressable className="flex-row items-center gap-2 active:opacity-80">
-                <Avatar
-                  uri={review.user.avatarUrl}
-                  name={review.user.username}
-                  size={28}
-                />
-                <Text className="text-sm text-muted">Reviewed by @{review.user.username}</Text>
-              </Pressable>
-            </Link>
-            <LikeButton reviewId={review.id} likeCount={review.likeCount} isLiked={review.isLikedByMe} />
-          </View>
+            {!!review.taggedUsers?.length && (
+              <Text className="mt-3 font-display text-lg uppercase text-paper/85">
+                With {review.taggedUsers.map((u) => `@${u.username}`).join(", ")}
+              </Text>
+            )}
+
+            <View className="mt-5 flex-row items-center justify-between border-t-2 border-paper/25 pt-4">
+              <Link href={ROUTES.USER(review.user.username)} asChild>
+                <Pressable className="flex-row items-center gap-2 active:opacity-80">
+                  <Avatar uri={review.user.avatarUrl} name={review.user.username} size={30} />
+                  <Text className="font-display text-lg uppercase text-paper">@{review.user.username}</Text>
+                </Pressable>
+              </Link>
+              <LikeButton
+                reviewId={review.id}
+                likeCount={review.likeCount}
+                isLiked={review.isLikedByMe}
+                disabled={isPlaceholderData}
+              />
+            </View>
+          </Card>
         </View>
 
         {/* Story sharing hands the image to Instagram via the OS share sheet,
             which only works well from the native iOS app. */}
-        {isIos && me?.id === review.userId && (
+        {isIos && !isPlaceholderData && me?.id === review.userId && (
           <ShareStoryButton review={review} justLogged={justLogged === "1"} />
         )}
 

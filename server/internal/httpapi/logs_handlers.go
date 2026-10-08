@@ -23,24 +23,25 @@ type djReviewInput struct {
 	ReviewText *string `json:"reviewText"`
 }
 
-// One night out: where and when, who played, and the reviews written about
-// it. The venue fields work as in createEventRequest. The series is given
-// by seriesId (an existing one) or seriesName (found or created by name);
-// neither means a night at the venue with no event name.
+// One night out: which event (optional), where and when, whether you went
+// during the day or at night, who you saw, and what you thought. The event
+// is given by eventId (an existing one) or eventName (found or created by
+// name); neither means a night with no event name, just the venue. The
+// venue is required and given as in venueInput.
 type createNightLogRequest struct {
-	SeriesID          *string `json:"seriesId"`
-	SeriesName        *string `json:"seriesName"`
+	EventID           *string `json:"eventId"`
+	EventName         *string `json:"eventName"`
 	Venue             string  `json:"venue"`
 	VenueID           *string `json:"venueId"`
 	PlaceID           *string `json:"placeId"`
 	PlaceSessionToken *string `json:"placeSessionToken"`
 	City              *string `json:"city"`
 	SeenAt            string  `json:"seenAt"`
-	// When the party ran: day, night, or both. Neither given means night.
+	// When you went: day, night, or both. Neither given means night.
 	IsDay   bool `json:"isDay"`
 	IsNight bool `json:"isNight"`
-	// DJs the user saw; added to the night's lineup. DJs in djReviews are
-	// added too, whether or not they're listed here.
+	// DJs you saw. DJs in djReviews are added too, whether or not they're
+	// listed here.
 	LineupDjIDs []string `json:"lineupDjIds"`
 	// Review of the night as a whole. Required unless djReviews has one.
 	Night     *nightReviewInput `json:"night"`
@@ -117,7 +118,7 @@ func (req createNightLogRequest) validate() (seenAt time.Time, lineup []string, 
 
 // CreateNightLog godoc
 //
-//	@Summary	Log a night: find or create the night, add DJs to its lineup, and save the night and DJ reviews in one go
+//	@Summary	Log a night out: the event (picked, or found or created by name), venue, day, lineup, and the night and DJ reviews, in one go
 //	@Tags		logs
 //	@Accept		json
 //	@Produce	json
@@ -157,7 +158,7 @@ func (h *Handlers) CreateNightLog(w http.ResponseWriter, r *http.Request) {
 
 	// Saving a Google place calls out to Google, so it happens before the
 	// transaction opens (a saved venue is harmless if the rest fails).
-	venue, err := h.resolveVenue(ctx, createEventRequest{
+	venue, err := h.resolveVenue(ctx, venueInput{
 		Venue: req.Venue, VenueID: req.VenueID, PlaceID: req.PlaceID,
 		PlaceSessionToken: req.PlaceSessionToken, City: req.City,
 	}, user.ID)
@@ -173,33 +174,28 @@ func (h *Handlers) CreateNightLog(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(ctx)
 
-	series, err := resolveSeries(ctx, tx, req.SeriesID, req.SeriesName, user.ID)
+	event, err := resolveEvent(ctx, tx, req.EventID, req.EventName, user.ID)
 	if err != nil {
 		writeResolveError(w, err)
 		return
 	}
-	var seriesID *string
-	name := venue.Name
-	if series != nil {
-		seriesID = &series.ID
-		name = series.Name
+	var eventID *string
+	if event != nil {
+		eventID = &event.ID
 	}
-
-	isNight := req.IsNight || !req.IsDay
-	event, err := queries.GetNight(ctx, tx, seriesID, venue.ID, seenAt, req.IsDay, isNight)
-	if errors.Is(err, queries.ErrNotFound) {
-		city := req.City
-		if city == nil || *city == "" {
-			city = venue.City
-		}
-		event, err = queries.CreateEvent(ctx, tx, name, seriesID, venue, city, seenAt, req.IsDay, isNight, nil, user.ID)
+	city := req.City
+	if city == nil || *city == "" {
+		city = venue.City
 	}
+	log, err := queries.CreateLog(ctx, tx, queries.CreateLogParams{
+		UserID: user.ID, EventID: eventID, Venue: venue, City: city,
+		SeenAt: seenAt, IsDay: req.IsDay, IsNight: req.IsNight || !req.IsDay,
+	})
 	if err != nil {
 		InternalError(w, err)
 		return
 	}
-
-	if err := queries.AddToLineup(ctx, tx, event.ID, lineup, user.ID); err != nil {
+	if err := queries.AddLogLineup(ctx, tx, log.ID, lineup); err != nil {
 		InternalError(w, err)
 		return
 	}
@@ -207,8 +203,7 @@ func (h *Handlers) CreateNightLog(w http.ResponseWriter, r *http.Request) {
 	var reviews []db.Review
 	create := func(djID *string, rating int16, text *string) error {
 		review, err := queries.CreateReview(ctx, tx, queries.CreateReviewParams{
-			UserID: user.ID, DjID: djID, EventID: &event.ID,
-			Rating: &rating, ReviewText: text, SeenAt: seenAt,
+			Log: log, DjID: djID, Rating: &rating, ReviewText: text,
 		})
 		if err != nil {
 			return err
@@ -256,10 +251,10 @@ func (h *Handlers) CreateNightLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, NightLogResponse{Event: *event, Series: series, Reviews: reviews})
+	WriteJSON(w, http.StatusOK, NightLogResponse{Log: *log, Event: event, Reviews: reviews})
 }
 
-// writeResolveError reports a resolveVenue/resolveSeries failure: bad input
+// writeResolveError reports a resolveVenue/resolveEvent failure: bad input
 // as a 400, Places being unconfigured as a 503, anything else as a 500.
 func writeResolveError(w http.ResponseWriter, err error) {
 	var inputErr errVenueInput

@@ -10,7 +10,7 @@ import (
 type hydrateOpts struct {
 	IncludeUser       bool
 	IncludeDj         bool
-	IncludeEvent      bool
+	IncludeLog        bool
 	IncludeEngagement bool
 	CurrentUserID     *string
 }
@@ -73,45 +73,42 @@ func (h *Handlers) hydrateReviews(ctx context.Context, reviews []db.Review, opts
 		}
 	}
 
-	if opts.IncludeEvent {
-		var ids []string
-		for _, r := range reviews {
-			if r.EventID != nil {
-				ids = append(ids, *r.EventID)
+	if opts.IncludeLog {
+		logs, err := queries.GetLogsByIDs(ctx, h.Pool, queries.DedupeStrings(mapField(reviews, func(r db.Review) string { return r.LogID })))
+		if err != nil {
+			return nil, err
+		}
+		var eventIDs, logIDs []string
+		for id, l := range logs {
+			logIDs = append(logIDs, id)
+			if l.EventID != nil {
+				eventIDs = append(eventIDs, *l.EventID)
 			}
 		}
-		events, err := queries.GetEventsByIDs(ctx, h.Pool, queries.DedupeStrings(ids))
+		events, err := queries.GetEventsByIDs(ctx, h.Pool, queries.DedupeStrings(eventIDs))
+		if err != nil {
+			return nil, err
+		}
+		lineups, err := queries.GetLineupsByLogIDs(ctx, h.Pool, logIDs)
 		if err != nil {
 			return nil, err
 		}
 		for i, r := range reviews {
-			if r.EventID == nil {
+			l, ok := logs[r.LogID]
+			if !ok {
 				continue
 			}
-			if e, ok := events[*r.EventID]; ok {
-				ee := e
-				dtos[i].Event = &ee
+			dto := LogDTO{Log: l, Lineup: lineups[l.ID]}
+			if dto.Lineup == nil {
+				dto.Lineup = []db.Dj{}
 			}
-		}
-
-		var nightIDs []string
-		for _, r := range reviews {
-			if r.DjID == nil && r.EventID != nil {
-				nightIDs = append(nightIDs, *r.EventID)
+			if l.EventID != nil {
+				if e, ok := events[*l.EventID]; ok {
+					ee := e
+					dto.Event = &ee
+				}
 			}
-		}
-		solo, err := queries.GetSoloLineupDjs(ctx, h.Pool, queries.DedupeStrings(nightIDs))
-		if err != nil {
-			return nil, err
-		}
-		for i, r := range reviews {
-			if r.DjID != nil || r.EventID == nil {
-				continue
-			}
-			if d, ok := solo[*r.EventID]; ok {
-				dd := d
-				dtos[i].LineupDj = &dd
-			}
+			dtos[i].Log = &dto
 		}
 	}
 

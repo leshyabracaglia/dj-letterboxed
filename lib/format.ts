@@ -30,3 +30,18 @@ export function parseDateInputValue(value: string): Date | null {
   const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
   return Number.isNaN(date.getTime()) ? null : date;
 }
+
+/** When a party ran, from its event's day/night flags. */
+export function formatEventTiming(event: { isDay: boolean; isNight: boolean }): string {
+  if (event.isDay && event.isNight) return "Day into night";
+  return event.isDay ? "Day" : "Night";
+}
+
+/** Short day label for the zine cards: "Sat 14 Sep" (uppercased by the
+ * cards' pixel type). Weekday/month names follow the device locale. */
+export function formatCardDate(iso: string): string {
+  const date = new Date(iso);
+  const weekday = date.toLocaleDateString(undefined, { weekday: "short" });
+  const month = date.toLocaleDateString(undefined, { month: "short" });
+  return `${weekday} ${date.getDate()} ${month}`;
+}

@@ -10,12 +10,8 @@ export const queryKeys = {
     reviews: (djId: string) => ["djs", djId, "reviews"] as const,
   },
   events: {
-    search: (q: string) => ["events", "search", q] as const,
-    byId: (id: string) => ["events", id] as const,
-  },
-  series: {
-    list: (q: string) => ["series", "list", q] as const,
-    bySlug: (slug: string) => ["series", "slug", slug] as const,
+    list: (q: string) => ["events", "list", q] as const,
+    bySlug: (slug: string) => ["events", "slug", slug] as const,
   },
   venues: {
     search: (q: string) => ["venues", "search", q] as const,

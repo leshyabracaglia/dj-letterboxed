@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -63,7 +64,17 @@ func run() error {
 	case "up":
 		runErr = m.Up()
 	case "down":
-		runErr = m.Down()
+		// "down N" rolls back the last N migrations; bare "down" rolls back
+		// all of them (what `make reset-db` wants).
+		if len(args) > 1 {
+			n, err := strconv.Atoi(args[1])
+			if err != nil || n < 1 {
+				return fmt.Errorf("down takes a positive number of migrations, got %q", args[1])
+			}
+			runErr = m.Steps(-n)
+		} else {
+			runErr = m.Down()
+		}
 	default:
 		return fmt.Errorf("unknown command %q (expected up, down or app-role)", args[0])
 	}

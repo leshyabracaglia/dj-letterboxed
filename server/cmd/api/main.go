@@ -65,6 +65,7 @@ func run() error {
 		Verifier:                  verifier,
 		Spotify:                   spotify,
 		Places:                    places,
+		Push:                      domain.NewPushClient(cfg.ExpoAccessToken),
 		ClerkWebhookSigningSecret: cfg.ClerkWebhookSigningSecret,
 	})
 

@@ -1,28 +1,40 @@
 import { Link, Stack, useLocalSearchParams } from "expo-router";
-import { FlatList, View } from "react-native";
+import { FlatList, Pressable, View } from "react-native";
 
 import {
   EmptyState,
+  FadeInView,
+  FitText,
+  LoadingFade,
   Page,
   PageHeader,
   Skeleton,
   Text,
   usePageContentStyle,
 } from "../../components/ui";
+import { ReviewCard } from "../../components/ReviewCard";
 import { useVenueDetail } from "../../lib/api/hooks";
-import type { Event } from "../../lib/api/types";
-import { formatDateTime } from "../../lib/format";
+import type { VenueDetail } from "../../lib/api/types";
 import { ROUTES } from "../../lib/routes";
 
-function VenueEventRow({ event }: { event: Event }) {
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+// A named event people have logged at this venue, linking to its page.
+function VenueEventRow({ item }: { item: VenueDetail["events"][number] }) {
   return (
-    <Link href={ROUTES.EVENT(event.id)} asChild>
-      <View className="mb-3 rounded-2xl border border-accent/15 bg-white p-4 dark:bg-surface-dark active:opacity-80">
-        <Text className="text-base font-semibold text-ink dark:text-paper">{event.name}</Text>
-        <Text className="mt-1 text-xs text-muted">{formatDateTime(event.eventDate)}</Text>
-      </View>
+    <Link href={ROUTES.EVENT(item.event.slug)} asChild>
+      <Pressable className="mb-3 border border-white/10 bg-zine-panel/90 p-4 active:opacity-80">
+        <Text className="font-display text-2xl uppercase leading-7 text-paper">{item.event.name}</Text>
+        <Text className="mt-1 font-display text-base uppercase text-zine-red-ink">
+          {plural(item.logCount, "night")} logged here
+        </Text>
+      </Pressable>
     </Link>
   );
+}
+
+function SectionTitle({ children }: { children: string }) {
+  return <Text className="mb-2 mt-4 font-display text-2xl uppercase text-paper/85">{children}</Text>;
 }
 
 function VenueSkeleton() {
@@ -35,13 +47,10 @@ function VenueSkeleton() {
       </PageHeader>
       <View style={contentStyle}>
         {Array.from({ length: 4 }).map((_, i) => (
-          <View
-            key={i}
-            className="mb-3 rounded-2xl border border-accent/15 bg-white p-4 dark:bg-surface-dark"
-          >
-            <Skeleton className="h-5 w-44" />
-            <Skeleton className="mt-2 h-3 w-28" />
-          </View>
+          <LoadingFade key={i} className="mb-3 border border-white/5 bg-zine-panel/40 p-4">
+            <Skeleton className="h-7 w-44" />
+            <Skeleton className="mt-2 h-5 w-28" />
+          </LoadingFade>
         ))}
       </View>
     </Page>
@@ -62,19 +71,39 @@ export default function VenueScreen() {
     <Page>
       <Stack.Screen options={{ title: venue.name }} />
       <PageHeader border="accent">
-        <Text className="text-2xl font-bold text-ink dark:text-paper">{venue.name}</Text>
-        {!!venue.address && <Text className="mt-1 text-sm text-muted">{venue.address}</Text>}
-        <Text className="mt-1 text-muted">
-          {venue.city && !venue.address ? `${venue.city} · ` : ""}
-          {venue.eventCount} {venue.eventCount === 1 ? "event" : "events"} reviewed
-        </Text>
+        <FadeInView>
+          <Text className="font-display text-lg uppercase text-zine-red-ink">Venue</Text>
+          <FitText fontSize={60} numberOfLines={3} className="text-paper">
+            {venue.name}
+          </FitText>
+          {!!venue.address && <Text className="mt-1 text-sm text-paper/70">{venue.address}</Text>}
+          <Text className="mt-1 font-display text-lg uppercase text-paper/70">
+            {venue.city && !venue.address ? `${venue.city} · ` : ""}
+            {plural(venue.logCount, "night")} logged
+          </Text>
+        </FadeInView>
       </PageHeader>
       <FlatList
         contentContainerStyle={contentStyle}
-        data={data.events}
+        data={data.recentReviews}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <VenueEventRow event={item} />}
-        ListEmptyComponent={<EmptyState message="No events reviewed at this venue yet." />}
+        renderItem={({ item, index }) => <ReviewCard review={item} index={index} />}
+        ListHeaderComponent={
+          <View className="mb-2">
+            {!!data.events.length && (
+              <>
+                <SectionTitle>Events here</SectionTitle>
+                {data.events.map((item, index) => (
+                  <FadeInView key={item.event.id} index={index}>
+                    <VenueEventRow item={item} />
+                  </FadeInView>
+                ))}
+              </>
+            )}
+            {!!data.recentReviews.length && <SectionTitle>Recent reviews</SectionTitle>}
+          </View>
+        }
+        ListEmptyComponent={<EmptyState message="No nights logged at this venue yet." />}
       />
     </Page>
   );

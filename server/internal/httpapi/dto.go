@@ -11,12 +11,11 @@ import (
 // isLikedByMe, spread onto one object rather than nested).
 type ReviewDTO struct {
 	db.Review
-	User  *db.User  `json:"user,omitempty"`
-	Dj    *db.Dj    `json:"dj,omitempty"`
-	Event *db.Event `json:"event,omitempty"`
-	// LineupDj is set on a night review (no Dj) when the night's lineup is
-	// exactly one DJ, so it can be titled "<DJ> at <event>".
-	LineupDj     *db.Dj    `json:"lineupDj,omitempty"`
+	User *db.User `json:"user,omitempty"`
+	Dj   *db.Dj   `json:"dj,omitempty"`
+	// Log is the night out this review is part of: event, venue, date,
+	// day/night and lineup.
+	Log          *LogDTO   `json:"log,omitempty"`
 	TaggedUsers  []db.User `json:"taggedUsers"`
 	Tags         []string  `json:"tags"`
 	LikeCount    *int64    `json:"likeCount,omitempty"`
@@ -64,37 +63,41 @@ type PaginatedReviews struct {
 }
 
 type DjDetailResponse struct {
-	Dj            db.Dj       `json:"dj"`
-	AvgRating     *float64    `json:"avgRating"`
-	ReviewCount   int64       `json:"reviewCount"`
+	Dj          db.Dj    `json:"dj"`
+	AvgRating   *float64 `json:"avgRating"`
+	ReviewCount int64    `json:"reviewCount"`
+	// RatingCounts is how many reviews gave each star rating: index 0 is
+	// 1 star, index 4 is 5 stars.
+	RatingCounts  []int64     `json:"ratingCounts"`
 	RecentReviews []ReviewDTO `json:"recentReviews"`
 }
 
-type EventDetailResponse struct {
-	Event db.Event `json:"event"`
-	// Series is nil for a night that isn't part of a named event.
-	Series  *db.EventSeries `json:"series"`
-	Lineup  []db.Dj         `json:"lineup"`
-	Reviews []ReviewDTO     `json:"reviews"`
+// LogDTO is a log with its event (nil for a night with no event name) and
+// the DJs this person saw, alphabetically.
+type LogDTO struct {
+	db.Log
+	Event  *db.Event `json:"event"`
+	Lineup []db.Dj   `json:"lineup"`
 }
 
-type SeriesDetailResponse struct {
-	Series        queries.SeriesSummary `json:"series"`
-	Nights        []queries.SeriesNight `json:"nights"`
-	Djs           []queries.SeriesDj    `json:"djs"`
-	Venues        []queries.SeriesVenue `json:"venues"`
-	RecentReviews []ReviewDTO           `json:"recentReviews"`
+type EventDetailResponse struct {
+	Event         queries.EventSummary `json:"event"`
+	Djs           []queries.EventDj    `json:"djs"`
+	Venues        []queries.EventVenue `json:"venues"`
+	RecentReviews []ReviewDTO          `json:"recentReviews"`
 }
 
 type NightLogResponse struct {
-	Event   db.Event        `json:"event"`
-	Series  *db.EventSeries `json:"series"`
-	Reviews []db.Review     `json:"reviews"`
+	Log db.Log `json:"log"`
+	// Event is nil for a night with no event name.
+	Event   *db.Event   `json:"event"`
+	Reviews []db.Review `json:"reviews"`
 }
 
 type VenueDetailResponse struct {
-	Venue  queries.VenueSummary `json:"venue"`
-	Events []db.Event           `json:"events"`
+	Venue         queries.VenueSummary `json:"venue"`
+	Events        []queries.VenueEvent `json:"events"`
+	RecentReviews []ReviewDTO          `json:"recentReviews"`
 }
 
 type UserProfileResponse struct {

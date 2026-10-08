@@ -40,7 +40,7 @@ export function UserListScreen({ mode }: { mode: "followers" | "following" }) {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <Link href={ROUTES.USER(item.username)} asChild>
-            <Pressable className="mb-2 flex-row items-center gap-3 rounded-2xl border border-primary/15 bg-white dark:bg-surface-dark p-4 shadow-sm active:opacity-90">
+            <Pressable className="mb-2 flex-row items-center gap-3 border border-white/10 bg-zine-panel/90 p-4 shadow-sm active:opacity-90">
               <Avatar uri={item.avatarUrl} name={item.username} size={36} />
               <View>
                 <Text className="font-semibold text-ink dark:text-paper">{item.username}</Text>
@@ -56,7 +56,7 @@ export function UserListScreen({ mode }: { mode: "followers" | "following" }) {
               {Array.from({ length: 5 }).map((_, i) => (
                 <View
                   key={i}
-                  className="mb-2 flex-row items-center gap-3 rounded-2xl border border-primary/15 bg-white dark:bg-surface-dark p-4 shadow-sm"
+                  className="mb-2 flex-row items-center gap-3 border border-white/10 bg-zine-panel/90 p-4 shadow-sm"
                 >
                   <Skeleton className="h-9 w-9 rounded-full" />
                   <View>

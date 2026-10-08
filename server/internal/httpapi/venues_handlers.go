@@ -39,7 +39,7 @@ func (h *Handlers) SearchVenues(w http.ResponseWriter, r *http.Request) {
 // SearchPlaces godoc
 //
 //	@Summary	Search Google Places for venues not yet saved
-//	@Description	Pass the same client-generated sessionToken on every keystroke of one search and on the POST /api/events that saves the picked place, so Google bills them as one session.
+//	@Description	Pass the same client-generated sessionToken on every keystroke of one search and on the POST /api/logs that saves the picked place, so Google bills them as one session.
 //	@Tags		venues
 //	@Produce	json
 //	@Param		q				query	string	true	"search query"
@@ -69,7 +69,7 @@ func (h *Handlers) SearchPlaces(w http.ResponseWriter, r *http.Request) {
 
 // GetVenueByID godoc
 //
-//	@Summary	Get a venue by id, with its events
+//	@Summary	Get a venue by id, with the events logged there and recent reviews
 //	@Tags		venues
 //	@Produce	json
 //	@Param		id	path		string	true	"venue id"
@@ -89,15 +89,29 @@ func (h *Handlers) GetVenueByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	events, err := queries.ListEventsByVenue(r.Context(), h.Pool, id)
+	events, err := queries.ListVenueEvents(r.Context(), h.Pool, id)
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	reviews, err := queries.ListReviewsByVenue(r.Context(), h.Pool, id, 30)
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	dtos, err := h.hydrateReviews(r.Context(), reviews, hydrateOpts{
+		IncludeUser: true, IncludeDj: true, IncludeLog: true,
+		IncludeEngagement: true, CurrentUserID: optionalUserID(r),
+	})
 	if err != nil {
 		InternalError(w, err)
 		return
 	}
 
 	WriteJSON(w, http.StatusOK, VenueDetailResponse{
-		Venue:  *summary,
-		Events: orEmpty(events),
+		Venue:         *summary,
+		Events:        orEmpty(events),
+		RecentReviews: dtos,
 	})
 }
 
@@ -107,10 +121,22 @@ type errVenueInput struct{ msg string }
 
 func (e errVenueInput) Error() string { return e.msg }
 
-// resolveVenue turns createEventRequest's venue fields into a saved venue:
-// an existing venue id, a Google place (saved on first use), or a typed-in
-// name (matched case-insensitively against other typed-in venues).
-func (h *Handlers) resolveVenue(ctx context.Context, req createEventRequest, userID string) (*db.Venue, error) {
+// venueInput is how a request names a venue, checked in this order: venueId
+// (a saved venue), placeId (a Google Places result, saved as a venue on
+// first use - pass the autocomplete session token with it), or venue (a
+// typed-in name).
+type venueInput struct {
+	Venue             string
+	VenueID           *string
+	PlaceID           *string
+	PlaceSessionToken *string
+	City              *string
+}
+
+// resolveVenue turns venueInput into a saved venue: an existing venue id, a
+// Google place (saved on first use), or a typed-in name (matched
+// case-insensitively against other typed-in venues).
+func (h *Handlers) resolveVenue(ctx context.Context, req venueInput, userID string) (*db.Venue, error) {
 	switch {
 	case req.VenueID != nil && *req.VenueID != "":
 		if !uuidPattern.MatchString(*req.VenueID) {

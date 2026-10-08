@@ -35,7 +35,7 @@ func (h *Handlers) GetFavoriteReviews(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dtos, err := h.hydrateReviews(r.Context(), reviews, hydrateOpts{
-		IncludeDj: true, IncludeEvent: true, IncludeEngagement: true, CurrentUserID: optionalUserID(r),
+		IncludeDj: true, IncludeLog: true, IncludeEngagement: true, CurrentUserID: optionalUserID(r),
 	})
 	if err != nil {
 		InternalError(w, err)
@@ -101,7 +101,7 @@ func (h *Handlers) SetFavoriteReviews(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	dtos, err := h.hydrateReviews(r.Context(), reviews, hydrateOpts{
-		IncludeDj: true, IncludeEvent: true, IncludeEngagement: true, CurrentUserID: &user.ID,
+		IncludeDj: true, IncludeLog: true, IncludeEngagement: true, CurrentUserID: &user.ID,
 	})
 	if err != nil {
 		InternalError(w, err)

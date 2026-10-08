@@ -8,14 +8,14 @@ import { ROUTES } from "../lib/routes";
 
 function Count({ value, label }: { value: number; label: string }) {
   return (
-    <Text className="text-muted">
-      <Text className="font-numeric text-2xl text-ink dark:text-paper mt-3">{value}</Text>  {label}
+    <Text className="font-display text-base uppercase text-paper/60">
+      <Text className="font-numeric text-3xl text-paper">{value}</Text> {label}
     </Text>
   );
 }
 
 function Separator() {
-  return <View className="h-1 w-1 rounded-full bg-muted" />;
+  return <View className="h-1.5 w-1.5 bg-zine-red" />;
 }
 
 /** A profile's counts in one left-aligned row: followers/following (linking
@@ -26,7 +26,7 @@ export function ProfileCounts({ profile }: { profile: UserProfile | undefined })
 
   if (!profile) {
     return (
-      <View className="mt-3 flex-row items-center gap-4">
+      <View className="mt-4 flex-row flex-wrap items-center gap-x-4 gap-y-1">
         <Skeleton className="h-6 w-20" />
         <Skeleton className="h-6 w-20" />
         <Separator />
@@ -38,7 +38,7 @@ export function ProfileCounts({ profile }: { profile: UserProfile | undefined })
   const { user, reviewCount, followerCount, followingCount } = profile;
   const djCount = stats?.uniqueDjs ?? 0;
   return (
-    <View className="mt-3 flex-row items-center gap-4">
+    <View className="mt-4 flex-row flex-wrap items-center gap-x-4 gap-y-1">
       <Link href={ROUTES.USER_FOLLOWERS(user.username)}>
         <Count value={followerCount} label={followerCount === 1 ? "follower" : "followers"} />
       </Link>

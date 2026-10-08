@@ -6,12 +6,12 @@ import { Roboto_400Regular, Roboto_500Medium, Roboto_700Bold } from "@expo-googl
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import * as Application from "expo-application";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { DarkTheme, Stack, ThemeProvider } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
-import { useEffect, useState, type ReactNode } from "react";
-import { AppState, Appearance, Linking, Platform, View } from "react-native";
+import { useEffect, type ReactNode } from "react";
+import { AppState, Linking, Platform, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { Button, Page, Text, useIsDesktopWeb } from "../components/ui";
@@ -20,8 +20,8 @@ import { useApi } from "../lib/api/client";
 import { queryKeys } from "../lib/api/queryKeys";
 import type { AppVersion } from "../lib/api/types";
 import { AuthProvider } from "../lib/auth";
+import { usePushNotifications } from "../lib/push";
 import { tokenCache } from "../lib/clerk-token-cache";
-import { getStoredThemePreference, resolveColorScheme } from "../lib/theme-storage";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -36,6 +36,14 @@ const publishableKey: string = (() => {
 })();
 
 const queryClient = new QueryClient();
+
+// Navigators paint this behind every screen and header (and in any gap a
+// screen doesn't cover, like over-scroll on web); without it they fall back
+// to React Navigation's light-gray default theme.
+const NAV_THEME = {
+  ...DarkTheme,
+  colors: { ...DarkTheme.colors, background: "#000000", card: "#0B0809", border: "rgba(255,255,255,0.06)" },
+};
 
 // iOS build number of this binary (CFBundleVersion); null on web/Android.
 const iosBuild = Platform.OS === "ios" ? Number(Application.nativeBuildVersion) : NaN;
@@ -82,6 +90,12 @@ function ForceUpdateGate({ children }: { children: ReactNode }) {
   );
 }
 
+// Hooks need a component inside AuthProvider; renders nothing.
+function PushNotifications() {
+  usePushNotifications();
+  return null;
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Roboto_400Regular,
@@ -89,41 +103,33 @@ export default function RootLayout() {
     Roboto_700Bold,
     Jersey10_400Regular,
   });
-  const [themeReady, setThemeReady] = useState(false);
-  const { colorScheme, setColorScheme } = useColorScheme();
+  const { setColorScheme } = useColorScheme();
   const isDesktopWeb = useIsDesktopWeb();
 
+  // The zine design (dark concrete wall, colored paper cards) only comes in
+  // dark, so the dark: variants are always on.
   useEffect(() => {
-    // Re-reads the stored preference (rather than trusting local state) so
-    // that a live OS appearance change only takes effect while the user's
-    // choice is actually "system" — an explicit light/dark pick is a no-op.
-    const applyPreference = async () => {
-      const pref = (await getStoredThemePreference()) ?? "system";
-      setColorScheme(resolveColorScheme(pref));
-    };
-    applyPreference().finally(() => setThemeReady(true));
-    const sub = Appearance.addChangeListener(applyPreference);
-    return () => sub.remove();
+    setColorScheme("dark");
   }, [setColorScheme]);
 
   useEffect(() => {
-    if ((fontsLoaded || fontError) && themeReady) {
+    if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError, themeReady]);
+  }, [fontsLoaded, fontError]);
 
-  if ((!fontsLoaded && !fontError) || !themeReady) {
+  if (!fontsLoaded && !fontError) {
     return null;
   }
-
-  const isDark = colorScheme === "dark";
 
   return (
     <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <StatusBar style={isDark ? "light" : "dark"} />
+            <PushNotifications />
+            <StatusBar style="light" />
+            <ThemeProvider value={NAV_THEME}>
             <ForceUpdateGate>
             <Stack
               screenOptions={{
@@ -131,16 +137,16 @@ export default function RootLayout() {
                 // instead of a per-page title bar; phone-width web and native keep
                 // the standard themed header with a back chevron.
                 header: isDesktopWeb ? () => <WebNav /> : undefined,
-                headerStyle: { backgroundColor: isDark ? "#000000" : "#F6F6F9" },
-                headerTintColor: isDark ? "#F6F6F9" : "#000000",
-                headerTitleStyle: { fontFamily: "Roboto_700Bold" },
+                headerStyle: { backgroundColor: "#0B0809" },
+                headerTintColor: "#F6F6F9",
+                headerTitleStyle: { fontFamily: "Jersey10_400Regular", fontSize: 24 },
                 // Chevron only: the default back title is the previous route's
                 // name, which for anything pushed from the tabs reads "(tabs)".
                 // (A custom headerBackTitleStyle font forces a static title, so
                 // none is set.)
                 headerBackButtonDisplayMode: "minimal",
                 headerShadowVisible: false,
-                contentStyle: { backgroundColor: isDark ? "#000000" : "#F6F6F9" },
+                contentStyle: { backgroundColor: "#000000" },
               }}
             >
               <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -148,6 +154,7 @@ export default function RootLayout() {
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             </Stack>
             </ForceUpdateGate>
+            </ThemeProvider>
           </AuthProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

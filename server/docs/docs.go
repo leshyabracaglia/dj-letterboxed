@@ -277,57 +277,6 @@ const docTemplate = `{
             }
         },
         "/api/events": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "The venue is resolved from venueId, then placeId (a Google Places id, saved as a venue on first use), then the typed venue name.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "events"
-                ],
-                "summary": "Create an event (or return the existing one, deduped by exact name+venue+date)",
-                "parameters": [
-                    {
-                        "description": "event to create",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/createEventRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/Event"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errorEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/events/search": {
             "get": {
                 "produces": [
                     "application/json"
@@ -335,14 +284,19 @@ const docTemplate = `{
                 "tags": [
                     "events"
                 ],
-                "summary": "Search events by name",
+                "summary": "List or search events (named parties like \"Innervisions NY\"), most-reviewed first",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "search query",
+                        "description": "name search; omit to list all",
                         "name": "q",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "max results, 1-50, default 20",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -351,14 +305,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/Event"
+                                "$ref": "#/definitions/EventSummary"
                             }
                         }
                     }
                 }
             }
         },
-        "/api/events/{id}": {
+        "/api/events/{slug}": {
             "get": {
                 "produces": [
                     "application/json"
@@ -366,12 +320,12 @@ const docTemplate = `{
                 "tags": [
                     "events"
                 ],
-                "summary": "Get a night by id, with its series, lineup, and all its reviews",
+                "summary": "Get an event with its totals, the DJs and venues it's been logged with, and recent reviews",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "event id",
-                        "name": "id",
+                        "description": "event slug",
+                        "name": "slug",
                         "in": "path",
                         "required": true
                     }
@@ -633,7 +587,7 @@ const docTemplate = `{
                 "tags": [
                     "logs"
                 ],
-                "summary": "Log a night: find or create the night, add DJs to its lineup, and save the night and DJ reviews in one go",
+                "summary": "Log a night out: the event (picked, or found or created by name), venue, day, lineup, and the night and DJ reviews, in one go",
                 "parameters": [
                     {
                         "description": "the night to log",
@@ -650,56 +604,6 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/NightLogResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errorEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/reviews": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "reviews"
-                ],
-                "summary": "Create a review of a DJ (optionally tied to an event)",
-                "parameters": [
-                    {
-                        "description": "review to create",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/createReviewRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/Review"
                         }
                     },
                     "400": {
@@ -1017,76 +921,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/series": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "series"
-                ],
-                "summary": "List event series (recurring events like \"Innervisions\"), most-reviewed first",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "name search; omit to list all",
-                        "name": "q",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "max results, 1-50, default 20",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/SeriesSummary"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/series/{slug}": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "series"
-                ],
-                "summary": "Get an event series with its nights, DJs, venues, and recent reviews",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "series slug",
-                        "name": "slug",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/SeriesDetailResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/errorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
         "/api/tags": {
             "get": {
                 "produces": [
@@ -1256,6 +1090,104 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me/push-tokens": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Register this device's Expo push token for the caller (moves it from any other account)",
+                "parameters": [
+                    {
+                        "description": "the device's push token",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/pushTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Stop sending the caller's notifications to this device (on sign-out)",
+                "parameters": [
+                    {
+                        "description": "the device's push token",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/pushTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/errorEnvelope"
                         }
@@ -1516,7 +1448,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Pass the same client-generated sessionToken on every keystroke of one search and on the POST /api/events that saves the picked place, so Google bills them as one session.",
+                "description": "Pass the same client-generated sessionToken on every keystroke of one search and on the POST /api/logs that saves the picked place, so Google bills them as one session.",
                 "produces": [
                     "application/json"
                 ],
@@ -1608,7 +1540,7 @@ const docTemplate = `{
                 "tags": [
                     "venues"
                 ],
-                "summary": "Get a venue by id, with its events",
+                "summary": "Get a venue by id, with the events logged there and recent reviews",
                 "parameters": [
                     {
                         "type": "string",
@@ -1706,6 +1638,7 @@ const docTemplate = `{
             "required": [
                 "avgRating",
                 "dj",
+                "ratingCounts",
                 "recentReviews",
                 "reviewCount"
             ],
@@ -1715,6 +1648,13 @@ const docTemplate = `{
                 },
                 "dj": {
                     "$ref": "#/definitions/Dj"
+                },
+                "ratingCounts": {
+                    "description": "RatingCounts is how many reviews gave each star rating: index 0 is\n1 star, index 4 is 5 stars.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "recentReviews": {
                     "type": "array",
@@ -1728,98 +1668,6 @@ const docTemplate = `{
             }
         },
         "Event": {
-            "type": "object",
-            "required": [
-                "city",
-                "createdAt",
-                "createdByUserId",
-                "description",
-                "eventDate",
-                "id",
-                "isDay",
-                "isNight",
-                "name",
-                "seriesId",
-                "venue",
-                "venueId"
-            ],
-            "properties": {
-                "city": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "createdByUserId": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "eventDate": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "isDay": {
-                    "description": "IsDay and IsNight say when the party ran; both is day into night.\nAt least one is set.",
-                    "type": "boolean"
-                },
-                "isNight": {
-                    "type": "boolean"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "seriesId": {
-                    "description": "SeriesID is nil for a night that isn't part of a named event.",
-                    "type": "string"
-                },
-                "venue": {
-                    "description": "Venue is the venue's display name, kept denormalized alongside\nVenueID so existing displays don't need a join.",
-                    "type": "string"
-                },
-                "venueId": {
-                    "type": "string"
-                }
-            }
-        },
-        "EventDetailResponse": {
-            "type": "object",
-            "required": [
-                "event",
-                "lineup",
-                "reviews",
-                "series"
-            ],
-            "properties": {
-                "event": {
-                    "$ref": "#/definitions/Event"
-                },
-                "lineup": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/Dj"
-                    }
-                },
-                "reviews": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/ReviewDTO"
-                    }
-                },
-                "series": {
-                    "description": "Series is nil for a night that isn't part of a named event.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/EventSeries"
-                        }
-                    ]
-                }
-            }
-        },
-        "EventSeries": {
             "type": "object",
             "required": [
                 "createdAt",
@@ -1842,6 +1690,115 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "EventDetailResponse": {
+            "type": "object",
+            "required": [
+                "djs",
+                "event",
+                "recentReviews",
+                "venues"
+            ],
+            "properties": {
+                "djs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/EventDj"
+                    }
+                },
+                "event": {
+                    "$ref": "#/definitions/EventSummary"
+                },
+                "recentReviews": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ReviewDTO"
+                    }
+                },
+                "venues": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/EventVenue"
+                    }
+                }
+            }
+        },
+        "EventDj": {
+            "type": "object",
+            "required": [
+                "dj",
+                "logCount"
+            ],
+            "properties": {
+                "dj": {
+                    "$ref": "#/definitions/Dj"
+                },
+                "logCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "EventSummary": {
+            "type": "object",
+            "required": [
+                "avgRating",
+                "createdAt",
+                "createdByUserId",
+                "id",
+                "logCount",
+                "name",
+                "reviewCount",
+                "slug"
+            ],
+            "properties": {
+                "avgRating": {
+                    "type": "number"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "createdByUserId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "logCount": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "reviewCount": {
+                    "type": "integer"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "EventVenue": {
+            "type": "object",
+            "required": [
+                "city",
+                "id",
+                "logCount",
+                "name"
+            ],
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "logCount": {
+                    "type": "integer"
+                },
+                "name": {
                     "type": "string"
                 }
             }
@@ -1908,25 +1865,141 @@ const docTemplate = `{
                 }
             }
         },
+        "Log": {
+            "type": "object",
+            "required": [
+                "city",
+                "createdAt",
+                "eventId",
+                "id",
+                "isDay",
+                "isNight",
+                "seenAt",
+                "userId",
+                "venue",
+                "venueId"
+            ],
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "eventId": {
+                    "description": "EventID is nil for a night with no event name (just a venue).",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isDay": {
+                    "description": "IsDay and IsNight say when this person went; both is day into night.\nAt least one is set.",
+                    "type": "boolean"
+                },
+                "isNight": {
+                    "type": "boolean"
+                },
+                "seenAt": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                },
+                "venue": {
+                    "description": "Venue is the venue's display name, denormalized alongside VenueID.\nBoth are nil only on logs migrated from reviews that had no night.",
+                    "type": "string"
+                },
+                "venueId": {
+                    "type": "string"
+                }
+            }
+        },
+        "LogDTO": {
+            "type": "object",
+            "required": [
+                "city",
+                "createdAt",
+                "event",
+                "eventId",
+                "id",
+                "isDay",
+                "isNight",
+                "lineup",
+                "seenAt",
+                "userId",
+                "venue",
+                "venueId"
+            ],
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "event": {
+                    "$ref": "#/definitions/Event"
+                },
+                "eventId": {
+                    "description": "EventID is nil for a night with no event name (just a venue).",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isDay": {
+                    "description": "IsDay and IsNight say when this person went; both is day into night.\nAt least one is set.",
+                    "type": "boolean"
+                },
+                "isNight": {
+                    "type": "boolean"
+                },
+                "lineup": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Dj"
+                    }
+                },
+                "seenAt": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                },
+                "venue": {
+                    "description": "Venue is the venue's display name, denormalized alongside VenueID.\nBoth are nil only on logs migrated from reviews that had no night.",
+                    "type": "string"
+                },
+                "venueId": {
+                    "type": "string"
+                }
+            }
+        },
         "NightLogResponse": {
             "type": "object",
             "required": [
                 "event",
-                "reviews",
-                "series"
+                "log",
+                "reviews"
             ],
             "properties": {
                 "event": {
-                    "$ref": "#/definitions/Event"
+                    "description": "Event is nil for a night with no event name.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/Event"
+                        }
+                    ]
+                },
+                "log": {
+                    "$ref": "#/definitions/Log"
                 },
                 "reviews": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/Review"
                     }
-                },
-                "series": {
-                    "$ref": "#/definitions/EventSeries"
                 }
             }
         },
@@ -1987,8 +2060,8 @@ const docTemplate = `{
             "required": [
                 "createdAt",
                 "djId",
-                "eventId",
                 "id",
+                "logId",
                 "rating",
                 "reviewText",
                 "seenAt",
@@ -2000,13 +2073,13 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "djId": {
-                    "description": "DjID is nil for a review of the night as a whole (EventID is then set).",
-                    "type": "string"
-                },
-                "eventId": {
+                    "description": "DjID is nil for a review of the night as a whole.",
                     "type": "string"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "logId": {
                     "type": "string"
                 },
                 "rating": {
@@ -2016,6 +2089,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "seenAt": {
+                    "description": "SeenAt mirrors the log's, kept here for ordering and pagination.",
                     "type": "string"
                 },
                 "updatedAt": {
@@ -2061,8 +2135,8 @@ const docTemplate = `{
             "required": [
                 "createdAt",
                 "djId",
-                "eventId",
                 "id",
+                "logId",
                 "rating",
                 "reviewText",
                 "seenAt",
@@ -2082,13 +2156,7 @@ const docTemplate = `{
                     "$ref": "#/definitions/Dj"
                 },
                 "djId": {
-                    "description": "DjID is nil for a review of the night as a whole (EventID is then set).",
-                    "type": "string"
-                },
-                "event": {
-                    "$ref": "#/definitions/Event"
-                },
-                "eventId": {
+                    "description": "DjID is nil for a review of the night as a whole.",
                     "type": "string"
                 },
                 "id": {
@@ -2103,13 +2171,16 @@ const docTemplate = `{
                 "likeCount": {
                     "type": "integer"
                 },
-                "lineupDj": {
-                    "description": "LineupDj is set on a night review (no Dj) when the night's lineup is\nexactly one DJ, so it can be titled \"\u003cDJ\u003e at \u003cevent\u003e\".",
+                "log": {
+                    "description": "Log is the night out this review is part of: event, venue, date,\nday/night and lineup.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/Dj"
+                            "$ref": "#/definitions/LogDTO"
                         }
                     ]
+                },
+                "logId": {
+                    "type": "string"
                 },
                 "rating": {
                     "type": "integer"
@@ -2118,6 +2189,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "seenAt": {
+                    "description": "SeenAt mirrors the log's, kept here for ordering and pagination.",
                     "type": "string"
                 },
                 "taggedUsers": {
@@ -2140,141 +2212,6 @@ const docTemplate = `{
                 },
                 "userId": {
                     "type": "string"
-                }
-            }
-        },
-        "SeriesDetailResponse": {
-            "type": "object",
-            "required": [
-                "djs",
-                "nights",
-                "recentReviews",
-                "series",
-                "venues"
-            ],
-            "properties": {
-                "djs": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/SeriesDj"
-                    }
-                },
-                "nights": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/SeriesNight"
-                    }
-                },
-                "recentReviews": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/ReviewDTO"
-                    }
-                },
-                "series": {
-                    "$ref": "#/definitions/SeriesSummary"
-                },
-                "venues": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/SeriesVenue"
-                    }
-                }
-            }
-        },
-        "SeriesDj": {
-            "type": "object",
-            "required": [
-                "dj",
-                "nightCount"
-            ],
-            "properties": {
-                "dj": {
-                    "$ref": "#/definitions/Dj"
-                },
-                "nightCount": {
-                    "type": "integer"
-                }
-            }
-        },
-        "SeriesNight": {
-            "type": "object",
-            "required": [
-                "avgRating",
-                "event",
-                "reviewCount"
-            ],
-            "properties": {
-                "avgRating": {
-                    "type": "number"
-                },
-                "event": {
-                    "$ref": "#/definitions/Event"
-                },
-                "reviewCount": {
-                    "type": "integer"
-                }
-            }
-        },
-        "SeriesSummary": {
-            "type": "object",
-            "required": [
-                "avgRating",
-                "createdAt",
-                "createdByUserId",
-                "id",
-                "name",
-                "nightCount",
-                "reviewCount",
-                "slug"
-            ],
-            "properties": {
-                "avgRating": {
-                    "type": "number"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "createdByUserId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "nightCount": {
-                    "type": "integer"
-                },
-                "reviewCount": {
-                    "type": "integer"
-                },
-                "slug": {
-                    "type": "string"
-                }
-            }
-        },
-        "SeriesVenue": {
-            "type": "object",
-            "required": [
-                "city",
-                "id",
-                "name",
-                "nightCount"
-            ],
-            "properties": {
-                "city": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "nightCount": {
-                    "type": "integer"
                 }
             }
         },
@@ -2459,17 +2396,39 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "events",
+                "recentReviews",
                 "venue"
             ],
             "properties": {
                 "events": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/Event"
+                        "$ref": "#/definitions/VenueEvent"
+                    }
+                },
+                "recentReviews": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ReviewDTO"
                     }
                 },
                 "venue": {
                     "$ref": "#/definitions/VenueSummary"
+                }
+            }
+        },
+        "VenueEvent": {
+            "type": "object",
+            "required": [
+                "event",
+                "logCount"
+            ],
+            "properties": {
+                "event": {
+                    "$ref": "#/definitions/Event"
+                },
+                "logCount": {
+                    "type": "integer"
                 }
             }
         },
@@ -2478,9 +2437,9 @@ const docTemplate = `{
             "required": [
                 "address",
                 "city",
-                "eventCount",
                 "googlePlaceId",
                 "id",
+                "logCount",
                 "name"
             ],
             "properties": {
@@ -2490,14 +2449,15 @@ const docTemplate = `{
                 "city": {
                     "type": "string"
                 },
-                "eventCount": {
-                    "type": "integer"
-                },
                 "googlePlaceId": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
+                },
+                "logCount": {
+                    "description": "LogCount is how many nights out people have logged there.",
+                    "type": "integer"
                 },
                 "name": {
                     "type": "string"
@@ -2560,50 +2520,13 @@ const docTemplate = `{
                 }
             }
         },
-        "createEventRequest": {
-            "type": "object",
-            "required": [
-                "city",
-                "description",
-                "eventDate",
-                "name",
-                "placeId",
-                "placeSessionToken",
-                "venue",
-                "venueId"
-            ],
-            "properties": {
-                "city": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "eventDate": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "placeId": {
-                    "type": "string"
-                },
-                "placeSessionToken": {
-                    "type": "string"
-                },
-                "venue": {
-                    "type": "string"
-                },
-                "venueId": {
-                    "type": "string"
-                }
-            }
-        },
         "createNightLogRequest": {
             "type": "object",
             "required": [
                 "city",
                 "djReviews",
+                "eventId",
+                "eventName",
                 "isDay",
                 "isNight",
                 "lineupDjIds",
@@ -2611,8 +2534,6 @@ const docTemplate = `{
                 "placeId",
                 "placeSessionToken",
                 "seenAt",
-                "seriesId",
-                "seriesName",
                 "taggedUserIds",
                 "tags",
                 "venue",
@@ -2628,15 +2549,21 @@ const docTemplate = `{
                         "$ref": "#/definitions/djReviewInput"
                     }
                 },
+                "eventId": {
+                    "type": "string"
+                },
+                "eventName": {
+                    "type": "string"
+                },
                 "isDay": {
-                    "description": "When the party ran: day, night, or both. Neither given means night.",
+                    "description": "When you went: day, night, or both. Neither given means night.",
                     "type": "boolean"
                 },
                 "isNight": {
                     "type": "boolean"
                 },
                 "lineupDjIds": {
-                    "description": "DJs the user saw; added to the night's lineup. DJs in djReviews are\nadded too, whether or not they're listed here.",
+                    "description": "DJs you saw. DJs in djReviews are added too, whether or not they're\nlisted here.",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -2659,12 +2586,6 @@ const docTemplate = `{
                 "seenAt": {
                     "type": "string"
                 },
-                "seriesId": {
-                    "type": "string"
-                },
-                "seriesName": {
-                    "type": "string"
-                },
                 "taggedUserIds": {
                     "type": "array",
                     "items": {
@@ -2683,48 +2604,6 @@ const docTemplate = `{
                 },
                 "venueId": {
                     "type": "string"
-                }
-            }
-        },
-        "createReviewRequest": {
-            "type": "object",
-            "required": [
-                "djId",
-                "eventId",
-                "rating",
-                "reviewText",
-                "seenAt",
-                "taggedUserIds",
-                "tags"
-            ],
-            "properties": {
-                "djId": {
-                    "type": "string"
-                },
-                "eventId": {
-                    "type": "string"
-                },
-                "rating": {
-                    "type": "integer"
-                },
-                "reviewText": {
-                    "type": "string"
-                },
-                "seenAt": {
-                    "type": "string"
-                },
-                "taggedUserIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "tags": {
-                    "description": "Tag names (new ones are added to the library). Omitted = leave\nas-is, [] = clear - same contract as TaggedUserIDs.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 }
             }
         },
@@ -2773,6 +2652,23 @@ const docTemplate = `{
                 }
             }
         },
+        "pushTokenRequest": {
+            "type": "object",
+            "required": [
+                "platform",
+                "token"
+            ],
+            "properties": {
+                "platform": {
+                    "description": "\"ios\" or \"android\"; ignored on unregister.",
+                    "type": "string"
+                },
+                "token": {
+                    "description": "An Expo push token (ExponentPushToken[...]).",
+                    "type": "string"
+                }
+            }
+        },
         "setFavoritesRequest": {
             "type": "object",
             "required": [
@@ -2815,7 +2711,6 @@ const docTemplate = `{
             "required": [
                 "rating",
                 "reviewText",
-                "seenAt",
                 "taggedUserIds",
                 "tags"
             ],
@@ -2824,9 +2719,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "reviewText": {
-                    "type": "string"
-                },
-                "seenAt": {
                     "type": "string"
                 },
                 "taggedUserIds": {

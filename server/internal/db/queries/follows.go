@@ -21,11 +21,12 @@ func IsFollowing(ctx context.Context, q DBTX, followerID, followingID string) (b
 	return true, nil
 }
 
-func Follow(ctx context.Context, q DBTX, followerID, followingID string) error {
-	_, err := q.Exec(ctx, `
+// Follow reports whether this was a new follow (false if already following).
+func Follow(ctx context.Context, q DBTX, followerID, followingID string) (bool, error) {
+	tag, err := q.Exec(ctx, `
 		INSERT INTO follows (follower_id, following_id) VALUES ($1, $2)
 		ON CONFLICT DO NOTHING`, followerID, followingID)
-	return err
+	return tag.RowsAffected() > 0, err
 }
 
 func Unfollow(ctx context.Context, q DBTX, followerID, followingID string) error {

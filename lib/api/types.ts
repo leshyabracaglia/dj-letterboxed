@@ -16,15 +16,23 @@ type Schemas = components["schemas"];
 
 export type User = Schemas["User"];
 export type Dj = Schemas["Dj"];
+/** A named party ("Innervisions NY"): it can happen at many venues on many
+ * dates, and collects every log of it. */
 export type Event = Schemas["Event"];
-/** A recurring event ("Innervisions") that nights at different venues and
- * dates belong to. */
-export type EventSeries = Schemas["EventSeries"];
+/** One person's night out: its event (null for a night with no event name),
+ * venue, day, day/night and the DJs they saw. `venue`/`venueId` are null
+ * only on old logs migrated from reviews that had no night - swag can't
+ * express these nullabilities, so they're corrected here. */
+export type Log = Omit<Schemas["LogDTO"], "event" | "eventId" | "venue" | "venueId"> & {
+  event: Event | null;
+  eventId: string | null;
+  venue: string | null;
+  venueId: string | null;
+};
 /** The flattened review shape most endpoints return: review fields plus
- * optional user/dj/event relations and engagement counts. `djId` (and so
- * `dj`) is null for a review of the night as a whole - swag can't express
- * that nullability, so it's corrected here. */
-export type Review = Omit<Schemas["ReviewDTO"], "djId"> & { djId: string | null };
+ * optional user/dj/log relations and engagement counts. `djId` (and so
+ * `dj`) is null for a review of the night as a whole. */
+export type Review = Omit<Schemas["ReviewDTO"], "djId" | "log"> & { djId: string | null; log?: Log };
 export type ReviewComment = Schemas["ReviewComment"];
 export type SpotifyArtist = Schemas["SpotifyArtist"];
 export type PlaceSuggestion = Schemas["PlaceSuggestion"];
@@ -36,24 +44,18 @@ export type Paginated<T> = {
 };
 
 export type DjDetail = Schemas["DjDetailResponse"];
-// `series`/`avgRating` corrected to nullable, as with Review.djId above.
-export type EventDetail = Omit<Schemas["EventDetailResponse"], "series" | "reviews"> & {
-  series: EventSeries | null;
-  reviews: Review[];
-};
-export type SeriesSummary = Omit<Schemas["SeriesSummary"], "avgRating"> & { avgRating: number | null };
-export type SeriesNight = Omit<Schemas["SeriesNight"], "avgRating"> & { avgRating: number | null };
-export type SeriesDetail = Omit<Schemas["SeriesDetailResponse"], "series" | "nights" | "recentReviews"> & {
-  series: SeriesSummary;
-  nights: SeriesNight[];
+// `avgRating` corrected to nullable (an event with no ratings yet).
+export type EventSummary = Omit<Schemas["EventSummary"], "avgRating"> & { avgRating: number | null };
+export type EventDetail = Omit<Schemas["EventDetailResponse"], "event" | "recentReviews"> & {
+  event: EventSummary;
   recentReviews: Review[];
 };
-export type NightLogResponse = Omit<Schemas["NightLogResponse"], "series" | "reviews"> & {
-  series: EventSeries | null;
+export type NightLogResponse = Omit<Schemas["NightLogResponse"], "event" | "reviews"> & {
+  event: Event | null;
   reviews: (Omit<Schemas["Review"], "djId"> & { djId: string | null })[];
 };
 export type VenueSummary = Schemas["VenueSummary"];
-export type VenueDetail = Schemas["VenueDetailResponse"];
+export type VenueDetail = Omit<Schemas["VenueDetailResponse"], "recentReviews"> & { recentReviews: Review[] };
 export type UserProfile = Schemas["UserProfileResponse"];
 export type UserStats = Schemas["UserStatsResponse"];
 export type LeaderboardEntry = Schemas["LeaderboardEntry"];
@@ -64,37 +66,24 @@ export type FavoriteReviewsResponse = Schemas["FavoriteReviewsResponse"];
 
 // Request bodies
 
-/** The venue goes in one of three ways, checked in this order: `venueId`
- * (a saved venue), `placeId` (a Google Places result, saved as a venue on
- * first use - send the autocomplete session token with it), or `venue` (a
- * typed-in name). */
-export type CreateEventInput = {
-  name: string;
-  venueId?: string;
-  placeId?: string;
-  placeSessionToken?: string;
-  venue?: string;
-  city?: string;
-  eventDate: string;
-  description?: string;
-};
-
-
-/** One night out (POST /logs): the series by `seriesId` or `seriesName`
- * (neither = a night at the venue with no event name), the venue as in
- * CreateEventInput, the DJs seen, and the reviews - `night` is required
- * unless `djReviews` has one. Tags and tagged friends go on the night
- * review, or on each DJ review when there's no night review. */
+/** One night out (POST /logs): the event by `eventId` or `eventName` (found
+ * or created by name; neither = a night with no event name), the venue -
+ * `venueId` (a saved venue), `placeId` (a Google Places result, saved on
+ * first use; send the autocomplete session token with it), or `venue` (a
+ * typed-in name), checked in that order - the day, the DJs seen, and the
+ * reviews: `night` is required unless `djReviews` has one. Tags and tagged
+ * friends go on the night review, or on each DJ review when there's no
+ * night review. */
 export type CreateNightLogInput = {
-  seriesId?: string;
-  seriesName?: string;
+  eventId?: string;
+  eventName?: string;
   venueId?: string;
   placeId?: string;
   placeSessionToken?: string;
   venue?: string;
   city?: string;
   seenAt: string;
-  /** When the party ran: day, night, or both. Neither means night. */
+  /** When you went: day, night, or both. Neither means night. */
   isDay?: boolean;
   isNight?: boolean;
   lineupDjIds: string[];
@@ -110,3 +99,6 @@ export type CreateNightLogInput = {
 export type SetFavoritesInput = {
   reviewIds: string[];
 };
+
+/** POST/DELETE /users/me/push-tokens: this device's Expo push token. */
+export type PushTokenInput = { token: string; platform: string };

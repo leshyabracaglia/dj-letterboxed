@@ -38,9 +38,10 @@ type Venue struct {
 	CreatedAt       time.Time `json:"createdAt"`
 }
 
-// EventSeries is a recurring event ("Innervisions") that nights at
-// different venues and dates belong to.
-type EventSeries struct {
+// Event is a named party ("Innervisions NY"): it can happen at many venues
+// on many dates, and collects every log of it. Unique by lower(name) and
+// slug.
+type Event struct {
 	ID              string    `json:"id"`
 	Name            string    `json:"name"`
 	Slug            string    `json:"slug"`
@@ -48,38 +49,39 @@ type EventSeries struct {
 	CreatedAt       time.Time `json:"createdAt"`
 }
 
-// Event is one night: a series (or just a venue) on a date.
-type Event struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	// SeriesID is nil for a night that isn't part of a named event.
-	SeriesID *string `json:"seriesId"`
-	// Venue is the venue's display name, kept denormalized alongside
-	// VenueID so existing displays don't need a join.
-	Venue     string    `json:"venue"`
-	VenueID   *string   `json:"venueId"`
-	City      *string   `json:"city"`
-	EventDate time.Time `json:"eventDate"`
-	// IsDay and IsNight say when the party ran; both is day into night.
+// Log is one person's night out: which event (if it had a name), where,
+// which day, and whether they went during the day, at night, or both. Its
+// reviews (of the night as a whole and of DJs) and lineup hang off it.
+type Log struct {
+	ID     string `json:"id"`
+	UserID string `json:"userId"`
+	// EventID is nil for a night with no event name (just a venue).
+	EventID *string `json:"eventId"`
+	// Venue is the venue's display name, denormalized alongside VenueID.
+	// Both are nil only on logs migrated from reviews that had no night.
+	Venue   *string   `json:"venue"`
+	VenueID *string   `json:"venueId"`
+	City    *string   `json:"city"`
+	SeenAt  time.Time `json:"seenAt"`
+	// IsDay and IsNight say when this person went; both is day into night.
 	// At least one is set.
-	IsDay           bool      `json:"isDay"`
-	IsNight         bool      `json:"isNight"`
-	Description     *string   `json:"description"`
-	CreatedByUserID *string   `json:"createdByUserId"`
-	CreatedAt       time.Time `json:"createdAt"`
+	IsDay     bool      `json:"isDay"`
+	IsNight   bool      `json:"isNight"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 type Review struct {
 	ID     string `json:"id"`
 	UserID string `json:"userId"`
-	// DjID is nil for a review of the night as a whole (EventID is then set).
-	DjID       *string   `json:"djId"`
-	EventID    *string   `json:"eventId"`
-	Rating     *int16    `json:"rating"`
-	ReviewText *string   `json:"reviewText"`
-	SeenAt     time.Time `json:"seenAt"`
-	CreatedAt  time.Time `json:"createdAt"`
-	UpdatedAt  time.Time `json:"updatedAt"`
+	LogID  string `json:"logId"`
+	// DjID is nil for a review of the night as a whole.
+	DjID       *string `json:"djId"`
+	Rating     *int16  `json:"rating"`
+	ReviewText *string `json:"reviewText"`
+	// SeenAt mirrors the log's, kept here for ordering and pagination.
+	SeenAt    time.Time `json:"seenAt"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type ReviewComment struct {

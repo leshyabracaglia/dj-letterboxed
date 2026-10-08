@@ -6,6 +6,7 @@
     "@clerk/expo": "^4.5.2",
     "@expo-google-fonts/jersey-10": "^0.4.1",
     "@expo-google-fonts/roboto": "^0.4.3",
+    "@expo-google-fonts/silkscreen": "^0.4.2",
     "@expo/metro-runtime": "^57.0.12",
     "@expo/vector-icons": "^15.1.1",
     "@react-native-community/datetimepicker": "9.1.0",
@@ -22,6 +23,7 @@
     "expo-image-picker": "~57.0.20",
     "expo-linear-gradient": "~57.0.2",
     "expo-linking": "~57.0.11",
+    "expo-notifications": "~57.0.21",
     "expo-router": "~57.0.24",
     "expo-secure-store": "~57.0.4",
     "expo-sharing": "~57.0.14",
@@ -42,6 +44,7 @@
     "tailwindcss": "^3.4.19"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@types/react": "~19.2.2",
     "babel-plugin-module-resolver": "^5.0.3",
     "babel-preset-expo": "^57.0.7",
@@ -56,14 +59,15 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "dev:api": "docker compose -f server/docker-compose.yml up",
+    "dev:api": "docker compose -f server/docker-compose.yml up --build",
     "dev:app": "expo start",
     "dev": "bash scripts/dev-windows.sh",
     "dev:concurrent": "concurrently \"npm:dev:api\" \"npm:dev:app\"",
     "db:migrate": "cd server && make migrate-up",
     "db:seed": "cd server && make seed",
     "db:reset": "cd server && make reset-db",
-    "codegen:api-types": "cd server && make openapi && cd .. && bash scripts/generate-api-types.sh"
+    "codegen:api-types": "cd server && make openapi && cd .. && bash scripts/generate-api-types.sh",
+    "test:e2e": "playwright test"
   },
   "private": true
 }

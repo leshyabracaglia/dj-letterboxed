@@ -11,11 +11,11 @@ import (
 	"beatboxd/server/internal/db"
 )
 
-const reviewCols = "id, user_id, dj_id, event_id, rating, review_text, seen_at, created_at, updated_at"
+const reviewCols = "id, user_id, log_id, dj_id, rating, review_text, seen_at, created_at, updated_at"
 
 func scanReview(row pgx.Row) (*db.Review, error) {
 	var r db.Review
-	err := row.Scan(&r.ID, &r.UserID, &r.DjID, &r.EventID, &r.Rating, &r.ReviewText, &r.SeenAt, &r.CreatedAt, &r.UpdatedAt)
+	err := row.Scan(&r.ID, &r.UserID, &r.LogID, &r.DjID, &r.Rating, &r.ReviewText, &r.SeenAt, &r.CreatedAt, &r.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
@@ -27,32 +27,31 @@ func scanReview(row pgx.Row) (*db.Review, error) {
 
 func scanReviewRow(rows pgx.Rows) (db.Review, error) {
 	var r db.Review
-	err := rows.Scan(&r.ID, &r.UserID, &r.DjID, &r.EventID, &r.Rating, &r.ReviewText, &r.SeenAt, &r.CreatedAt, &r.UpdatedAt)
+	err := rows.Scan(&r.ID, &r.UserID, &r.LogID, &r.DjID, &r.Rating, &r.ReviewText, &r.SeenAt, &r.CreatedAt, &r.UpdatedAt)
 	return r, err
 }
 
+// CreateReview adds a review to a log; it takes the log's user and date.
 type CreateReviewParams struct {
-	UserID     string
+	Log        *db.Log
 	DjID       *string
-	EventID    *string
 	Rating     *int16
 	ReviewText *string
-	SeenAt     time.Time
 }
 
 func CreateReview(ctx context.Context, q DBTX, p CreateReviewParams) (*db.Review, error) {
 	return scanReview(q.QueryRow(ctx, `
-		INSERT INTO reviews (user_id, dj_id, event_id, rating, review_text, seen_at)
+		INSERT INTO reviews (user_id, log_id, dj_id, rating, review_text, seen_at)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING `+reviewCols,
-		p.UserID, p.DjID, p.EventID, p.Rating, p.ReviewText, p.SeenAt))
+		p.Log.UserID, p.Log.ID, p.DjID, p.Rating, p.ReviewText, p.Log.SeenAt))
 }
 
+// UpdateReview edits what was said; when the night was is the log's.
 type UpdateReviewParams struct {
 	ID         string
 	Rating     *int16
 	ReviewText *string
-	SeenAt     *time.Time
 }
 
 func UpdateReview(ctx context.Context, q DBTX, p UpdateReviewParams) (*db.Review, error) {
@@ -60,11 +59,10 @@ func UpdateReview(ctx context.Context, q DBTX, p UpdateReviewParams) (*db.Review
 		UPDATE reviews SET
 			rating = COALESCE($2, rating),
 			review_text = COALESCE($3, review_text),
-			seen_at = COALESCE($4, seen_at),
 			updated_at = now()
 		WHERE id = $1
 		RETURNING `+reviewCols,
-		p.ID, p.Rating, p.ReviewText, p.SeenAt))
+		p.ID, p.Rating, p.ReviewText))
 }
 
 func GetReviewByID(ctx context.Context, q DBTX, id string) (*db.Review, error) {
@@ -103,10 +101,12 @@ func ListReviewsByUser(ctx context.Context, q DBTX, userID string, cursor *time.
 	return listReviewsPage(ctx, q, "user_id = $1", "seen_at", []any{userID}, cursor, limit)
 }
 
-// ListReviewsByEvent returns all reviews for an event, ordered seen_at desc
-// (events.getById has no pagination in the ported tRPC procedure).
-func ListReviewsByEvent(ctx context.Context, q DBTX, eventID string) ([]db.Review, error) {
-	rows, err := q.Query(ctx, "SELECT "+reviewCols+" FROM reviews WHERE event_id = $1 ORDER BY seen_at DESC", eventID)
+// ListReviewsByVenue returns the most recent reviews of nights at a venue.
+func ListReviewsByVenue(ctx context.Context, q DBTX, venueID string, limit int) ([]db.Review, error) {
+	rows, err := q.Query(ctx, "SELECT "+reviewCols+` FROM reviews
+		WHERE log_id IN (SELECT id FROM logs WHERE venue_id = $1)
+		ORDER BY seen_at DESC, created_at DESC
+		LIMIT $2`, venueID, limit)
 	return collectReviews(rows, err)
 }
 
@@ -131,9 +131,10 @@ func collectReviews(rows pgx.Rows, err error) ([]db.Review, error) {
 	return out, rows.Err()
 }
 
-func LikeReview(ctx context.Context, q DBTX, reviewID, userID string) error {
-	_, err := q.Exec(ctx, "INSERT INTO review_likes (review_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING", reviewID, userID)
-	return err
+// LikeReview reports whether this was a new like (false if already liked).
+func LikeReview(ctx context.Context, q DBTX, reviewID, userID string) (bool, error) {
+	tag, err := q.Exec(ctx, "INSERT INTO review_likes (review_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING", reviewID, userID)
+	return tag.RowsAffected() > 0, err
 }
 
 func UnlikeReview(ctx context.Context, q DBTX, reviewID, userID string) error {

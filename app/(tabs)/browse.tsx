@@ -5,29 +5,32 @@ import { FlatList, Pressable, TextInput, View } from "react-native";
 import {
   Avatar,
   Card,
+  type CardTint,
   EmptyState,
   GenreTags,
   KEYBOARD_DISMISS_PROPS,
   Page,
-  RatingStars,
+  Photo,
+  RatingStamp,
+  SegmentedTabs,
   Skeleton,
   Text,
+  tiltFor,
   usePageContentStyle,
 } from "../../components/ui";
 import { FollowButton } from "../../components/FollowButton";
-import { useDjSearch, useSeriesSearch, useUserSearch, useVenueSearch } from "../../lib/api/hooks";
-import type { Dj, SeriesSummary, User, VenueSummary } from "../../lib/api/types";
-import { formatRating } from "../../lib/format";
+import { useDjSearch, useEventSearch, useUserSearch, useVenueSearch } from "../../lib/api/hooks";
+import type { Dj, EventSummary, User, VenueSummary } from "../../lib/api/types";
 import { useCurrentUser } from "../../lib/auth";
 import { ROUTES } from "../../lib/routes";
 
 function DjCard({ dj }: { dj: Dj }) {
   return (
-    <Card href={ROUTES.DJ(dj.slug)} tint="primary">
-      <View className="flex-row items-center gap-3">
-        <Avatar uri={dj.imageUrl} name={dj.name} size={48} />
+    <Card href={ROUTES.DJ(dj.slug)} tint="primary" tilt={tiltFor(dj.id, 0.8)}>
+      <View className="flex-row items-center gap-4">
+        <Photo uri={dj.imageUrl} width={64} height={72} framed rotate={-2} />
         <View className="flex-1">
-          <Text className="text-lg font-semibold text-primary dark:text-primary-dark">
+          <Text className="font-display text-3xl uppercase leading-8 text-paper" numberOfLines={2}>
             {dj.name}
           </Text>
           {!!dj.genres?.length && (
@@ -43,28 +46,29 @@ function DjCard({ dj }: { dj: Dj }) {
 
 function VenueCard({ venue }: { venue: VenueSummary }) {
   return (
-    <Card href={ROUTES.VENUE(venue.id)} tint="accent">
-      <Text className="text-lg font-semibold text-ink dark:text-paper">{venue.name}</Text>
-      <Text className="mt-1 text-sm text-muted">
+    <Card href={ROUTES.VENUE(venue.id)} tilt={tiltFor(venue.id, 0.6)}>
+      <Text className="font-display text-3xl uppercase leading-8 text-paper">{venue.name}</Text>
+      <Text className="mt-1 font-display text-base uppercase text-paper/60">
         {venue.city ? `${venue.city} · ` : ""}
-        {venue.eventCount} {venue.eventCount === 1 ? "event" : "events"} reviewed
+        {venue.logCount} {venue.logCount === 1 ? "night" : "nights"} logged
       </Text>
     </Card>
   );
 }
 
-// A recurring event ("Innervisions") with its totals across all nights.
-function SeriesCard({ series }: { series: SeriesSummary }) {
+// An event ("Innervisions NY") with its totals across every log of it.
+function EventCard({ event }: { event: EventSummary }) {
   return (
-    <Card href={ROUTES.SERIES(series.slug)} tint="primary">
-      <Text className="text-lg font-semibold text-primary dark:text-primary-dark">{series.name}</Text>
-      <View className="mt-1 flex-row flex-wrap items-center gap-2">
-        {series.avgRating !== null && <RatingStars value={series.avgRating} size={12} />}
-        <Text className="text-sm text-muted">
-          {series.avgRating !== null ? `${formatRating(series.avgRating)} · ` : ""}
-          {series.nightCount} {series.nightCount === 1 ? "night" : "nights"} · {series.reviewCount}{" "}
-          {series.reviewCount === 1 ? "review" : "reviews"}
-        </Text>
+    <Card href={ROUTES.EVENT(event.slug)} tint="accent" tilt={tiltFor(event.id, 0.8)}>
+      <View className="flex-row items-center gap-3">
+        <View className="flex-1">
+          <Text className="font-display text-3xl uppercase leading-8 text-paper">{event.name}</Text>
+          <Text className="mt-1 font-display text-base uppercase text-zine-red-ink">
+            {event.logCount} {event.logCount === 1 ? "night" : "nights"} · {event.reviewCount}{" "}
+            {event.reviewCount === 1 ? "review" : "reviews"}
+          </Text>
+        </View>
+        {event.avgRating !== null && <RatingStamp value={event.avgRating} size={52} />}
       </View>
     </Card>
   );
@@ -80,26 +84,28 @@ function UserCard({ user, isSelf }: { user: User; isSelf: boolean }) {
           <Pressable className="flex-1 flex-row items-center gap-3 active:opacity-80">
             <Avatar uri={user.avatarUrl} name={user.username} size={48} />
             <View className="flex-1">
-              <Text className="text-lg font-semibold text-ink dark:text-paper">{user.username}</Text>
+              <Text className="font-display text-2xl uppercase text-paper">@{user.username}</Text>
             </View>
           </Pressable>
         </Link>
-        {isSelf ? null : <FollowButton userId={user.id} />}
+        {!isSelf && <FollowButton userId={user.id} />}
       </View>
     </Card>
   );
 }
 
-function BrowseCardSkeleton({ tint }: { tint: "primary" | "accent" | "neutral" }) {
+function BrowseCardSkeleton({ tint }: { tint: CardTint }) {
+  // Dark ink on the purple/red stock; the near-black panel keeps the light block.
+  const tone = tint === "neutral" ? "wall" : "paper";
   return (
     <>
       {Array.from({ length: 4 }).map((_, i) => (
-        <Card key={i} tint={tint}>
-          <View className="flex-row items-center gap-3">
-            {tint !== "accent" && <Skeleton className="h-12 w-12 rounded-full" />}
+        <Card key={i} blank tint={tint}>
+          <View className="flex-row items-center gap-4">
+            {tint !== "accent" && <Skeleton tone={tone} className="h-[72px] w-16 rounded-none" />}
             <View className="flex-1">
-              <Skeleton className="h-5 w-40" />
-              <Skeleton className="mt-2 h-3.5 w-28" />
+              <Skeleton tone={tone} className="h-7 w-40" />
+              <Skeleton tone={tone} className="mt-2 h-4 w-28" />
             </View>
           </View>
         </Card>
@@ -110,7 +116,7 @@ function BrowseCardSkeleton({ tint }: { tint: "primary" | "accent" | "neutral" }
 
 function SuggestionsLabel({ label }: { label: string }) {
   return (
-    <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">{label}</Text>
+    <Text className="mb-3 font-display text-xl uppercase text-paper/80">{label}</Text>
   );
 }
 
@@ -146,7 +152,7 @@ export default function BrowseScreen() {
   // An empty search shows the top few as suggestions instead of a blank list.
   const { data: djs } = useDjSearch(trimmed, { enabled: tab === "djs", suggest: true });
   // Lists every event until a search is typed - this tab doubles as the index.
-  const { data: series } = useSeriesSearch(trimmed, tab === "events");
+  const { data: events } = useEventSearch(trimmed, tab === "events");
   const { data: users } = useUserSearch(trimmed, { enabled: tab === "people", suggest: true });
   const { data: venues } = useVenueSearch(trimmed, { enabled: tab === "venues", suggest: true });
   // FlatList's ListHeaderComponent takes an element or null, not `false`.
@@ -155,30 +161,19 @@ export default function BrowseScreen() {
 
   return (
     <Page
-      ambient
       title={COPY[tab].title}
+      channel="CH 02 · Browse"
       header={
         <>
-          <View className="mb-3 flex-row gap-2">
-            {TABS.map((t) => (
-              <Pressable
-                key={t.value}
-                onPress={() => setTab(t.value)}
-                className={`rounded-full px-3 py-1.5 ${
-                  tab === t.value ? "bg-primary" : "bg-white dark:bg-surface-dark border border-primary/20"
-                }`}
-              >
-                <Text className={tab === t.value ? "text-paper" : "text-ink dark:text-paper"}>
-                  {t.label}
-                </Text>
-              </Pressable>
-            ))}
+          <View className="mb-3">
+            <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />
           </View>
           <TextInput
             placeholder={COPY[tab].placeholder}
             value={query}
             onChangeText={setQuery}
-            className="rounded-xl border border-primary/20 bg-white dark:bg-surface-dark focus:border-primary px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
+            placeholderTextColor="rgba(246,246,249,0.4)"
+            className="rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-3 text-base text-paper"
           />
         </>
       }
@@ -205,12 +200,12 @@ export default function BrowseScreen() {
         <FlatList
           {...KEYBOARD_DISMISS_PROPS}
           contentContainerStyle={contentStyle}
-          data={series ?? []}
+          data={events ?? []}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <SeriesCard series={item} />}
+          renderItem={({ item }) => <EventCard event={item} />}
           ListEmptyComponent={
-            !series ? (
-              <BrowseCardSkeleton tint="primary" />
+            !events ? (
+              <BrowseCardSkeleton tint="accent" />
             ) : trimmed.length ? (
               <EmptyState message="No events found. Add one when you review a set." />
             ) : (
@@ -246,7 +241,7 @@ export default function BrowseScreen() {
           ListHeaderComponent={suggestionsHeader(!!venues?.length)}
           ListEmptyComponent={
             !venues ? (
-              <BrowseCardSkeleton tint="accent" />
+              <BrowseCardSkeleton tint="neutral" />
             ) : trimmed.length ? (
               <EmptyState message="No venues found. Add one when you review a set." />
             ) : (

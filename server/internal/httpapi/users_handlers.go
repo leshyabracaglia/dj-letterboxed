@@ -239,9 +239,13 @@ func (h *Handlers) Follow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := queries.Follow(r.Context(), h.Pool, user.ID, targetID); err != nil {
+	isNew, err := queries.Follow(r.Context(), h.Pool, user.ID, targetID)
+	if err != nil {
 		InternalError(w, err)
 		return
+	}
+	if isNew {
+		h.notifyFollow(user, targetID)
 	}
 	WriteJSON(w, http.StatusOK, SuccessResponse{Success: true})
 }

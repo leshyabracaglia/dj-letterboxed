@@ -52,6 +52,13 @@ definitions:
         type: number
       dj:
         $ref: '#/definitions/Dj'
+      ratingCounts:
+        description: |-
+          RatingCounts is how many reviews gave each star rating: index 0 is
+          1 star, index 4 is 5 stars.
+        items:
+          type: integer
+        type: array
       recentReviews:
         items:
           $ref: '#/definitions/ReviewDTO'
@@ -61,79 +68,11 @@ definitions:
     required:
     - avgRating
     - dj
+    - ratingCounts
     - recentReviews
     - reviewCount
     type: object
   Event:
-    properties:
-      city:
-        type: string
-      createdAt:
-        type: string
-      createdByUserId:
-        type: string
-      description:
-        type: string
-      eventDate:
-        type: string
-      id:
-        type: string
-      isDay:
-        description: |-
-          IsDay and IsNight say when the party ran; both is day into night.
-          At least one is set.
-        type: boolean
-      isNight:
-        type: boolean
-      name:
-        type: string
-      seriesId:
-        description: SeriesID is nil for a night that isn't part of a named event.
-        type: string
-      venue:
-        description: |-
-          Venue is the venue's display name, kept denormalized alongside
-          VenueID so existing displays don't need a join.
-        type: string
-      venueId:
-        type: string
-    required:
-    - city
-    - createdAt
-    - createdByUserId
-    - description
-    - eventDate
-    - id
-    - isDay
-    - isNight
-    - name
-    - seriesId
-    - venue
-    - venueId
-    type: object
-  EventDetailResponse:
-    properties:
-      event:
-        $ref: '#/definitions/Event'
-      lineup:
-        items:
-          $ref: '#/definitions/Dj'
-        type: array
-      reviews:
-        items:
-          $ref: '#/definitions/ReviewDTO'
-        type: array
-      series:
-        allOf:
-        - $ref: '#/definitions/EventSeries'
-        description: Series is nil for a night that isn't part of a named event.
-    required:
-    - event
-    - lineup
-    - reviews
-    - series
-    type: object
-  EventSeries:
     properties:
       createdAt:
         type: string
@@ -151,6 +90,82 @@ definitions:
     - id
     - name
     - slug
+    type: object
+  EventDetailResponse:
+    properties:
+      djs:
+        items:
+          $ref: '#/definitions/EventDj'
+        type: array
+      event:
+        $ref: '#/definitions/EventSummary'
+      recentReviews:
+        items:
+          $ref: '#/definitions/ReviewDTO'
+        type: array
+      venues:
+        items:
+          $ref: '#/definitions/EventVenue'
+        type: array
+    required:
+    - djs
+    - event
+    - recentReviews
+    - venues
+    type: object
+  EventDj:
+    properties:
+      dj:
+        $ref: '#/definitions/Dj'
+      logCount:
+        type: integer
+    required:
+    - dj
+    - logCount
+    type: object
+  EventSummary:
+    properties:
+      avgRating:
+        type: number
+      createdAt:
+        type: string
+      createdByUserId:
+        type: string
+      id:
+        type: string
+      logCount:
+        type: integer
+      name:
+        type: string
+      reviewCount:
+        type: integer
+      slug:
+        type: string
+    required:
+    - avgRating
+    - createdAt
+    - createdByUserId
+    - id
+    - logCount
+    - name
+    - reviewCount
+    - slug
+    type: object
+  EventVenue:
+    properties:
+      city:
+        type: string
+      id:
+        type: string
+      logCount:
+        type: integer
+      name:
+        type: string
+    required:
+    - city
+    - id
+    - logCount
+    - name
     type: object
   FavoriteReviewsResponse:
     properties:
@@ -193,20 +208,112 @@ definitions:
     - reviewCount
     - user
     type: object
+  Log:
+    properties:
+      city:
+        type: string
+      createdAt:
+        type: string
+      eventId:
+        description: EventID is nil for a night with no event name (just a venue).
+        type: string
+      id:
+        type: string
+      isDay:
+        description: |-
+          IsDay and IsNight say when this person went; both is day into night.
+          At least one is set.
+        type: boolean
+      isNight:
+        type: boolean
+      seenAt:
+        type: string
+      userId:
+        type: string
+      venue:
+        description: |-
+          Venue is the venue's display name, denormalized alongside VenueID.
+          Both are nil only on logs migrated from reviews that had no night.
+        type: string
+      venueId:
+        type: string
+    required:
+    - city
+    - createdAt
+    - eventId
+    - id
+    - isDay
+    - isNight
+    - seenAt
+    - userId
+    - venue
+    - venueId
+    type: object
+  LogDTO:
+    properties:
+      city:
+        type: string
+      createdAt:
+        type: string
+      event:
+        $ref: '#/definitions/Event'
+      eventId:
+        description: EventID is nil for a night with no event name (just a venue).
+        type: string
+      id:
+        type: string
+      isDay:
+        description: |-
+          IsDay and IsNight say when this person went; both is day into night.
+          At least one is set.
+        type: boolean
+      isNight:
+        type: boolean
+      lineup:
+        items:
+          $ref: '#/definitions/Dj'
+        type: array
+      seenAt:
+        type: string
+      userId:
+        type: string
+      venue:
+        description: |-
+          Venue is the venue's display name, denormalized alongside VenueID.
+          Both are nil only on logs migrated from reviews that had no night.
+        type: string
+      venueId:
+        type: string
+    required:
+    - city
+    - createdAt
+    - event
+    - eventId
+    - id
+    - isDay
+    - isNight
+    - lineup
+    - seenAt
+    - userId
+    - venue
+    - venueId
+    type: object
   NightLogResponse:
     properties:
       event:
-        $ref: '#/definitions/Event'
+        allOf:
+        - $ref: '#/definitions/Event'
+        description: Event is nil for a night with no event name.
+      log:
+        $ref: '#/definitions/Log'
       reviews:
         items:
           $ref: '#/definitions/Review'
         type: array
-      series:
-        $ref: '#/definitions/EventSeries'
     required:
     - event
+    - log
     - reviews
-    - series
     type: object
   PaginatedReviews:
     properties:
@@ -250,18 +357,18 @@ definitions:
       createdAt:
         type: string
       djId:
-        description: DjID is nil for a review of the night as a whole (EventID is
-          then set).
-        type: string
-      eventId:
+        description: DjID is nil for a review of the night as a whole.
         type: string
       id:
+        type: string
+      logId:
         type: string
       rating:
         type: integer
       reviewText:
         type: string
       seenAt:
+        description: SeenAt mirrors the log's, kept here for ordering and pagination.
         type: string
       updatedAt:
         type: string
@@ -270,8 +377,8 @@ definitions:
     required:
     - createdAt
     - djId
-    - eventId
     - id
+    - logId
     - rating
     - reviewText
     - seenAt
@@ -308,12 +415,7 @@ definitions:
       dj:
         $ref: '#/definitions/Dj'
       djId:
-        description: DjID is nil for a review of the night as a whole (EventID is
-          then set).
-        type: string
-      event:
-        $ref: '#/definitions/Event'
-      eventId:
+        description: DjID is nil for a review of the night as a whole.
         type: string
       id:
         type: string
@@ -323,17 +425,20 @@ definitions:
         type: boolean
       likeCount:
         type: integer
-      lineupDj:
+      log:
         allOf:
-        - $ref: '#/definitions/Dj'
+        - $ref: '#/definitions/LogDTO'
         description: |-
-          LineupDj is set on a night review (no Dj) when the night's lineup is
-          exactly one DJ, so it can be titled "<DJ> at <event>".
+          Log is the night out this review is part of: event, venue, date,
+          day/night and lineup.
+      logId:
+        type: string
       rating:
         type: integer
       reviewText:
         type: string
       seenAt:
+        description: SeenAt mirrors the log's, kept here for ordering and pagination.
         type: string
       taggedUsers:
         items:
@@ -352,8 +457,8 @@ definitions:
     required:
     - createdAt
     - djId
-    - eventId
     - id
+    - logId
     - rating
     - reviewText
     - seenAt
@@ -361,100 +466,6 @@ definitions:
     - tags
     - updatedAt
     - userId
-    type: object
-  SeriesDetailResponse:
-    properties:
-      djs:
-        items:
-          $ref: '#/definitions/SeriesDj'
-        type: array
-      nights:
-        items:
-          $ref: '#/definitions/SeriesNight'
-        type: array
-      recentReviews:
-        items:
-          $ref: '#/definitions/ReviewDTO'
-        type: array
-      series:
-        $ref: '#/definitions/SeriesSummary'
-      venues:
-        items:
-          $ref: '#/definitions/SeriesVenue'
-        type: array
-    required:
-    - djs
-    - nights
-    - recentReviews
-    - series
-    - venues
-    type: object
-  SeriesDj:
-    properties:
-      dj:
-        $ref: '#/definitions/Dj'
-      nightCount:
-        type: integer
-    required:
-    - dj
-    - nightCount
-    type: object
-  SeriesNight:
-    properties:
-      avgRating:
-        type: number
-      event:
-        $ref: '#/definitions/Event'
-      reviewCount:
-        type: integer
-    required:
-    - avgRating
-    - event
-    - reviewCount
-    type: object
-  SeriesSummary:
-    properties:
-      avgRating:
-        type: number
-      createdAt:
-        type: string
-      createdByUserId:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      nightCount:
-        type: integer
-      reviewCount:
-        type: integer
-      slug:
-        type: string
-    required:
-    - avgRating
-    - createdAt
-    - createdByUserId
-    - id
-    - name
-    - nightCount
-    - reviewCount
-    - slug
-    type: object
-  SeriesVenue:
-    properties:
-      city:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      nightCount:
-        type: integer
-    required:
-    - city
-    - id
-    - name
-    - nightCount
     type: object
   SpotifyArtist:
     properties:
@@ -582,13 +593,28 @@ definitions:
     properties:
       events:
         items:
-          $ref: '#/definitions/Event'
+          $ref: '#/definitions/VenueEvent'
+        type: array
+      recentReviews:
+        items:
+          $ref: '#/definitions/ReviewDTO'
         type: array
       venue:
         $ref: '#/definitions/VenueSummary'
     required:
     - events
+    - recentReviews
     - venue
+    type: object
+  VenueEvent:
+    properties:
+      event:
+        $ref: '#/definitions/Event'
+      logCount:
+        type: integer
+    required:
+    - event
+    - logCount
     type: object
   VenueSummary:
     properties:
@@ -596,20 +622,21 @@ definitions:
         type: string
       city:
         type: string
-      eventCount:
-        type: integer
       googlePlaceId:
         type: string
       id:
         type: string
+      logCount:
+        description: LogCount is how many nights out people have logged there.
+        type: integer
       name:
         type: string
     required:
     - address
     - city
-    - eventCount
     - googlePlaceId
     - id
+    - logCount
     - name
     type: object
   addCommentRequest:
@@ -650,34 +677,6 @@ definitions:
     - name
     - spotifyId
     type: object
-  createEventRequest:
-    properties:
-      city:
-        type: string
-      description:
-        type: string
-      eventDate:
-        type: string
-      name:
-        type: string
-      placeId:
-        type: string
-      placeSessionToken:
-        type: string
-      venue:
-        type: string
-      venueId:
-        type: string
-    required:
-    - city
-    - description
-    - eventDate
-    - name
-    - placeId
-    - placeSessionToken
-    - venue
-    - venueId
-    type: object
   createNightLogRequest:
     properties:
       city:
@@ -686,16 +685,19 @@ definitions:
         items:
           $ref: '#/definitions/djReviewInput'
         type: array
+      eventId:
+        type: string
+      eventName:
+        type: string
       isDay:
-        description: 'When the party ran: day, night, or both. Neither given means
-          night.'
+        description: 'When you went: day, night, or both. Neither given means night.'
         type: boolean
       isNight:
         type: boolean
       lineupDjIds:
         description: |-
-          DJs the user saw; added to the night's lineup. DJs in djReviews are
-          added too, whether or not they're listed here.
+          DJs you saw. DJs in djReviews are added too, whether or not they're
+          listed here.
         items:
           type: string
         type: array
@@ -709,10 +711,6 @@ definitions:
       placeSessionToken:
         type: string
       seenAt:
-        type: string
-      seriesId:
-        type: string
-      seriesName:
         type: string
       taggedUserIds:
         items:
@@ -732,6 +730,8 @@ definitions:
     required:
     - city
     - djReviews
+    - eventId
+    - eventName
     - isDay
     - isNight
     - lineupDjIds
@@ -739,44 +739,10 @@ definitions:
     - placeId
     - placeSessionToken
     - seenAt
-    - seriesId
-    - seriesName
     - taggedUserIds
     - tags
     - venue
     - venueId
-    type: object
-  createReviewRequest:
-    properties:
-      djId:
-        type: string
-      eventId:
-        type: string
-      rating:
-        type: integer
-      reviewText:
-        type: string
-      seenAt:
-        type: string
-      taggedUserIds:
-        items:
-          type: string
-        type: array
-      tags:
-        description: |-
-          Tag names (new ones are added to the library). Omitted = leave
-          as-is, [] = clear - same contract as TaggedUserIDs.
-        items:
-          type: string
-        type: array
-    required:
-    - djId
-    - eventId
-    - rating
-    - reviewText
-    - seenAt
-    - taggedUserIds
-    - tags
     type: object
   djReviewInput:
     properties:
@@ -807,6 +773,18 @@ definitions:
     required:
     - rating
     - reviewText
+    type: object
+  pushTokenRequest:
+    properties:
+      platform:
+        description: '"ios" or "android"; ignored on unregister.'
+        type: string
+      token:
+        description: An Expo push token (ExponentPushToken[...]).
+        type: string
+    required:
+    - platform
+    - token
     type: object
   setFavoritesRequest:
     properties:
@@ -839,8 +817,6 @@ definitions:
         type: integer
       reviewText:
         type: string
-      seenAt:
-        type: string
       taggedUserIds:
         items:
           type: string
@@ -855,7 +831,6 @@ definitions:
     required:
     - rating
     - reviewText
-    - seenAt
     - taggedUserIds
     - tags
     type: object
@@ -1036,44 +1011,35 @@ paths:
       tags:
       - djs
   /api/events:
-    post:
-      consumes:
-      - application/json
-      description: The venue is resolved from venueId, then placeId (a Google Places
-        id, saved as a venue on first use), then the typed venue name.
+    get:
       parameters:
-      - description: event to create
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/createEventRequest'
+      - description: name search; omit to list all
+        in: query
+        name: q
+        type: string
+      - description: max results, 1-50, default 20
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/Event'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/errorEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Create an event (or return the existing one, deduped by exact name+venue+date)
+            items:
+              $ref: '#/definitions/EventSummary'
+            type: array
+      summary: List or search events (named parties like "Innervisions NY"), most-reviewed
+        first
       tags:
       - events
-  /api/events/{id}:
+  /api/events/{slug}:
     get:
       parameters:
-      - description: event id
+      - description: event slug
         in: path
-        name: id
+        name: slug
         required: true
         type: string
       produces:
@@ -1087,27 +1053,8 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
-      summary: Get a night by id, with its series, lineup, and all its reviews
-      tags:
-      - events
-  /api/events/search:
-    get:
-      parameters:
-      - description: search query
-        in: query
-        name: q
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/Event'
-            type: array
-      summary: Search events by name
+      summary: Get an event with its totals, the DJs and venues it's been logged with,
+        and recent reviews
       tags:
       - events
   /api/feed:
@@ -1278,41 +1225,10 @@ paths:
             $ref: '#/definitions/errorEnvelope'
       security:
       - BearerAuth: []
-      summary: 'Log a night: find or create the night, add DJs to its lineup, and
-        save the night and DJ reviews in one go'
+      summary: 'Log a night out: the event (picked, or found or created by name),
+        venue, day, lineup, and the night and DJ reviews, in one go'
       tags:
       - logs
-  /api/reviews:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: review to create
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/createReviewRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/Review'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/errorEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Create a review of a DJ (optionally tied to an event)
-      tags:
-      - reviews
   /api/reviews/{id}:
     delete:
       parameters:
@@ -1503,52 +1419,6 @@ paths:
       summary: Like a review
       tags:
       - reviews
-  /api/series:
-    get:
-      parameters:
-      - description: name search; omit to list all
-        in: query
-        name: q
-        type: string
-      - description: max results, 1-50, default 20
-        in: query
-        name: limit
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/SeriesSummary'
-            type: array
-      summary: List event series (recurring events like "Innervisions"), most-reviewed
-        first
-      tags:
-      - series
-  /api/series/{slug}:
-    get:
-      parameters:
-      - description: series slug
-        in: path
-        name: slug
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/SeriesDetailResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/errorEnvelope'
-      summary: Get an event series with its nights, DJs, venues, and recent reviews
-      tags:
-      - series
   /api/tags:
     get:
       parameters:
@@ -1797,6 +1667,68 @@ paths:
         first) - reviews must be the caller''s own'
       tags:
       - users
+  /api/users/me/push-tokens:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: the device's push token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/pushTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Stop sending the caller's notifications to this device (on sign-out)
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: the device's push token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/pushTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Register this device's Expo push token for the caller (moves it from
+        any other account)
+      tags:
+      - users
   /api/users/search:
     get:
       parameters:
@@ -1839,14 +1771,14 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
-      summary: Get a venue by id, with its events
+      summary: Get a venue by id, with the events logged there and recent reviews
       tags:
       - venues
   /api/venues/places-search:
     get:
       description: Pass the same client-generated sessionToken on every keystroke
-        of one search and on the POST /api/events that saves the picked place, so
-        Google bills them as one session.
+        of one search and on the POST /api/logs that saves the picked place, so Google
+        bills them as one session.
       parameters:
       - description: search query
         in: query

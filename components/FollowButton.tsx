@@ -84,9 +84,11 @@ export function FollowButton({ userId, username }: { userId: string; username?: 
             : follow.mutate()
           : router.push(ROUTES.SIGN_IN)
       }
-      className={`rounded-full px-4 py-2 active:opacity-80 ${isFollowing ? "bg-muted/20" : "bg-primary"}`}
+      className={`rounded-lg px-4 py-2 active:opacity-80 ${
+        isFollowing ? "border-2 border-paper/60" : "bg-paper shadow-md shadow-white/30"
+      }`}
     >
-      <Text className={isFollowing ? "text-ink dark:text-paper" : "text-paper"}>
+      <Text className={`font-display text-lg uppercase leading-5 ${isFollowing ? "text-paper" : "text-ink"}`}>
         {isFollowing ? "Following" : "Follow"}
       </Text>
     </Pressable>

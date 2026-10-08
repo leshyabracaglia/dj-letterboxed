@@ -65,7 +65,7 @@ func (h *Handlers) GetDjBySlug(w http.ResponseWriter, r *http.Request) {
 		InternalError(w, err)
 		return
 	}
-	recentDTOs, err := h.hydrateReviews(r.Context(), recent, hydrateOpts{IncludeUser: true, IncludeEvent: true})
+	recentDTOs, err := h.hydrateReviews(r.Context(), recent, hydrateOpts{IncludeUser: true, IncludeLog: true})
 	if err != nil {
 		InternalError(w, err)
 		return
@@ -75,6 +75,7 @@ func (h *Handlers) GetDjBySlug(w http.ResponseWriter, r *http.Request) {
 		Dj:            *dj,
 		AvgRating:     agg.AvgRating,
 		ReviewCount:   agg.ReviewCount,
+		RatingCounts:  agg.RatingCounts,
 		RecentReviews: recentDTOs,
 	})
 }
@@ -192,7 +193,7 @@ func (h *Handlers) ListReviewsByDj(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dtos, err := h.hydrateReviews(r.Context(), reviews, hydrateOpts{
-		IncludeUser: true, IncludeEvent: true, IncludeEngagement: true, CurrentUserID: optionalUserID(r),
+		IncludeUser: true, IncludeLog: true, IncludeEngagement: true, CurrentUserID: optionalUserID(r),
 	})
 	if err != nil {
 		InternalError(w, err)

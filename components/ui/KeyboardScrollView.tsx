@@ -11,11 +11,13 @@ import {
 
 // Keyboard dismissal for any scrollable list: with "handled", a tap on empty
 // space (anything that isn't a button/input) drops the keyboard, while taps
-// on buttons still land on the first try instead of only closing it; a drag
-// dismisses it too. Spread onto FlatLists that sit under a text input.
+// on buttons still land on the first try instead of only closing it; and
+// any scroll drag hides it ("on-drag" on both platforms - iOS's
+// "interactive" only let it go when you dragged down into the keyboard).
+// Spread onto FlatLists that sit under a text input.
 export const KEYBOARD_DISMISS_PROPS = {
   keyboardShouldPersistTaps: "handled",
-  keyboardDismissMode: Platform.OS === "ios" ? "interactive" : "on-drag",
+  keyboardDismissMode: "on-drag",
 } as const satisfies ScrollViewProps;
 
 // iOS sends "will" events (so the scroll runs alongside the keyboard

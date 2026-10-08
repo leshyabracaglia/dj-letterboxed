@@ -1,6 +1,16 @@
 import { View } from "react-native";
 import { Text } from "./Text";
 
+/** An outlined, uppercase pixel-type label — the tag/genre chip on the zine
+ * cards. */
+export function Chip({ label, className = "" }: { label: string; className?: string }) {
+  return (
+    <View className={`border-2 border-paper/90 px-1.5 py-0.5 ${className}`}>
+      <Text className="font-display text-sm uppercase leading-4 text-paper">{label}</Text>
+    </View>
+  );
+}
+
 export function GenreTags({ genres, limit }: { genres: string[]; limit?: number }) {
   if (!genres.length) return null;
   const shown = limit ? genres.slice(0, limit) : genres;
@@ -8,9 +18,7 @@ export function GenreTags({ genres, limit }: { genres: string[]; limit?: number 
   return (
     <View className="flex-row flex-wrap gap-1.5">
       {shown.map((genre) => (
-        <View key={genre} className="rounded-full bg-primary-tint px-2.5 py-1 dark:bg-primary/15">
-          <Text className="text-xs font-medium text-primary dark:text-primary-dark">{genre}</Text>
-        </View>
+        <Chip key={genre} label={genre} />
       ))}
     </View>
   );

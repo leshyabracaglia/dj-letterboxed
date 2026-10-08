@@ -60,6 +60,11 @@ func TestNightLogValidate(t *testing.T) {
 			body:    `{"seenAt":"2026-10-04","night":{"rating":3}}`,
 			wantErr: "seenAt must be an RFC3339 timestamp",
 		},
+		{
+			name:    "a picked event still needs the date",
+			body:    `{"eventId":"` + djB + `","night":{"rating":3}}`,
+			wantErr: "seenAt must be an RFC3339 timestamp",
+		},
 	}
 
 	for _, tc := range cases {

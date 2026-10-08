@@ -13,20 +13,7 @@ import (
 	"beatboxd/server/internal/domain"
 )
 
-type createReviewRequest struct {
-	DjID       string  `json:"djId"`
-	EventID    *string `json:"eventId"`
-	Rating     *int16  `json:"rating"`
-	ReviewText *string `json:"reviewText"`
-	// Tag names (new ones are added to the library). Omitted = leave
-	// as-is, [] = clear - same contract as TaggedUserIDs.
-	Tags          *[]string `json:"tags"`
-	SeenAt        string    `json:"seenAt"`
-	TaggedUserIDs *[]string `json:"taggedUserIds"`
-}
-
-// validateReviewFields checks the review fields shared by create and
-// update. Each is optional (nil = "not provided"/"leave unset"), but if
+// validateReviewFields checks the editable review fields. Each is optional (nil = "not provided"/"leave unset"), but if
 // present must satisfy these constraints. Returns the normalized tag names
 // (nil when tags were omitted).
 func validateReviewFields(rating *int16, reviewText *string, tags *[]string) (tagNames []string, errMsg string) {
@@ -64,96 +51,12 @@ func parseSeenAt(s string, now time.Time) (time.Time, string) {
 	return t, ""
 }
 
-func (req createReviewRequest) validate() (seenAt time.Time, tagNames []string, errMsg string) {
-	if req.DjID == "" {
-		return time.Time{}, nil, "djId is required"
-	}
-	t, errMsg := parseSeenAt(req.SeenAt, time.Now())
-	if errMsg != "" {
-		return time.Time{}, nil, errMsg
-	}
-	tagNames, errMsg = validateReviewFields(req.Rating, req.ReviewText, req.Tags)
-	if errMsg != "" {
-		return time.Time{}, nil, errMsg
-	}
-	return t, tagNames, ""
-}
-
-// CreateReview godoc
-//
-//	@Summary	Create a review of a DJ (optionally tied to an event)
-//	@Tags		reviews
-//	@Accept		json
-//	@Produce	json
-//	@Param		body	body		createReviewRequest	true	"review to create"
-//	@Success	200		{object}	db.Review
-//	@Failure	400		{object}	errorEnvelope
-//	@Failure	401		{object}	errorEnvelope
-//	@Security	BearerAuth
-//	@Router		/api/reviews [post]
-func (h *Handlers) CreateReview(w http.ResponseWriter, r *http.Request) {
-	user, ok := mustUser(w, r)
-	if !ok {
-		return
-	}
-
-	var req createReviewRequest
-	if err := DecodeJSON(r, &req); err != nil {
-		BadRequest(w, "invalid request body")
-		return
-	}
-	seenAt, tagNames, errMsg := req.validate()
-	if errMsg != "" {
-		BadRequest(w, errMsg)
-		return
-	}
-
-	tx, err := h.Pool.Begin(r.Context())
-	if err != nil {
-		InternalError(w, err)
-		return
-	}
-	defer tx.Rollback(r.Context())
-
-	review, err := queries.CreateReview(r.Context(), tx, queries.CreateReviewParams{
-		UserID: user.ID, DjID: &req.DjID, EventID: req.EventID,
-		Rating: req.Rating, ReviewText: req.ReviewText,
-		SeenAt: seenAt,
-	})
-	if err != nil {
-		InternalError(w, err)
-		return
-	}
-
-	if req.TaggedUserIDs != nil {
-		if err := queries.SetReviewTags(r.Context(), tx, review.ID, *req.TaggedUserIDs); err != nil {
-			InternalError(w, err)
-			return
-		}
-	}
-
-	if tagNames != nil {
-		if err := queries.SetReviewTagLinks(r.Context(), tx, review.ID, user.ID, tagNames); err != nil {
-			InternalError(w, err)
-			return
-		}
-	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		InternalError(w, err)
-		return
-	}
-
-	WriteJSON(w, http.StatusOK, review)
-}
-
 type updateReviewRequest struct {
 	Rating     *int16  `json:"rating"`
 	ReviewText *string `json:"reviewText"`
 	// Tag names (new ones are added to the library). Omitted = leave
 	// as-is, [] = clear - same contract as TaggedUserIDs.
 	Tags          *[]string `json:"tags"`
-	SeenAt        *string   `json:"seenAt"`
 	TaggedUserIDs *[]string `json:"taggedUserIds"`
 }
 
@@ -208,16 +111,6 @@ func (h *Handlers) UpdateReview(w http.ResponseWriter, r *http.Request) {
 		BadRequest(w, errMsg)
 		return
 	}
-	var seenAt *time.Time
-	if req.SeenAt != nil {
-		t, errMsg := parseSeenAt(*req.SeenAt, time.Now())
-		if errMsg != "" {
-			BadRequest(w, errMsg)
-			return
-		}
-		seenAt = &t
-	}
-
 	tx, err := h.Pool.Begin(r.Context())
 	if err != nil {
 		InternalError(w, err)
@@ -227,7 +120,6 @@ func (h *Handlers) UpdateReview(w http.ResponseWriter, r *http.Request) {
 
 	updated, err := queries.UpdateReview(r.Context(), tx, queries.UpdateReviewParams{
 		ID: id, Rating: req.Rating, ReviewText: req.ReviewText,
-		SeenAt: seenAt,
 	})
 	if err != nil {
 		InternalError(w, err)
@@ -274,11 +166,28 @@ func (h *Handlers) DeleteReview(w http.ResponseWriter, r *http.Request) {
 	}
 	id := chi.URLParam(r, "id")
 
-	if _, ok := h.requireOwnedReview(r.Context(), w, id, user.ID); !ok {
+	review, ok := h.requireOwnedReview(r.Context(), w, id, user.ID)
+	if !ok {
 		return
 	}
 
-	if err := queries.DeleteReview(r.Context(), h.Pool, id); err != nil {
+	tx, err := h.Pool.Begin(r.Context())
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	if err := queries.DeleteReview(r.Context(), tx, id); err != nil {
+		InternalError(w, err)
+		return
+	}
+	// The night goes with its last review.
+	if err := queries.DeleteLogIfEmpty(r.Context(), tx, review.LogID); err != nil {
+		InternalError(w, err)
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
 		InternalError(w, err)
 		return
 	}
@@ -306,7 +215,7 @@ func (h *Handlers) GetReviewByID(w http.ResponseWriter, r *http.Request) {
 	currentUserID := optionalUserID(r)
 
 	dtos, err := h.hydrateReviews(r.Context(), []db.Review{*review}, hydrateOpts{
-		IncludeUser: true, IncludeDj: true, IncludeEvent: true,
+		IncludeUser: true, IncludeDj: true, IncludeLog: true,
 		IncludeEngagement: true, CurrentUserID: currentUserID,
 	})
 	if err != nil {
@@ -355,7 +264,7 @@ func (h *Handlers) ListReviewsByUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dtos, err := h.hydrateReviews(r.Context(), reviews, hydrateOpts{
-		IncludeDj: true, IncludeEvent: true, IncludeEngagement: true, CurrentUserID: optionalUserID(r),
+		IncludeDj: true, IncludeLog: true, IncludeEngagement: true, CurrentUserID: optionalUserID(r),
 	})
 	if err != nil {
 		InternalError(w, err)
@@ -382,9 +291,13 @@ func (h *Handlers) LikeReview(w http.ResponseWriter, r *http.Request) {
 	}
 	id := chi.URLParam(r, "id")
 
-	if err := queries.LikeReview(r.Context(), h.Pool, id, user.ID); err != nil {
+	isNew, err := queries.LikeReview(r.Context(), h.Pool, id, user.ID)
+	if err != nil {
 		InternalError(w, err)
 		return
+	}
+	if isNew {
+		h.notifyLike(user, id)
 	}
 	WriteJSON(w, http.StatusOK, SuccessResponse{Success: true})
 }
@@ -473,6 +386,7 @@ func (h *Handlers) AddComment(w http.ResponseWriter, r *http.Request) {
 	// Attach the caller's own row directly, avoiding an extra query
 	// (mirrors reviews.ts's addComment response shape).
 	comment.User = user
+	h.notifyComment(user, reviewID, req.Body)
 
 	WriteJSON(w, http.StatusOK, comment)
 }

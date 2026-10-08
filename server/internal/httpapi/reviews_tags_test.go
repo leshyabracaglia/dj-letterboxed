@@ -18,14 +18,14 @@ func TestTaggedUserIDs_UndefinedVsEmptyVsSet(t *testing.T) {
 		wantEmpty bool
 		wantLen   int
 	}{
-		{name: "field omitted", body: `{"djId":"x","seenAt":"2026-01-01T00:00:00Z"}`, wantNil: true},
-		{name: "field is empty array", body: `{"djId":"x","seenAt":"2026-01-01T00:00:00Z","taggedUserIds":[]}`, wantEmpty: true},
-		{name: "field has values", body: `{"djId":"x","seenAt":"2026-01-01T00:00:00Z","taggedUserIds":["a","b"]}`, wantLen: 2},
+		{name: "field omitted", body: `{"rating":4}`, wantNil: true},
+		{name: "field is empty array", body: `{"rating":4,"taggedUserIds":[]}`, wantEmpty: true},
+		{name: "field has values", body: `{"rating":4,"taggedUserIds":["a","b"]}`, wantLen: 2},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			var req createReviewRequest
+			var req updateReviewRequest
 			if err := json.Unmarshal([]byte(tc.body), &req); err != nil {
 				t.Fatalf("unmarshal: %v", err)
 			}

@@ -20,14 +20,16 @@ export const ROUTES = {
   PROFILE: "/(tabs)/profile" as Href,
   SETTINGS: "/settings" as Href,
   DJ: (slug: string): Href => `/dj/${slug}` as Href,
-  // One night (an events row); SERIES is the recurring event it belongs to.
-  EVENT: (id: string): Href => `/event/${id}` as Href,
-  SERIES: (slug: string): Href => `/series/${slug}` as Href,
+  // A named event ("Innervisions NY"), by slug.
+  EVENT: (slug: string): Href => `/event/${slug}` as Href,
   VENUE: (id: string): Href => `/venue/${id}` as Href,
   // `justLogged` marks the landing right after creating the review, so the
-  // page can prompt the author to share it.
-  REVIEW_DETAIL: (id: string, opts?: { justLogged?: boolean }): Href =>
-    `/review/${id}${opts?.justLogged ? "?justLogged=1" : ""}` as Href,
+  // page can prompt the author to share it. `tint` is the paper color of the
+  // card it was opened from, so the detail card matches it.
+  REVIEW_DETAIL: (id: string, opts?: { justLogged?: boolean; tint?: "primary" | "accent" }): Href => {
+    const params = [opts?.justLogged && "justLogged=1", opts?.tint && `tint=${opts.tint}`].filter(Boolean);
+    return `/review/${id}${params.length ? `?${params.join("&")}` : ""}` as Href;
+  },
   USER: (username: string): Href => `/user/${username}` as Href,
   USER_FOLLOWERS: (username: string): Href => `/user/${username}/followers` as Href,
   USER_FOLLOWING: (username: string): Href => `/user/${username}/following` as Href,
