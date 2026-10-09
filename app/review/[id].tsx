@@ -12,24 +12,26 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@clerk/expo";
-import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef, useState, type RefObject } from "react";
 
 import {
   Avatar,
   Button,
   Card,
+  CARD_COLORS,
   FitText,
   Icon,
   KeyboardScrollView,
   Page,
   paperFor,
+  type Paper,
   RatingStamp,
-  RatingStars,
   Skeleton,
   Tape,
   Text,
+  TornEdge,
   usePageContentStyle,
+  WallBackground,
 } from "../../components/ui";
 import { useCurrentUser } from "../../lib/auth";
 import { useApi } from "../../lib/api/client";
@@ -289,24 +291,23 @@ function snippet(text: string, max = 150) {
   return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
 
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return ((parts[0]?.[0] ?? "?") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
-}
-
-// The 9:16 Instagram story image. Laid out on a 360-wide design grid and
-// scaled by `width` so the on-screen preview and the 1080×1920 capture are
-// the same drawing. Key content stays clear of the top ~10% / bottom ~12%,
-// where Instagram overlays its progress bar, header and reply box.
-// Sticks to flat colors, gradients and borders (no blur/shadow) so web
-// capture via html2canvas matches native.
+// The 9:16 Instagram story image, in the app's zine look: a torn, taped
+// paper card (the same purple/red the review was opened on) pinned to the
+// concrete wall, with a framed snapshot and the rating stamp. Laid out on a
+// 360-wide design grid and scaled by `width` so the on-screen preview and the
+// 1080×1920 capture are the same drawing. Key content stays clear of the top
+// ~10% / bottom ~12%, where Instagram overlays its progress bar, header and
+// reply box. Shadows are native-only extras; web capture via html2canvas
+// drops them.
 function StoryCard({
   review,
+  paper,
   width,
   cardRef,
   onImageSettled,
 }: {
   review: ReviewDetail;
+  paper: Paper;
   width: number;
   cardRef: RefObject<View | null>;
   onImageSettled: () => void;
@@ -314,12 +315,19 @@ function StoryCard({
   const u = (n: number) => (n * width) / 360;
   const height = (width * 16) / 9;
   const subject = reviewSubject(review);
-  const djName = subject.name;
-  const seen = new Date(review.seenAt).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  const paperColor = CARD_COLORS[paper.tint];
+  const label = [
+    `${formatCardDate(review.seenAt)} ${new Date(review.seenAt).getFullYear()}`,
+    review.log && formatEventTiming(review.log),
+    subject.isNight && "Whole night",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const where = review.log?.venue
+    ? `${!subject.isNight && review.log.event ? `${review.log.event.name} ` : ""}@ ${review.log.venue}`
+    : null;
+  const nameSize = subject.name.length > 22 ? 34 : subject.name.length > 12 ? 42 : 54;
+  const tags = review.tags?.slice(0, 3) ?? [];
 
   return (
     <View
@@ -327,128 +335,162 @@ function StoryCard({
       collapsable={false}
       style={{ width, height, overflow: "hidden", backgroundColor: "#000000" }}
     >
-      <LinearGradient
-        colors={["#2A1745", "#0B0712", "#000000"]}
-        locations={[0, 0.55, 1]}
-        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-      />
-      <View
-        style={{
-          position: "absolute",
-          width: u(340),
-          height: u(340),
-          borderRadius: u(170),
-          top: u(36),
-          left: u(10),
-          backgroundColor: "rgba(136, 74, 207, 0.16)",
-        }}
-      />
+      <WallBackground />
 
       <View
         style={{
           flex: 1,
-          paddingTop: u(64),
-          paddingBottom: u(80),
-          paddingHorizontal: u(28),
+          paddingTop: u(62),
+          paddingBottom: u(82),
+          paddingHorizontal: u(26),
           justifyContent: "space-between",
         }}
       >
         <View style={{ alignItems: "center" }}>
-          <Text className="font-display" style={{ fontSize: u(30), color: "#BA95E4", letterSpacing: u(1) }}>
-            BEATBOX&apos;D
-          </Text>
-          <Text style={{ fontSize: u(13), color: "#A4A0B1", marginTop: u(2) }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: u(8) }}>
+            <Image source={require("../../assets/logo-mark.png")} style={{ width: u(34), height: u(34) }} />
+            <Text
+              className="font-display text-paper"
+              style={{
+                fontSize: u(38),
+                lineHeight: u(40),
+                textShadowColor: "rgba(255,255,255,0.35)",
+                textShadowRadius: u(8),
+              }}
+            >
+              BeatBox&apos;d
+            </Text>
+          </View>
+          <Text
+            className="font-display uppercase text-paper/75"
+            style={{ fontSize: u(17), lineHeight: u(20), marginTop: u(4) }}
+          >
             @{review.user.username} caught
           </Text>
         </View>
 
-        <View style={{ alignItems: "center" }}>
-          <View
-            style={{
-              width: u(132),
-              height: u(132),
-              borderRadius: u(24),
-              overflow: "hidden",
-              borderWidth: u(2),
-              borderColor: "rgba(186, 149, 228, 0.5)",
-              backgroundColor: "#884ACF",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {subject.imageUrl ? (
-              <Image
-                source={{ uri: subject.imageUrl }}
-                onLoad={onImageSettled}
-                onError={onImageSettled}
-                style={{ width: "100%", height: "100%" }}
-              />
-            ) : (
-              <Text className="font-display" style={{ fontSize: u(52), color: "#FFFFFF" }}>
-                {initials(djName)}
+        {/* The paper card, tilted like it's tacked to the wall. */}
+        <View
+          style={{
+            transform: [{ rotate: "-1.5deg" }],
+            shadowColor: "#000",
+            shadowOpacity: 0.6,
+            shadowRadius: u(10),
+            shadowOffset: { width: 0, height: u(6) },
+            marginBottom: u(10),
+          }}
+        >
+          <View style={{ backgroundColor: paperColor, padding: u(16), paddingBottom: u(20) }}>
+            <TornEdge color={paperColor} height={u(10)} />
+            <Tape style={{ top: -u(11), left: u(24) }} width={u(84)} rotate={-5} />
+
+            <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <View
+                style={{
+                  width: u(122),
+                  height: u(122),
+                  borderWidth: u(4),
+                  borderColor: "#F6F6F9",
+                  overflow: "hidden",
+                  transform: [{ rotate: "-3deg" }],
+                }}
+              >
+                {subject.imageUrl ? (
+                  <Image
+                    source={{ uri: subject.imageUrl }}
+                    onLoad={onImageSettled}
+                    onError={onImageSettled}
+                    resizeMode="cover"
+                    style={{ width: "100%", height: "100%" }}
+                  />
+                ) : (
+                  <View
+                    className={`flex-1 items-center justify-end overflow-hidden ${paper.photoPlaceholderClassName}`}
+                  >
+                    <Icon name="person" size={u(110)} className={paper.photoSilhouetteClassName} />
+                  </View>
+                )}
+              </View>
+              {!!review.rating && (
+                <View style={{ marginTop: u(4), marginRight: u(2) }}>
+                  <RatingStamp value={review.rating} size={u(104)} rotate={-10} />
+                </View>
+              )}
+            </View>
+
+            <Text
+              className={`font-display uppercase ${paper.inkClassName}`}
+              style={{ fontSize: u(16), lineHeight: u(18), marginTop: u(16) }}
+            >
+              {label}
+            </Text>
+            <Text
+              className="font-display uppercase text-paper"
+              style={{ fontSize: u(nameSize), lineHeight: u(nameSize * 0.92), marginTop: u(4) }}
+            >
+              {subject.name}
+            </Text>
+            {!!where && (
+              <Text
+                className="font-display uppercase text-paper"
+                style={{ fontSize: u(19), lineHeight: u(21), marginTop: u(2) }}
+              >
+                {where}
               </Text>
             )}
-          </View>
 
-          <Text
-            className="font-display"
-            style={{
-              fontSize: u(djName.length > 16 ? 32 : 42),
-              lineHeight: u(djName.length > 16 ? 34 : 44),
-              color: "#F6F6F9",
-              textAlign: "center",
-              marginTop: u(12),
-            }}
-          >
-            {djName}
-          </Text>
-          {!!logWhere(review.log).length && (
-            <Text style={{ fontSize: u(13), color: "#BA95E4", textAlign: "center", marginTop: u(4) }}>
-              {logWhere(review.log).join(" · ")}
-            </Text>
-          )}
-          <Text style={{ fontSize: u(12), color: "#A4A0B1", marginTop: u(2) }}>{seen}</Text>
-          {!!review.rating && (
-            <View style={{ marginTop: u(8) }}>
-              <RatingStars value={review.rating} size={u(22)} />
-            </View>
-          )}
-
-          {!!review.reviewText && (
-            <View
-              style={{
-                marginTop: u(14),
-                alignSelf: "stretch",
-                borderRadius: u(16),
-                borderWidth: u(1),
-                borderColor: "rgba(186, 149, 228, 0.3)",
-                backgroundColor: "rgba(255, 255, 255, 0.06)",
-                paddingVertical: u(12),
-                paddingHorizontal: u(16),
-              }}
-            >
-              <Text style={{ fontSize: u(14), lineHeight: u(20), color: "#F6F6F9" }}>
-                “{snippet(review.reviewText)}”
+            {!!review.reviewText && (
+              <Text className="text-paper" style={{ fontSize: u(14), lineHeight: u(20), marginTop: u(12) }}>
+                “{snippet(review.reviewText, 140)}”
               </Text>
-            </View>
-          )}
+            )}
+
+            {!!tags.length && (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: u(6), marginTop: u(12) }}>
+                {tags.map((tag) => (
+                  <View
+                    key={tag}
+                    style={{
+                      borderWidth: u(2),
+                      borderColor: "rgba(246,246,249,0.9)",
+                      paddingHorizontal: u(6),
+                      paddingVertical: u(1),
+                    }}
+                  >
+                    <Text
+                      className="font-display uppercase text-paper"
+                      style={{ fontSize: u(14), lineHeight: u(16) }}
+                    >
+                      {tag}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
         </View>
 
-        <View style={{ alignItems: "center" }}>
-          <View
-            style={{
-              backgroundColor: "#884ACF",
-              borderRadius: u(999),
-              paddingHorizontal: u(18),
-              paddingVertical: u(9),
-            }}
+        {/* Call to action on a scrap of the near-black panel. */}
+        <View
+          style={{
+            alignSelf: "center",
+            alignItems: "center",
+            transform: [{ rotate: "1.5deg" }],
+            backgroundColor: CARD_COLORS.neutral,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.1)",
+            paddingHorizontal: u(18),
+            paddingVertical: u(10),
+          }}
+        >
+          <Text className="font-display uppercase text-paper" style={{ fontSize: u(22), lineHeight: u(24) }}>
+            Log the sets you&apos;ve seen
+          </Text>
+          <Text
+            className="font-display uppercase text-primary-dark"
+            style={{ fontSize: u(15), lineHeight: u(17), marginTop: u(2) }}
           >
-            <Text className="font-bold" style={{ fontSize: u(13), color: "#FFFFFF" }}>
-              Log the sets you&apos;ve seen
-            </Text>
-          </View>
-          <Text style={{ fontSize: u(12), color: "#A4A0B1", marginTop: u(8) }}>
-            Get the app or visit {WEB_URL.replace(/^https?:\/\//, "")}
+            {WEB_URL.replace(/^https?:\/\//, "")}
           </Text>
         </View>
       </View>
@@ -456,14 +498,22 @@ function StoryCard({
   );
 }
 
-function ShareStorySheet({ review, onClose }: { review: ReviewDetail; onClose: () => void }) {
+function ShareStorySheet({
+  review,
+  paper,
+  onClose,
+}: {
+  review: ReviewDetail;
+  paper: Paper;
+  onClose: () => void;
+}) {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   // A multiple of 9 keeps the 9:16 height a whole number of pixels.
   const previewWidth =
     Math.floor(Math.min(297, windowWidth - 64, ((windowHeight - 280) * 9) / 16) / 9) * 9;
   const cardRef = useRef<View>(null);
   const prepared = useRef<CapturedStory | null>(null);
-  const [imageSettled, setImageSettled] = useState(!review.dj?.imageUrl);
+  const [imageSettled, setImageSettled] = useState(!reviewSubject(review).imageUrl);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -517,6 +567,7 @@ function ShareStorySheet({ review, onClose }: { review: ReviewDetail; onClose: (
         <View className="overflow-hidden rounded-xl">
           <StoryCard
             review={review}
+            paper={paper}
             width={previewWidth}
             cardRef={cardRef}
             onImageSettled={() => setImageSettled(true)}
@@ -547,7 +598,15 @@ function ShareStorySheet({ review, onClose }: { review: ReviewDetail; onClose: (
   );
 }
 
-function ShareStoryButton({ review, justLogged }: { review: ReviewDetail; justLogged: boolean }) {
+function ShareStoryButton({
+  review,
+  paper,
+  justLogged,
+}: {
+  review: ReviewDetail;
+  paper: Paper;
+  justLogged: boolean;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <View
@@ -565,7 +624,7 @@ function ShareStoryButton({ review, justLogged }: { review: ReviewDetail; justLo
         <Text className="font-semibold text-paper">Share to Instagram story</Text>
       </Button>
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        {open && <ShareStorySheet review={review} onClose={() => setOpen(false)} />}
+        {open && <ShareStorySheet review={review} paper={paper} onClose={() => setOpen(false)} />}
       </Modal>
     </View>
   );
@@ -704,7 +763,7 @@ export default function ReviewDetailScreen() {
         {/* Story sharing hands the image to Instagram via the OS share sheet,
             which only works well from the native iOS app. */}
         {isIos && !isPlaceholderData && me?.id === review.userId && (
-          <ShareStoryButton review={review} justLogged={justLogged === "1"} />
+          <ShareStoryButton review={review} paper={paper} justLogged={justLogged === "1"} />
         )}
 
         <View className="w-full max-w-xl">
