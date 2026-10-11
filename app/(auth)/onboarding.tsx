@@ -42,8 +42,6 @@ export default function OnboardingScreen() {
     }
   };
 
-  // useUpdateProfile seeds the current-user cache before this onSuccess runs,
-  // so the tabs layout's onboarding gate sees the new username immediately.
   const submit = useUpdateProfile({
     onSuccess: () => router.dismissTo(ROUTES.FEED),
     onError: setError,

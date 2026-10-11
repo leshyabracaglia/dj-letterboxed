@@ -93,6 +93,9 @@ type DjAggregate struct {
 	RatingCounts []int64 `json:"ratingCounts"`
 }
 
+// GetDjAggregate rates djID from reviews of them, plus night reviews of
+// nights they were the only DJ on the lineup of (a solo night's rating is
+// theirs), unless that log also rated them directly.
 func GetDjAggregate(ctx context.Context, q DBTX, djID string) (*DjAggregate, error) {
 	var agg DjAggregate
 	err := q.QueryRow(ctx, `
@@ -104,7 +107,10 @@ func GetDjAggregate(ctx context.Context, q DBTX, djID string) (*DjAggregate, err
 				COUNT(*) FILTER (WHERE rating = 4),
 				COUNT(*) FILTER (WHERE rating = 5)
 			]
-		FROM reviews WHERE dj_id = $1`, djID).Scan(&agg.AvgRating, &agg.ReviewCount, &agg.RatingCounts)
+		FROM reviews
+		WHERE dj_id = $1 OR (dj_id IS NULL
+			AND log_id IN (SELECT log_id FROM log_lineup GROUP BY log_id HAVING bool_and(dj_id = $1))
+			AND NOT EXISTS (SELECT 1 FROM reviews dr WHERE dr.log_id = reviews.log_id AND dr.dj_id = $1))`, djID).Scan(&agg.AvgRating, &agg.ReviewCount, &agg.RatingCounts)
 	if err != nil {
 		return nil, err
 	}

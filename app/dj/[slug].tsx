@@ -1,5 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { router, Stack, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
 import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -31,8 +32,6 @@ import { ROUTES } from "../../lib/routes";
 
 const HERO_HEIGHT = 280;
 
-// Floating square back key over the hero (the stack header is hidden here so
-// the photo can run to the top of the screen).
 function BackButton() {
   const { top } = useSafeAreaInsets();
   const gutter = usePageGutter();
@@ -61,8 +60,40 @@ function Hero({ imageUrl, showBack }: { imageUrl: string | null; showBack: boole
   );
 }
 
-// Red band under the photo: name, genres, bio, and the average stamped over
-// its torn bottom edge.
+const BIO_LINES = 3;
+const BIO_LINE_HEIGHT = 24; // leading-6
+
+// The bio clamped to a few lines, with a "Read more" toggle when it runs
+// longer. Overflow is found by measuring an invisible unclamped copy, since
+// onTextLayout doesn't fire on web.
+function DjBio({ bio }: { bio: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  return (
+    <View className="mt-2 pr-28">
+      <View>
+        <Text
+          className="pointer-events-none absolute left-0 right-0 text-base leading-6 text-paper opacity-0"
+          onLayout={(e) => setOverflows(e.nativeEvent.layout.height > BIO_LINES * BIO_LINE_HEIGHT + 1)}
+          aria-hidden
+        >
+          {bio}
+        </Text>
+        <Text className="text-base leading-6 text-paper" numberOfLines={expanded ? undefined : BIO_LINES}>
+          {bio}
+        </Text>
+      </View>
+      {overflows && (
+        <Pressable onPress={() => setExpanded((v) => !v)} hitSlop={8} className="mt-1 self-start active:opacity-70">
+          <Text className="font-display text-lg uppercase text-zine-red-ink">
+            {expanded ? "Show less" : "Read more"}
+          </Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
 function NameBand({ data }: { data: DjDetail }) {
   const gutter = usePageGutter();
   const avgRating = data.avgRating ? Number(data.avgRating) : null;
@@ -76,7 +107,7 @@ function NameBand({ data }: { data: DjDetail }) {
           {data.dj.genres.slice(0, 3).join(" · ")}
         </Text>
       )}
-      {!!data.dj.bio && <Text className="mt-2 pr-28 text-base leading-6 text-paper">{data.dj.bio}</Text>}
+      {!!data.dj.bio && <DjBio bio={data.dj.bio} />}
       <TornEdge color={CARD_COLORS.accent} height={12} />
       <View className="absolute -bottom-12" style={{ right: gutter - 8 }}>
         <RatingStamp value={avgRating} size={124} color="purple" rotate={-4} />
@@ -85,16 +116,13 @@ function NameBand({ data }: { data: DjDetail }) {
   );
 }
 
-// How the DJ's reviews spread over 5..1 stars, as glowing bars.
 function RatingLevels({ counts, reviewCount }: { counts: number[]; reviewCount: number }) {
   const max = Math.max(1, ...counts);
   return (
     <Card tilt={0.6} className="bg-zine-panel">
       <View className="mb-3 flex-row justify-between">
         <Text className="font-display text-xl uppercase text-paper/70">Rating levels</Text>
-        <Text className="font-display text-xl uppercase text-paper/70">
-          Avg of {reviewCount}
-        </Text>
+        <Text className="font-display text-xl uppercase text-paper/70">Avg of {reviewCount}</Text>
       </View>
       {[5, 4, 3, 2, 1].map((stars) => {
         const count = counts[stars - 1] ?? 0;
@@ -103,10 +131,7 @@ function RatingLevels({ counts, reviewCount }: { counts: number[]; reviewCount: 
             <Text className="w-4 font-display text-lg text-paper">{stars}</Text>
             <View className="h-3 flex-1 bg-[#2A0F14]">
               {!!count && (
-                <View
-                  className="h-full bg-paper shadow-md shadow-white"
-                  style={{ width: `${(count / max) * 100}%` }}
-                />
+                <View className="h-full bg-paper shadow-md shadow-white" style={{ width: `${(count / max) * 100}%` }} />
               )}
             </View>
           </View>
@@ -116,8 +141,6 @@ function RatingLevels({ counts, reviewCount }: { counts: number[]; reviewCount: 
   );
 }
 
-// One night of this DJ (their review, or the night review) as a paper strip, purple and red alternating: the night, who logged it and when,
-// then what they wrote and their tags.
 function LogRow({ review, index }: { review: Review; index: number }) {
   const where = review.log?.event?.name || review.log?.venue || "A night out";
   const meta = [

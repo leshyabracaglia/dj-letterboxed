@@ -783,7 +783,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "The area is areaId if given, else the RA area of where the caller is (city/region, as their device geocoded it, or lat/lng, geocoded here), else of the city of their latest night out. area is null, with no events, if none is known. from/to are the caller's local days; at most two weeks back.",
+                "description": "The area is areaId if given, else the RA area of where the caller is (city/region, as their device geocoded it, or lat/lng, geocoded here), else of the city of their latest night out. area is null, with no events, if none is known. from/to are the caller's local days, within the last two weeks.",
                 "produces": [
                     "application/json"
                 ],
@@ -962,7 +962,7 @@ const docTemplate = `{
                 "tags": [
                     "reviews"
                 ],
-                "summary": "Delete a review owned by the caller (404, never 403, if not owned/found)",
+                "summary": "Delete a review owned by the caller (404, never 403, if not owned/found). Deleting the review a night out is posted as (its night review) deletes the whole night out, as does deleting its last review.",
                 "parameters": [
                     {
                         "type": "string",
@@ -1002,7 +1002,7 @@ const docTemplate = `{
                 "tags": [
                     "reviews"
                 ],
-                "summary": "List a review's comments, oldest first",
+                "summary": "List the comments on a review's night out (its lead review's), oldest first",
                 "parameters": [
                     {
                         "type": "string",
@@ -1020,6 +1020,12 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/ReviewComment"
                             }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
                         }
                     }
                 }
@@ -1039,7 +1045,7 @@ const docTemplate = `{
                 "tags": [
                     "reviews"
                 ],
-                "summary": "Add a comment to a review",
+                "summary": "Comment on a review's night out (comments go on its lead review)",
                 "parameters": [
                     {
                         "type": "string",
@@ -1076,6 +1082,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/errorEnvelope"
                         }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
                     }
                 }
             }
@@ -1093,7 +1105,7 @@ const docTemplate = `{
                 "tags": [
                     "reviews"
                 ],
-                "summary": "Like a review",
+                "summary": "Like a review's night out (likes go on its lead review, whichever of the log's reviews is given)",
                 "parameters": [
                     {
                         "type": "string",
@@ -1115,6 +1127,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/errorEnvelope"
                         }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
                     }
                 }
             },
@@ -1130,7 +1148,7 @@ const docTemplate = `{
                 "tags": [
                     "reviews"
                 ],
-                "summary": "Unlike a review",
+                "summary": "Unlike a review's night out",
                 "parameters": [
                     {
                         "type": "string",
@@ -1149,6 +1167,12 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/errorEnvelope"
                         }

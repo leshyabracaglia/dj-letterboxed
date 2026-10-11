@@ -230,7 +230,7 @@ func run() error {
 	}
 
 	// Likes and comments go on a night out's post: its night review when it
-	// has one (see queries.leadReviewCond).
+	// has one (logs.lead_review_id).
 	if _, err := queries.LikeReview(ctx, pool, review8.ID, bob.ID); err != nil {
 		return err
 	}
@@ -253,7 +253,196 @@ func run() error {
 		return err
 	}
 
+	return seedVariations(ctx, pool, alice, bob, logNight, review)
+}
+
+type (
+	logNightFunc func(user *db.User, event *db.Event, venue *db.Venue, seenAt string, isDay, isNight bool, lineup ...*db.Dj) (*db.Log, error)
+	reviewFunc   func(l *db.Log, dj *db.Dj, rating int16, text string, tags ...string) (*db.Review, error)
+)
+
+// seedVariations adds nights covering each shape a card, DJ, event or venue
+// page has to handle: with and without an event name, no/one/several DJs,
+// night-only, DJ-only and mixed reviews, day/night/day-into-night, long and
+// empty text, tagged friends, a popular post, another city. It deliberately
+// stays clear of what e2e/ asserts on (Dixon, Knockdown Center, Innervisions
+// New York, Dixon All Night Long), so those counts don't move.
+func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User, logNight logNightFunc, review reviewFunc) (err error) {
+	// Fixture inserts can't fail on a fresh DB short of a schema bug, so
+	// panic through them (like mustParse) and report the first error here.
+	defer func() {
+		if r := recover(); r != nil {
+			if e, ok := r.(error); ok {
+				err = e
+				return
+			}
+			panic(r)
+		}
+	}()
+
+	// carla has an avatar and follows both; dev has none, a long handle (for
+	// the card's name tag) and follows nobody.
+	carla := must(queries.CreateUser(ctx, pool, "seed_carla", "carla", strPtr("Carla"), strPtr("Afro house and anything outdoors."), strPtr("https://i.pravatar.cc/300?img=32")))
+	dev := must(queries.CreateUser(ctx, pool, "seed_dev", "deep_house_dev_420", strPtr("Dev"), nil, nil))
+
+	dj := func(name, slug string, bio *string, genres []string, image bool, by *db.User) *db.Dj {
+		var imageURL *string
+		if image {
+			imageURL = strPtr("https://picsum.photos/seed/" + slug + "-dj/600/600")
+		}
+		return must(queries.CreateDj(ctx, pool, name, slug, bio, genres, nil, imageURL, by.ID))
+	}
+	// Floating Points' bio runs well past the DJ page's three-line clamp
+	// ("Read more"); Mall Grab has no bio, genres or photo at all.
+	kettama := dj("KETTAMA", "kettama", strPtr("Irish producer, breakbeat-laced house and techno."), []string{"house", "breaks"}, true, carla)
+	honey := dj("Honey Dijon", "honey-dijon", strPtr("Chicago-born, New York-made house and disco."), []string{"house", "disco"}, true, alice)
+	floating := dj("Floating Points", "floating-points", strPtr("Sam Shepherd: neuroscientist turned producer, composer and selector. "+
+		"His sets wander from spiritual jazz and Brazilian records through deep house and disco to full-bore techno, often over many hours, "+
+		"and he founded the Eglo label and plays live with a full ensemble. Known for marathon all-night sets that reward the people who stay "+
+		"until the lights come up, and for digging out records nobody else in the room has heard."), []string{"house", "jazz", "electronica"}, true, bob)
+	peggy := dj("Peggy Gou", "peggy-gou", strPtr("Berlin-based Korean DJ and producer."), []string{"house", "techno"}, true, carla)
+	benUFO := dj("Ben UFO", "ben-ufo", strPtr("Hessle Audio co-founder."), []string{"techno", "uk bass"}, false, dev)
+	mallGrab := dj("Mall Grab", "mall-grab", nil, nil, false, dev)
+	joy := dj("Joy Orbison", "joy-orbison", strPtr("UK garage and house, Hinge Finger."), []string{"uk garage", "house"}, true, bob)
+	shygirl := dj("Shygirl", "shygirl", strPtr("South London club music."), []string{"club"}, true, carla)
+	djPython := dj("DJ Python", "dj-python", strPtr("Deep reggaeton, ambient-leaning sets."), []string{"deep reggaeton", "ambient"}, false, alice)
+
+	venue := func(name string, city *string, by *db.User) *db.Venue {
+		return must(queries.UpsertUnlinkedVenue(ctx, pool, name, city, by.ID))
+	}
+	goodRoom := venue("Good Room", strPtr("Brooklyn, NY"), carla)
+	basement := venue("Basement", strPtr("Queens, NY"), bob)
+	mirage := venue("Brooklyn Mirage", strPtr("Brooklyn, NY"), carla)
+	leBain := venue("Le Bain", strPtr("New York, NY"), alice)
+	fabric := venue("fabric", strPtr("London, UK"), dev)
+	// Typed in with no city, like a warehouse with no listing.
+	warehouse := venue("Secret Warehouse off Flushing Ave", nil, dev)
+	nowadays := venue("Nowadays", strPtr("Ridgewood, NY"), bob) // already seeded: returns that row
+
+	event := func(name, slug string, by *db.User) *db.Event {
+		return must(queries.CreateEvent(ctx, pool, name, slug, by.ID))
+	}
+	rush := event("Rush: Kettama", "rush-kettama", carla)
+	misterSat := event("Mister Saturday Night", "mister-saturday-night", bob)
+	// Same name as its venue: cards show it once, not "Basement @ Basement".
+	basementEvent := event("Basement", "basement", bob)
+	marathon := event("Floating Points All Night Long - Twelve Hour Marathon Edition", "floating-points-all-night-long-twelve-hour-marathon-edition", bob)
+	fabricLive := event("FABRICLIVE", "fabriclive", dev)
+
+	night := func(user *db.User, e *db.Event, v *db.Venue, seenAt string, isDay, isNight bool, lineup ...*db.Dj) *db.Log {
+		return must(logNight(user, e, v, seenAt, isDay, isNight, lineup...))
+	}
+	rate := func(l *db.Log, d *db.Dj, rating int16, text string, tags ...string) *db.Review {
+		return must(review(l, d, rating, text, tags...))
+	}
+
+	// Event, one DJ, rated only as a whole night by two people: a solo night
+	// counts toward KETTAMA's own rating (Avg of 2 on his page).
+	rush1 := night(carla, rush, goodRoom, "2026-10-03T22:00:00Z", false, true, kettama)
+	rushNight := rate(rush1, nil, 4, "Two hours of breaks and big piano house. Good Room's back room was a sauna.", "sweaty", "packed")
+	rush2 := night(dev, rush, goodRoom, "2026-10-03T22:00:00Z", false, true, kettama)
+	rate(rush2, nil, 2, "Too many edits of the same three tracks.")
+
+	// Event, one DJ, rated only as the DJ: the DJ card.
+	honeyNight := night(alice, misterSat, nowadays, "2026-09-20T16:00:00Z", true, true, honey)
+	honeyReview := rate(honeyNight, honey, 5, "House music church. The garden at golden hour.", "sunset", "friendly")
+
+	// Event, several DJs, night review only: lineup photo tiles, no sets.
+	// Two DJs leaves the row of three short; six overflows it ("+3 more").
+	misterDay := night(carla, misterSat, nowadays, "2026-08-30T16:00:00Z", true, false, joy, peggy)
+	rate(misterDay, nil, 5, "Sunday afternoon in the garden, couldn't have asked for more.", "sunny")
+	basementBig := night(bob, basementEvent, basement, "2026-09-12T23:00:00Z", false, true, benUFO, joy, mallGrab, peggy, shygirl, djPython)
+	rate(basementBig, nil, 4, "", "dark", "great sound")
+
+	// Event, several DJs, DJ reviews only (no night review): the night card
+	// without its own stamp, each set listed, and "Also saw" for the rest.
+	basementSets := night(carla, basementEvent, basement, "2026-09-12T23:00:00Z", false, true, benUFO, joy, mallGrab, shygirl)
+	rate(basementSets, benUFO, 5, "Three-hour masterclass in the Ford room, never played an obvious record.")
+	rate(basementSets, joy, 4, "")
+
+	// Event, several DJs, night review plus every set rated, more sets than
+	// a list card shows ("+N more sets"), day into night, a long review.
+	marathonNight := night(bob, marathon, mirage, "2026-07-04T14:00:00Z", true, true, floating, djPython, honey, peggy)
+	marathonLead := rate(marathonNight, nil, 5, "Got there at two in the afternoon and left after sunrise. Floating Points opened with an hour of jazz records "+
+		"nobody recognised and somehow ended on acid techno, and the whole room went with him the entire way. The sound in the Mirage was the "+
+		"best I've heard it, the crowd was kind, the water was free. If they do this again I'm taking the next day off work too.", "emotional", "great sound", "packed")
+	rate(marathonNight, floating, 5, "Best set of the year, no contest.")
+	rate(marathonNight, djPython, 4, "Perfect warm-up while it was still light out.")
+	rate(marathonNight, honey, 4, "")
+	rate(marathonNight, peggy, 3, "Fun but felt short after the marathon before it.")
+
+	// No event, one DJ, night review: titled after the DJ, venue under it.
+	pythonSolo := night(alice, nil, leBain, "2026-09-27T23:00:00Z", false, true, djPython)
+	rate(pythonSolo, nil, 4, "Rooftop, slow and hazy, exactly right for the last warm weekend.", "chill")
+
+	// No event, two DJs, night review plus one set: titled "A · B".
+	b2b := night(carla, nil, mirage, "2026-08-15T21:00:00Z", false, true, peggy, shygirl)
+	b2bNight := rate(b2b, nil, 3, "Big room, big sound, too many phones.", "packed")
+	rate(b2b, shygirl, 4, "Way harder than I expected, loved it.")
+
+	// No event, no lineup: titled after the venue (a city-less one).
+	unknown := night(dev, nil, warehouse, "2026-06-20T23:00:00Z", false, true)
+	rate(unknown, nil, 3, "No idea who was playing, didn't matter. Lost my jacket.")
+
+	// No event, several DJs, one set rated (the DJ card), day only.
+	mallGrabDay := night(dev, nil, goodRoom, "2026-09-06T15:00:00Z", true, false, mallGrab, joy)
+	rate(mallGrabDay, mallGrab, 2, "Lo-fi house on a sunny afternoon, it was fine.", "older crowd")
+
+	// Another city, for the location-based search and city picker.
+	fabricNight := night(dev, fabricLive, fabric, "2026-05-16T23:00:00Z", false, true, benUFO, joy)
+	fabricLead := rate(fabricNight, nil, 5, "Room One at 4am. Nothing like it.", "bass in your chest")
+	rate(fabricNight, benUFO, 5, "")
+
+	// Friends tagged on posts ("With @…" on the review page).
+	must(0, queries.SetReviewTags(ctx, pool, rushNight.ID, []string{dev.ID}))
+	must(0, queries.SetReviewTags(ctx, pool, marathonLead.ID, []string{alice.ID, carla.ID}))
+
+	// carla follows both; alice follows carla back; dev follows nobody.
+	for _, f := range [][2]*db.User{{carla, alice}, {carla, bob}, {alice, carla}, {bob, carla}} {
+		must(queries.Follow(ctx, pool, f[0].ID, f[1].ID))
+	}
+
+	// The marathon is liked by everyone (a popular post); a spread of likes
+	// and a comment thread elsewhere.
+	for _, like := range []struct {
+		review *db.Review
+		users  []*db.User
+	}{
+		{marathonLead, []*db.User{alice, carla, dev}},
+		{rushNight, []*db.User{alice, bob}},
+		{honeyReview, []*db.User{carla}},
+		{b2bNight, []*db.User{bob}},
+		{fabricLead, []*db.User{bob, carla}},
+	} {
+		for _, u := range like.users {
+			must(queries.LikeReview(ctx, pool, like.review.ID, u.ID))
+		}
+	}
+	for _, c := range []struct {
+		review *db.Review
+		user   *db.User
+		body   string
+	}{
+		{marathonLead, alice, "Jealous. Was it really twelve hours?"},
+		{marathonLead, bob, "Thirteen with the encore."},
+		{marathonLead, carla, "I was by the left speaker the whole time!"},
+		{marathonLead, dev, "Next year I'm coming."},
+		{rushNight, dev, "Fair, but it was way too hot in there."},
+	} {
+		must(queries.AddComment(ctx, pool, c.review.ID, c.user.ID, c.body))
+	}
+
+	// Profile favorites, in order.
+	must(0, queries.SetFavoriteReviews(ctx, pool, bob.ID, []string{marathonLead.ID}))
+	must(0, queries.SetFavoriteReviews(ctx, pool, carla.ID, []string{rushNight.ID, b2bNight.ID}))
 	return nil
+}
+
+func must[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return v
 }
 
 func strPtr(s string) *string { return &s }

@@ -1,7 +1,9 @@
 import { Link, router, type Href } from "expo-router";
 import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import {
+  Avatar,
   Card,
   FadeInView,
   FitText,
@@ -67,7 +69,7 @@ function EngagementCounts({ review }: { review: ReviewCardReview }) {
   );
 }
 
-// Tags, then the reviewer's handle and the like/comment counts (or, on the
+// Tags, then the reviewer's name tag and the like/comment counts (or, on the
 // review's own page, `actions`), along the bottom of either card.
 function CardFooter({
   review,
@@ -87,24 +89,59 @@ function CardFooter({
         </Text>
       )}
       <View className="flex-row flex-wrap items-center justify-between gap-2">
-        {review.user ? (
-          <Pressable
-            hitSlop={4}
-            onPress={(e) => {
-              // A list card wraps everything in its own Link, so stop the
-              // press from bubbling up and opening the review detail instead.
-              e.stopPropagation();
-              router.push(ROUTES.USER(review.user!.username));
-            }}
-          >
-            <Text className="font-display text-base uppercase text-paper/85">@{review.user.username}</Text>
-          </Pressable>
-        ) : (
-          <View />
-        )}
+        {review.user ? <Reviewer user={review.user} /> : <View />}
         {actions ?? <EngagementCounts review={review} />}
       </View>
     </View>
+  );
+}
+
+const TAG_HEIGHT = 30;
+const AVATAR_SIZE = 38;
+const TAIL_WIDTH = 10;
+// How far in from the tag's edge the notch's point sits.
+const TAIL_NOTCH = 4;
+// tailwind `paper`, for the SVG fill.
+const PAPER = "#F6F6F9";
+
+// Who wrote it, along the bottom of either card: their avatar in a white
+// ring, pinned over a paper name tag with a notched tail, linked to their
+// profile.
+function Reviewer({ user }: { user: User }) {
+  return (
+    <Pressable
+      hitSlop={4}
+      className="flex-row items-center active:opacity-80"
+      style={{ height: AVATAR_SIZE }}
+      onPress={(e) => {
+        // A list card wraps everything in its own Link, so stop the press
+        // from bubbling up and opening the review detail instead.
+        e.stopPropagation();
+        router.push(ROUTES.USER(user.username));
+      }}
+    >
+      <View className="flex-row items-center" style={{ marginLeft: AVATAR_SIZE / 2 }}>
+        <View className="justify-center bg-paper pr-2" style={{ height: TAG_HEIGHT, paddingLeft: AVATAR_SIZE / 2 + 8 }}>
+          <Text className="font-display text-xl uppercase leading-6 tracking-wider text-ink" numberOfLines={1}>
+            @{user.username}
+          </Text>
+        </View>
+        {/* Swallowtail, as a vector shape so its slanted edges stay smooth.
+            Overlaps the tag by a pixel so no seam shows between them. */}
+        <Svg width={TAIL_WIDTH + 1} height={TAG_HEIGHT} style={{ marginLeft: -1 }}>
+          <Path
+            d={`M0 0 H${TAIL_WIDTH + 1} L${TAIL_NOTCH} ${TAG_HEIGHT / 2} L${TAIL_WIDTH + 1} ${TAG_HEIGHT} H0 Z`}
+            fill={PAPER}
+          />
+        </Svg>
+      </View>
+      <View
+        className="absolute left-0 top-0 overflow-hidden rounded-full border-[3px] border-paper bg-paper"
+        style={{ width: AVATAR_SIZE, height: AVATAR_SIZE }}
+      >
+        <Avatar uri={user.avatarUrl} name={user.username} size={AVATAR_SIZE - 6} />
+      </View>
+    </Pressable>
   );
 }
 
@@ -214,9 +251,7 @@ function DjReviewCard({ review, paper, expanded, actions }: CardProps) {
       <View className="flex-row gap-3">
         <View className="flex-1">
           <View className="flex-row flex-wrap items-center gap-2">
-            <Text className={`font-display text-base uppercase ${paper.inkClassName}`}>
-              {cardLabel(review, false)}
-            </Text>
+            <Text className={`font-display text-base uppercase ${paper.inkClassName}`}>{cardLabel(review, false)}</Text>
             {review.isPopular && <PopularMark />}
           </View>
           <View className="mt-6">
@@ -273,7 +308,10 @@ function SetReviews({ sets, paper, expanded }: { sets: DjReview[]; paper: Paper;
           </MaybeLink>
           <View className="flex-1">
             <MaybeLink href={set.dj ? ROUTES.DJ(set.dj.slug) : null} expanded={expanded}>
-              <Text className="font-display text-2xl uppercase leading-7 text-paper" numberOfLines={expanded ? undefined : 1}>
+              <Text
+                className="font-display text-2xl uppercase leading-7 text-paper"
+                numberOfLines={expanded ? undefined : 1}
+              >
                 {set.dj?.name ?? "A DJ"}
               </Text>
             </MaybeLink>
@@ -298,9 +336,9 @@ function SetReviews({ sets, paper, expanded }: { sets: DjReview[]; paper: Paper;
   );
 }
 
-// A whole night out (purple or red paper): the night's name, its rating and
-// review, then each DJ reviewed on it - or, with no DJ reviews, its lineup as
-// a row of photos. A night with several DJ reviews and no night review gets
+// A whole night out (purple or red paper): the night's name (or, with no
+// event name, its lineup), its rating and review, then each DJ reviewed on
+// it - or, with no DJ reviews, its lineup as a row of photos. A night with several DJ reviews and no night review gets
 // this card too, without the night's own stamp and text.
 function NightReviewCard({ review, sets, paper, expanded, actions }: CardProps & { sets: DjReview[] }) {
   const isNightReview = !review.dj;
@@ -311,7 +349,11 @@ function NightReviewCard({ review, sets, paper, expanded, actions }: CardProps &
   const shown = !sets.length ? (expanded ? lineup : lineup.slice(0, LINEUP_SHOWN)) : [];
   const hidden = sets.length ? 0 : lineup.length - shown.length;
   const subject = reviewSubject({ log: review.log });
-  const title = subject.name;
+  // A night with no event name is headlined by who played (linking to a
+  // solo DJ's page), with the venue on the line under it.
+  const djTitle = !review.log?.event && !!lineup.length;
+  const title = djTitle ? lineup.map((dj) => dj.name).join(" · ") : subject.name;
+  const titleHref = djTitle ? (lineup.length === 1 ? ROUTES.DJ(lineup[0].slug) : null) : subject.href;
   const venue = review.log?.venue && review.log.venue !== title ? review.log.venue : null;
   const venueHref = review.log?.venueId ? ROUTES.VENUE(review.log.venueId) : null;
   const rows = Array.from({ length: Math.ceil(shown.length / LINEUP_SHOWN) }, (_, i) =>
@@ -334,7 +376,7 @@ function NightReviewCard({ review, sets, paper, expanded, actions }: CardProps &
           {review.isPopular && <PopularMark />}
         </View>
         <View className="mt-1">
-          <MaybeLink href={subject.href} expanded={expanded}>
+          <MaybeLink href={titleHref} expanded={expanded}>
             <FitText fontSize={48} numberOfLines={3} className="text-paper">
               {title}
             </FitText>
@@ -383,7 +425,9 @@ function NightReviewCard({ review, sets, paper, expanded, actions }: CardProps &
         </View>
       ))}
       {!!hidden && (
-        <Text className={`mt-1 font-display text-base uppercase ${paper.inkClassName}`}>+{hidden} more on the lineup</Text>
+        <Text className={`mt-1 font-display text-base uppercase ${paper.inkClassName}`}>
+          +{hidden} more on the lineup
+        </Text>
       )}
       {isNightReview && !!review.reviewText && (
         <Text

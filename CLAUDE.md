@@ -34,7 +34,7 @@ npm run dev:app         # expo start — press w for web, i for iOS simulator
 First-time local DB setup (against the docker-compose Postgres, entirely separate from the production RDS instance):
 ```
 npm run db:migrate   # applies server/migrations/*.sql via golang-migrate
-npm run db:seed      # fixture data (2 users, a handful of DJs, an Innervisions day party + night, reviews/tags/likes/comments)
+npm run db:seed      # fixture data (4 users, ~17 DJs, nights with/without an event name and with no/one/several DJs, night-only/DJ-only/mixed reviews, another city, tags/likes/comments/favorites)
 npm run db:reset     # migrate down, up, and re-seed
 ```
 

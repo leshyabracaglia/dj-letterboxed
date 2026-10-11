@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 	"unicode"
+	"unicode/utf8"
 )
 
 // Resident Advisor's listings feed the log screen's search: the nights on
@@ -300,24 +301,44 @@ func (c *RAClient) Event(ctx context.Context, id string) (*RAEvent, error) {
 
 // RAEventName guesses the party's name from an RA title. "Serum: Dixon"
 // is the Serum party; a title that's just the lineup ("Wata Igarashi all
-// night long / ISAbella") or just the venue has no party name, so the log
-// is headed by the venue instead.
+// night long / ISAbella"), led by it ("Dixon: All Night Long") or just the
+// venue has no party name, so the log is headed by the venue instead.
 func RAEventName(e RAEvent) string {
 	title := strings.TrimSpace(e.Title)
 	if i := strings.Index(title, ": "); i > 0 {
 		title = strings.TrimSpace(title[:i])
-	} else {
-		lower := strings.ToLower(title)
-		for _, a := range e.Artists {
-			if a.Name != "" && strings.Contains(lower, strings.ToLower(a.Name)) {
-				return ""
-			}
+	}
+	for _, a := range e.Artists {
+		if name := RAArtistName(a.Name); name != "" && containsWords(title, name) {
+			return ""
 		}
 	}
 	if strings.EqualFold(title, e.Venue.Name) {
 		return ""
 	}
 	return title
+}
+
+// containsWords reports whether s contains phrase as whole words, ignoring
+// case: "Ben UFO b2b Joy O" contains "Joy O", "Gamechanger" not "Ame".
+func containsWords(s, phrase string) bool {
+	s, phrase = strings.ToLower(s), strings.ToLower(phrase)
+	isWordRune := func(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }
+	for start := 0; ; {
+		i := strings.Index(s[start:], phrase)
+		if i < 0 {
+			return false
+		}
+		i += start
+		end := i + len(phrase)
+		before, _ := utf8.DecodeLastRuneInString(s[:i])
+		after, _ := utf8.DecodeRuneInString(s[end:])
+		if (i == 0 || !isWordRune(before)) && (end == len(s) || !isWordRune(after)) {
+			return true
+		}
+		_, size := utf8.DecodeRuneInString(s[i:])
+		start = i + size
+	}
 }
 
 // RADayNight says whether a night ran during the day, at night, or both,

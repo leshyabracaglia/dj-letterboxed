@@ -4,11 +4,13 @@ import { View } from "react-native";
 import type { User, UserProfile } from "../lib/api/types";
 import { ProfileCounts } from "./ProfileCounts";
 import { StatsSummary } from "./StatsSummary";
-import { Avatar, ChannelLabel, FadeInView, FitText, PageHeader, Skeleton, Text } from "./ui";
+import { Avatar, ChannelLabel, FadeInView, FitText, Skeleton, Text } from "./ui";
 
-/** Top of a profile: the avatar as a taped-up snapshot, the handle in big
- * pixel type, bio, counts and stats. `action` sits top-right (settings key
- * on your own profile, follow button on someone else's). */
+/** Top of a profile: the avatar, the handle in big pixel type, bio, counts
+ * and stats. `action` sits top-right (settings key
+ * on your own profile, follow button on someone else's). Rendered as the
+ * reviews list's header so the whole profile scrolls together, which is why
+ * it has no gutter of its own: the list's content style supplies it. */
 export function ProfileHeader({
   user,
   profile,
@@ -21,9 +23,9 @@ export function ProfileHeader({
   channel?: string;
 }) {
   return (
-    <PageHeader border="primary" compact>
+    <View className="mb-4">
       {(!!channel || !!action) && (
-        <View className="mb-3 flex-row items-center justify-between">
+        <View className="mb-2 flex-row items-center justify-between">
           {channel ? <ChannelLabel label={channel} /> : <View />}
           {action}
         </View>
@@ -31,9 +33,7 @@ export function ProfileHeader({
       <View className="flex-row items-center gap-4">
         {user ? (
           <FadeInView className="flex-1 flex-row items-center gap-4">
-            <View className="border-4 border-paper bg-paper shadow-lg shadow-black/60" style={{ transform: [{ rotate: "-3deg" }] }}>
-              <Avatar uri={user.avatarUrl} name={user.username} size={76} />
-            </View>
+            <Avatar uri={user.avatarUrl} name={user.username} size={76} />
             <View className="flex-1">
               <FitText fontSize={48} numberOfLines={2} className="text-paper">
                 {`@${user.username}`}
@@ -42,7 +42,7 @@ export function ProfileHeader({
           </FadeInView>
         ) : (
           <>
-            <Skeleton className="h-[84px] w-[84px] rounded-none" />
+            <Skeleton className="h-[76px] w-[76px] rounded-2xl" />
             <Skeleton className="h-10 w-44" />
           </>
         )}
@@ -50,6 +50,6 @@ export function ProfileHeader({
       {!!user?.bio && <Text className="mt-3 text-base text-paper">{user.bio}</Text>}
       <ProfileCounts profile={profile} />
       {!!user?.username && <StatsSummary username={user.username} />}
-    </PageHeader>
+    </View>
   );
 }

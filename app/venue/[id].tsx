@@ -7,7 +7,6 @@ import {
   FitText,
   LoadingFade,
   Page,
-  PageHeader,
   Skeleton,
   Text,
   usePageContentStyle,
@@ -40,12 +39,10 @@ function SectionTitle({ children }: { children: string }) {
 function VenueSkeleton() {
   const contentStyle = usePageContentStyle();
   return (
-    <Page>
-      <PageHeader border="accent" compact>
+    <Page underHeader>
+      <View style={[contentStyle, { paddingTop: 0 }]}>
         <Skeleton className="h-7 w-48" />
-        <Skeleton className="mt-2 h-4 w-36" />
-      </PageHeader>
-      <View style={contentStyle}>
+        <Skeleton className="mb-4 mt-2 h-4 w-36" />
         {Array.from({ length: 4 }).map((_, i) => (
           <LoadingFade key={i} className="mb-3 border border-white/5 bg-zine-panel/40 p-4">
             <Skeleton className="h-7 w-44" />
@@ -68,28 +65,26 @@ export default function VenueScreen() {
   const { venue } = data;
 
   return (
-    <Page>
+    <Page underHeader>
       <Stack.Screen options={{ title: venue.name }} />
-      <PageHeader border="accent" compact>
-        <FadeInView>
-          <Text className="font-display text-lg uppercase text-zine-red-ink">Venue</Text>
-          <FitText fontSize={60} numberOfLines={3} className="text-paper">
-            {venue.name}
-          </FitText>
-          {!!venue.address && <Text className="mt-1 text-sm text-paper/70">{venue.address}</Text>}
-          <Text className="mt-1 font-display text-lg uppercase text-paper/70">
-            {venue.city && !venue.address ? `${venue.city} · ` : ""}
-            {plural(venue.logCount, "night")} logged
-          </Text>
-        </FadeInView>
-      </PageHeader>
       <FlatList
-        contentContainerStyle={contentStyle}
+        contentContainerStyle={[contentStyle, { paddingTop: 0 }]}
         data={data.recentReviews}
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => <ReviewCard review={item} index={index} />}
         ListHeaderComponent={
           <View className="mb-2">
+            <FadeInView>
+              <Text className="font-display text-lg uppercase text-zine-red-ink">Venue</Text>
+              <FitText fontSize={60} numberOfLines={3} className="text-paper">
+                {venue.name}
+              </FitText>
+              {!!venue.address && <Text className="mt-1 text-sm text-paper/70">{venue.address}</Text>}
+              <Text className="mt-1 font-display text-lg uppercase text-paper/70">
+                {venue.city && !venue.address ? `${venue.city} · ` : ""}
+                {plural(venue.logCount, "night")} logged
+              </Text>
+            </FadeInView>
             {!!data.events.length && (
               <>
                 <SectionTitle>Events here</SectionTitle>

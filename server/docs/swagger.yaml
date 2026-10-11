@@ -1529,7 +1529,8 @@ paths:
       description: The area is areaId if given, else the RA area of where the caller
         is (city/region, as their device geocoded it, or lat/lng, geocoded here),
         else of the city of their latest night out. area is null, with no events,
-        if none is known. from/to are the caller's local days; at most two weeks back.
+        if none is known. from/to are the caller's local days, within the last two
+        weeks.
       parameters:
       - description: RA area id
         in: query
@@ -1647,7 +1648,9 @@ paths:
             $ref: '#/definitions/errorEnvelope'
       security:
       - BearerAuth: []
-      summary: Delete a review owned by the caller (404, never 403, if not owned/found)
+      summary: Delete a review owned by the caller (404, never 403, if not owned/found).
+        Deleting the review a night out is posted as (its night review) deletes the
+        whole night out, as does deleting its last review.
       tags:
       - reviews
     get:
@@ -1690,7 +1693,12 @@ paths:
             items:
               $ref: '#/definitions/ReviewComment'
             type: array
-      summary: List a review's comments, oldest first
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: List the comments on a review's night out (its lead review's), oldest
+        first
       tags:
       - reviews
     post:
@@ -1723,9 +1731,13 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
       security:
       - BearerAuth: []
-      summary: Add a comment to a review
+      summary: Comment on a review's night out (comments go on its lead review)
       tags:
       - reviews
   /api/reviews/{id}/like:
@@ -1747,9 +1759,13 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
       security:
       - BearerAuth: []
-      summary: Unlike a review
+      summary: Unlike a review's night out
       tags:
       - reviews
     post:
@@ -1770,9 +1786,14 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
       security:
       - BearerAuth: []
-      summary: Like a review
+      summary: Like a review's night out (likes go on its lead review, whichever of
+        the log's reviews is given)
       tags:
       - reviews
   /api/tags:

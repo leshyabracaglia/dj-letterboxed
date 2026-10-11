@@ -12,9 +12,9 @@ import { useUserProfile, useUserReviews } from "../../lib/api/hooks";
 function UserProfileSkeleton() {
   const contentStyle = usePageContentStyle();
   return (
-    <Page>
-      <ProfileHeader user={undefined} profile={undefined} />
-      <View style={contentStyle}>
+    <Page underHeader>
+      <View style={{ ...contentStyle, paddingTop: 0 }}>
+        <ProfileHeader user={undefined} profile={undefined} />
         <ReviewCardSkeleton count={3} />
       </View>
     </Page>
@@ -37,21 +37,21 @@ export default function UserProfileScreen() {
   const isSelf = me?.id === profile.user.id;
 
   return (
-    <Page>
+    <Page underHeader>
       <Stack.Screen options={{ title: `@${profile.user.username}` }} />
-      <ProfileHeader
-        user={profile.user}
-        profile={profile}
-        action={!isSelf && <FollowButton userId={profile.user.id} username={profile.user.username} />}
-      />
       <FlatList
-        contentContainerStyle={contentStyle}
+        contentContainerStyle={{ ...contentStyle, paddingTop: 0 }}
+        ListHeaderComponent={
+          <ProfileHeader
+            user={profile.user}
+            profile={profile}
+            action={!isSelf && <FollowButton userId={profile.user.id} username={profile.user.username} />}
+          />
+        }
         data={reviews?.items ?? []}
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => <ReviewCard review={{ ...item, user: profile.user }} index={index} />}
-        ListEmptyComponent={
-          reviews ? <EmptyState message="No reviews yet." /> : <ReviewCardSkeleton count={3} />
-        }
+        ListEmptyComponent={reviews ? <EmptyState message="No reviews yet." /> : <ReviewCardSkeleton count={3} />}
       />
     </Page>
   );

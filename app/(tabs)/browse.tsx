@@ -120,56 +120,50 @@ function SuggestionsLabel({ label }: { label: string }) {
   );
 }
 
-const TABS = [
-  { value: "djs", label: "DJs" },
-  { value: "events", label: "Events" },
-  { value: "venues", label: "Venues" },
-  { value: "people", label: "People" },
-] as const;
-
-const COPY = {
-  djs: { title: "Browse DJs", placeholder: "Search DJs...", suggestions: "Popular DJs" },
-  events: {
-    title: "Browse Events",
-    placeholder: "Search events like Innervisions...",
-    suggestions: "Popular events",
-  },
-  venues: { title: "Browse Venues", placeholder: "Search venues...", suggestions: "Popular venues" },
-  people: {
-    title: "Find People",
-    placeholder: "Search by name or username...",
-    suggestions: "Suggested people",
-  },
+const BROWSE_TABS = {
+  DJS: "djs",
+  EVENTS: "events",
+  VENUES: "venues",
+  PEOPLE: "people",
 } as const;
 
+type BrowseTab = (typeof BROWSE_TABS)[keyof typeof BROWSE_TABS];
+
+const BROWSE_TABS_COPY = {
+  [BROWSE_TABS.DJS]: { label: "DJs", title: "Browse DJs", placeholder: "Search DJs...", suggestions: "Popular DJs" },
+  [BROWSE_TABS.EVENTS]: { label: "Events", title: "Browse Events", placeholder: "Search events like Innervisions...", suggestions: "Popular events" },
+  [BROWSE_TABS.VENUES]: { label: "Venues", title: "Browse Venues", placeholder: "Search venues...", suggestions: "Popular venues" },
+  [BROWSE_TABS.PEOPLE]: { label: "People", title: "Find People", placeholder: "Search by name or username...", suggestions: "Suggested people" },
+} as const satisfies Record<BrowseTab, { label: string; title: string; placeholder: string; suggestions: string }>;
+
 export default function BrowseScreen() {
-  const [tab, setTab] = useState<(typeof TABS)[number]["value"]>("djs");
+  const [tab, setTab] = useState<BrowseTab>(BROWSE_TABS.DJS);
   const [query, setQuery] = useState("");
   const contentStyle = usePageContentStyle();
   const { me } = useCurrentUser();
 
   const trimmed = query.trim();
   // An empty search shows the top few as suggestions instead of a blank list.
-  const { data: djs } = useDjSearch(trimmed, { enabled: tab === "djs", suggest: true });
+  const { data: djs } = useDjSearch(trimmed, { enabled: tab === BROWSE_TABS.DJS, suggest: true });
   // Lists every event until a search is typed - this tab doubles as the index.
-  const { data: events } = useEventSearch(trimmed, tab === "events");
-  const { data: users } = useUserSearch(trimmed, { enabled: tab === "people", suggest: true });
-  const { data: venues } = useVenueSearch(trimmed, { enabled: tab === "venues", suggest: true });
-  // FlatList's ListHeaderComponent takes an element or null, not `false`.
+  const { data: events } = useEventSearch(trimmed, tab === BROWSE_TABS.EVENTS);
+  const { data: users } = useUserSearch(trimmed, { enabled: tab === BROWSE_TABS.PEOPLE, suggest: true });
+  const { data: venues } = useVenueSearch(trimmed, { enabled: tab === BROWSE_TABS.VENUES, suggest: true });
+
   const suggestionsHeader = (hasRows: boolean) =>
-    hasRows && !trimmed.length ? <SuggestionsLabel label={COPY[tab].suggestions} /> : null;
+    hasRows && !trimmed.length ? <SuggestionsLabel label={BROWSE_TABS_COPY[tab].suggestions} /> : null;
 
   return (
     <Page
-      title={COPY[tab].title}
+      title={BROWSE_TABS_COPY[tab].title}
       channel="CH 02 · Browse"
       header={
         <>
           <View className="mb-3">
-            <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />
+            <SegmentedTabs tabs={Object.values(BROWSE_TABS).map((tab) => ({ value: tab, label: BROWSE_TABS_COPY[tab].label }))} value={tab} onChange={setTab} />
           </View>
           <TextInput
-            placeholder={COPY[tab].placeholder}
+            placeholder={BROWSE_TABS_COPY[tab].placeholder}
             value={query}
             onChangeText={setQuery}
             placeholderTextColor="rgba(246,246,249,0.4)"
@@ -178,7 +172,7 @@ export default function BrowseScreen() {
         </>
       }
     >
-      {tab === "djs" ? (
+      {tab === BROWSE_TABS.DJS ? (
         <FlatList
           {...KEYBOARD_DISMISS_PROPS}
           contentContainerStyle={contentStyle}
@@ -196,7 +190,7 @@ export default function BrowseScreen() {
             )
           }
         />
-      ) : tab === "events" ? (
+      ) : tab === BROWSE_TABS.EVENTS ? (
         <FlatList
           {...KEYBOARD_DISMISS_PROPS}
           contentContainerStyle={contentStyle}
@@ -213,7 +207,7 @@ export default function BrowseScreen() {
             )
           }
         />
-      ) : tab === "people" ? (
+      ) : tab === BROWSE_TABS.PEOPLE ? (
         <FlatList
           {...KEYBOARD_DISMISS_PROPS}
           contentContainerStyle={contentStyle}

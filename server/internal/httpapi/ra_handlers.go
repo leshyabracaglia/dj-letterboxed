@@ -67,7 +67,7 @@ type RAEventsResponse struct {
 // ListRAEvents godoc
 //
 //	@Summary		List Resident Advisor nights in an area over a few days, most attended first
-//	@Description	The area is areaId if given, else the RA area of where the caller is (city/region, as their device geocoded it, or lat/lng, geocoded here), else of the city of their latest night out. area is null, with no events, if none is known. from/to are the caller's local days; at most two weeks back.
+//	@Description	The area is areaId if given, else the RA area of where the caller is (city/region, as their device geocoded it, or lat/lng, geocoded here), else of the city of their latest night out. area is null, with no events, if none is known. from/to are the caller's local days, within the last two weeks.
 //	@Tags			ra
 //	@Produce		json
 //	@Param			areaId	query		string	false	"RA area id"
@@ -93,8 +93,14 @@ func (h *Handlers) ListRAEvents(w http.ResponseWriter, r *http.Request) {
 	fromDay, err1 := time.Parse(time.DateOnly, from)
 	toDay, err2 := time.Parse(time.DateOnly, to)
 	if !isoDayPattern.MatchString(from) || !isoDayPattern.MatchString(to) || err1 != nil || err2 != nil ||
-		toDay.Before(fromDay) || toDay.Sub(fromDay) > raMaxLookbackDays*24*time.Hour {
-		BadRequest(w, "from and to must be days (YYYY-MM-DD) at most two weeks apart")
+		toDay.Before(fromDay) {
+		BadRequest(w, "from and to must be days (YYYY-MM-DD)")
+		return
+	}
+	// The caller's days are local, so allow a day either side of the server's.
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	if fromDay.Before(today.AddDate(0, 0, -raMaxLookbackDays-1)) || toDay.After(today.AddDate(0, 0, 1)) {
+		BadRequest(w, "from and to must be within the last two weeks")
 		return
 	}
 
@@ -131,8 +137,8 @@ func (h *Handlers) ListRAEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 // findRAArea finds the RA area for where the caller is: the first of their
-// city, their region, the city at their lat/lng, and the city of their
-// latest night out that RA has an area for. Nil if none.
+// city, their region, the city at their lat/lng, and (only if none of those
+// is an RA area) the city of their latest night out. Nil if none.
 func (h *Handlers) findRAArea(ctx context.Context, r *http.Request, userID string) (*domain.RAArea, error) {
 	q := r.URL.Query()
 	var places []string
@@ -158,28 +164,42 @@ func (h *Handlers) findRAArea(ctx context.Context, r *http.Request, userID strin
 			}
 		}
 	}
+	// RA errors on one place fall through to the next; they only fail the
+	// request when no place found an area.
+	var searchErr error
+	find := func(places []string) *domain.RAArea {
+		for _, p := range places {
+			query := domain.RAAreaQuery(p)
+			areas, err := h.RA.SearchAreas(ctx, query)
+			if err != nil {
+				slog.Error("RA area search failed", "place", p, "error", err)
+				searchErr = err
+				continue
+			}
+			for _, a := range areas {
+				// RA's search is fuzzy; only take an area that's really this place.
+				if domain.SameNameLoosely(a.Name, query) || len(areas) == 1 {
+					area := a
+					return &area
+				}
+			}
+		}
+		return nil
+	}
+	if area := find(places); area != nil {
+		return area, nil
+	}
+
 	city, err := queries.LatestLogCity(ctx, h.Pool, userID)
 	if err != nil {
 		return nil, err
 	}
 	if city != nil {
-		places = append(places, *city)
-	}
-
-	for _, p := range places {
-		areas, err := h.RA.SearchAreas(ctx, domain.RAAreaQuery(p))
-		if err != nil {
-			return nil, err
-		}
-		for _, a := range areas {
-			// RA's search is fuzzy; only take an area that's really this place.
-			if domain.SameNameLoosely(a.Name, domain.RAAreaQuery(p)) || len(areas) == 1 {
-				area := a
-				return &area, nil
-			}
+		if area := find([]string{*city}); area != nil {
+			return area, nil
 		}
 	}
-	return nil, nil
+	return nil, searchErr
 }
 
 // RAArtistMatch is one name on an RA lineup: the Beatboxd DJ it already

@@ -16,13 +16,12 @@ func RankPopularReviewIDs(ctx context.Context, q DBTX, limit, offset int, exclud
 	}
 
 	rows, err := q.Query(ctx, `
-		SELECT r.id
-		FROM reviews r
-		LEFT JOIN review_likes rl ON rl.review_id = r.id
-		LEFT JOIN review_comments rc ON rc.review_id = r.id
-		WHERE ($1::uuid[] IS NULL OR NOT (r.id = ANY($1))) AND `+leadReviewCond("r")+`
-		GROUP BY r.id
-		ORDER BY (COUNT(DISTINCT rl.user_id) + COUNT(DISTINCT rc.id)) DESC, r.created_at DESC
+		SELECT l.lead_review_id
+		FROM logs l
+		LEFT JOIN (SELECT review_id, COUNT(*) AS n FROM review_likes GROUP BY review_id) lk ON lk.review_id = l.lead_review_id
+		LEFT JOIN (SELECT review_id, COUNT(*) AS n FROM review_comments GROUP BY review_id) c ON c.review_id = l.lead_review_id
+		WHERE l.lead_review_id IS NOT NULL AND ($1::uuid[] IS NULL OR NOT (l.lead_review_id = ANY($1)))
+		ORDER BY COALESCE(lk.n, 0) + COALESCE(c.n, 0) DESC, l.created_at DESC
 		LIMIT $2 OFFSET $3`, nullableIDs(excludeIDs), limit, offset)
 	if err != nil {
 		return nil, err

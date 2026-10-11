@@ -4,16 +4,7 @@ import { FlatList, Pressable, View } from "react-native";
 import { DjAvatarRow } from "../../components/DjAvatarRow";
 import { Poster, POSTER_RECORD_STYLE } from "../../components/Poster";
 import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
-import {
-  EmptyState,
-  FadeInView,
-  FitText,
-  Page,
-  PageHeader,
-  Skeleton,
-  Text,
-  usePageContentStyle,
-} from "../../components/ui";
+import { EmptyState, FadeInView, FitText, Page, Skeleton, Text, usePageContentStyle } from "../../components/ui";
 import { useEventDetail } from "../../lib/api/hooks";
 import type { EventDetail } from "../../lib/api/types";
 import { ROUTES } from "../../lib/routes";
@@ -26,11 +17,9 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 function EventSkeleton() {
   const contentStyle = usePageContentStyle();
   return (
-    <Page>
-      <PageHeader compact>
-        <Skeleton className="mt-3 h-80 w-full rounded-none" />
-      </PageHeader>
-      <View style={contentStyle}>
+    <Page underHeader>
+      <View style={[contentStyle, { paddingTop: 0 }]}>
+        <Skeleton className="mb-4 h-80 w-full rounded-none" />
         <ReviewCardSkeleton count={3} />
       </View>
     </Page>
@@ -105,7 +94,9 @@ function EventPoster({ data }: { data: EventDetail }) {
         </View>
         <View className="p-3">
           <Text className="font-display text-sm uppercase leading-4 text-paper/60">Logged</Text>
-          <Text className="mt-1 font-display text-xl uppercase leading-5 text-paper">{plural(event.logCount, "night")}</Text>
+          <Text className="mt-1 font-display text-xl uppercase leading-5 text-paper">
+            {plural(event.logCount, "night")}
+          </Text>
           <Text className="text-xs text-paper/60">{plural(event.reviewCount, "review")}</Text>
         </View>
       </View>
@@ -130,20 +121,18 @@ export default function EventScreen() {
   }
 
   return (
-    <Page>
+    <Page underHeader>
       <Stack.Screen options={{ title: data.event.name }} />
-      <PageHeader compact>
-        <FadeInView className="pt-3">
-          <EventPoster data={data} />
-        </FadeInView>
-      </PageHeader>
       <FlatList
-        contentContainerStyle={contentStyle}
+        contentContainerStyle={[contentStyle, { paddingTop: 0 }]}
         data={data.recentReviews}
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => <ReviewCard review={item} index={index} />}
         ListHeaderComponent={
           <View className="mb-2">
+            <FadeInView>
+              <EventPoster data={data} />
+            </FadeInView>
             {!!data.djs.length && (
               <>
                 <SectionTitle>Who people saw</SectionTitle>

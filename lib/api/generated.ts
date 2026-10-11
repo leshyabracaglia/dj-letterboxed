@@ -937,7 +937,7 @@ export interface paths {
         };
         /**
          * List Resident Advisor nights in an area over a few days, most attended first
-         * @description The area is areaId if given, else the RA area of where the caller is (city/region, as their device geocoded it, or lat/lng, geocoded here), else of the city of their latest night out. area is null, with no events, if none is known. from/to are the caller's local days; at most two weeks back.
+         * @description The area is areaId if given, else the RA area of where the caller is (city/region, as their device geocoded it, or lat/lng, geocoded here), else of the city of their latest night out. area is null, with no events, if none is known. from/to are the caller's local days, within the last two weeks.
          */
         get: {
             parameters: {
@@ -1120,7 +1120,7 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        /** Delete a review owned by the caller (404, never 403, if not owned/found) */
+        /** Delete a review owned by the caller (404, never 403, if not owned/found). Deleting the review a night out is posted as (its night review) deletes the whole night out, as does deleting its last review. */
         delete: {
             parameters: {
                 query?: never;
@@ -1174,7 +1174,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List a review's comments, oldest first */
+        /** List the comments on a review's night out (its lead review's), oldest first */
         get: {
             parameters: {
                 query?: never;
@@ -1196,10 +1196,19 @@ export interface paths {
                         "application/json": components["schemas"]["ReviewComment"][];
                     };
                 };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
             };
         };
         put?: never;
-        /** Add a comment to a review */
+        /** Comment on a review's night out (comments go on its lead review) */
         post: {
             parameters: {
                 query?: never;
@@ -1244,6 +1253,15 @@ export interface paths {
                         "application/json": components["schemas"]["errorEnvelope"];
                     };
                 };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -1261,7 +1279,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Like a review */
+        /** Like a review's night out (likes go on its lead review, whichever of the log's reviews is given) */
         post: {
             parameters: {
                 query?: never;
@@ -1292,9 +1310,18 @@ export interface paths {
                         "application/json": components["schemas"]["errorEnvelope"];
                     };
                 };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
             };
         };
-        /** Unlike a review */
+        /** Unlike a review's night out */
         delete: {
             parameters: {
                 query?: never;
@@ -1318,6 +1345,15 @@ export interface paths {
                 };
                 /** @description Unauthorized */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };

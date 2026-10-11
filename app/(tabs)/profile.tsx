@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { FlatList, Pressable, View } from "react-native";
+import { FlatList, Pressable } from "react-native";
 
 import { EmptyState, Icon, Page, usePageContentStyle } from "../../components/ui";
 import { ProfileHeader } from "../../components/ProfileHeader";
@@ -17,23 +17,25 @@ export default function ProfileScreen() {
 
   return (
     <Page>
-      <ProfileHeader
-        user={me}
-        profile={profile}
-        channel="CH 04 · Profile"
-        action={
-          <Pressable
-            onPress={() => router.push(ROUTES.SETTINGS)}
-            accessibilityLabel="Settings"
-            hitSlop={8}
-            className="h-11 w-11 items-center justify-center rounded-xl bg-black/85 active:opacity-80"
-          >
-            <Icon name="settings-outline" size={20} className="text-paper" />
-          </Pressable>
-        }
-      />
       <FlatList
-        contentContainerStyle={contentStyle}
+        contentContainerStyle={{ ...contentStyle, paddingTop: 0 }}
+        ListHeaderComponent={
+          <ProfileHeader
+            user={me}
+            profile={profile}
+            channel="CH 04 · Profile"
+            action={
+              <Pressable
+                onPress={() => router.push(ROUTES.SETTINGS)}
+                accessibilityLabel="Settings"
+                hitSlop={8}
+                className="h-11 w-11 items-center justify-center rounded-xl bg-black/85 active:opacity-80"
+              >
+                <Icon name="settings-outline" size={20} className="text-paper" />
+              </Pressable>
+            }
+          />
+        }
         data={data?.items ?? []}
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => <ReviewCard review={{ ...item, user: me }} index={index} />}

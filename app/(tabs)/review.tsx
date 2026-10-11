@@ -50,6 +50,7 @@ import type {
 import { parseDateInputValue, toDateInputValue } from "../../lib/format";
 import { getCurrentPlace } from "../../lib/location";
 import { ROUTES } from "../../lib/routes";
+import { withTimeout } from "../../lib/utils";
 
 type ICreateDjInput = {
   name: string;
@@ -663,6 +664,10 @@ const RANGES = [
   { days: 7, label: "Past week" },
 ] as const;
 
+// How long to wait on the location prompt and a fix before falling back to
+// the city of your latest log.
+const LOCATE_TIMEOUT_MS = 10_000;
+
 // "Tonight", "Last night", else "Sat 3 Oct".
 function nightLabel(day: string) {
   const today = toDateInputValue(new Date());
@@ -851,10 +856,11 @@ function FindTheNight({
 
   // Where you are, each time the log tab is opened (a fix from the last ten
   // minutes is reused). The OS asks for permission the first time; saying
-  // no falls back to your latest log's city.
+  // no - or a prompt left unanswered, or no fix within a few seconds - falls
+  // back to your latest log's city.
   const { data: here, isPending: locating } = useQuery({
     queryKey: queryKeys.location(),
-    queryFn: () => getCurrentPlace().catch(() => null),
+    queryFn: () => withTimeout(getCurrentPlace(), LOCATE_TIMEOUT_MS).catch(() => null),
     staleTime: 10 * 60 * 1000,
     retry: false,
   });
@@ -1956,40 +1962,42 @@ export default function CreateReviewScreen() {
       });
 
       // The response only carries bare rows; seed the profile list and the
-      // detail pages with full reviews so they render instantly instead of
-      // waiting on a background refetch. Tags and friends land on the night
-      // review, which comes first.
+      // detail pages with the night-out post so they render instantly instead
+      // of waiting on a background refetch. Like the server, a night shows as
+      // one post: its night review (first), carrying the DJ reviews, tags and
+      // friends.
       const djsById = new Map([...djsByKey.values()].map((dj) => [dj.id, dj]));
       const log = {
         ...result.log,
         event: result.event,
         lineup: caught.map(djFor).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase())),
       };
-      const fullReviews: Review[] = result.reviews.map((r, i) => {
-        const carriesTags = i === 0;
-        return {
-          ...r,
-          dj: r.djId ? djsById.get(r.djId) : undefined,
-          log,
-          user: me,
-          taggedUsers: carriesTags ? draft.taggedUsers : [],
-          tags: carriesTags ? [...draft.tags].sort() : [],
-          likeCount: 0,
-          commentCount: 0,
-          isLikedByMe: false,
-        };
-      });
+      const [night, ...djRows] = result.reviews;
+      const post: Review = {
+        ...night,
+        log,
+        user: me,
+        djReviews: djRows
+          .flatMap((r) => (r.djId ? [{ ...r, djId: r.djId, dj: djsById.get(r.djId) }] : []))
+          .sort((a, b) => (a.dj?.name ?? "").toLowerCase().localeCompare((b.dj?.name ?? "").toLowerCase())),
+        taggedUsers: draft.taggedUsers,
+        tags: [...draft.tags].sort(),
+        likeCount: 0,
+        commentCount: 0,
+        isLikedByMe: false,
+      };
       const reviewsKey = queryKeys.reviews.byUser(me.username);
-      // Profiles list newest-seen first, so slot them in by seenAt rather
-      // than at the top (a set seen last month belongs below last week's).
+      // Profiles list newest-seen first, so slot it in by seenAt rather than
+      // at the top (a night seen last month belongs below last week's).
       queryClient.setQueryData<Paginated<Review>>(reviewsKey, (old) => ({
-        items: [...fullReviews, ...(old?.items ?? [])].sort(
+        items: [post, ...(old?.items ?? [])].sort(
           (a, b) => new Date(b.seenAt).getTime() - new Date(a.seenAt).getTime(),
         ),
         nextCursor: old?.nextCursor ?? null,
       }));
-      for (const review of fullReviews) {
-        queryClient.setQueryData<Review>(queryKeys.reviews.byId(review.id), review);
+      // Any of the night's reviews opens the whole post.
+      for (const review of result.reviews) {
+        queryClient.setQueryData<Review>(queryKeys.reviews.byId(review.id), post);
       }
 
       queryClient.invalidateQueries({ queryKey: reviewsKey });
@@ -2008,7 +2016,7 @@ export default function CreateReviewScreen() {
       // The tab stays mounted behind the review page, so clear it for the
       // next log rather than leaving this one's answers filled in on back.
       resetForm();
-      // The night review comes first when there is one.
+      // The night review comes first.
       router.push(ROUTES.REVIEW_DETAIL(result.reviews[0].id, { justLogged: true }));
     } catch (err: any) {
       setError(err?.message ?? "Could not save your review");

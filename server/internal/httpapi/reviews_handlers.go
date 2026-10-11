@@ -46,9 +46,29 @@ func (h *Handlers) requireOwnedReview(ctx context.Context, w http.ResponseWriter
 	return review, true
 }
 
+// leadReviewID resolves a review id to its night out's lead review, which
+// holds the post's likes and comments whichever of the log's reviews was
+// opened, and 404s if there's no such review.
+func (h *Handlers) leadReviewID(ctx context.Context, w http.ResponseWriter, id string) (string, bool) {
+	if !uuidPattern.MatchString(id) {
+		NotFound(w)
+		return "", false
+	}
+	leadID, err := queries.GetLeadReviewID(ctx, h.Pool, id)
+	if errors.Is(err, queries.ErrNotFound) {
+		NotFound(w)
+		return "", false
+	}
+	if err != nil {
+		InternalError(w, err)
+		return "", false
+	}
+	return leadID, true
+}
+
 // DeleteReview godoc
 //
-//	@Summary	Delete a review owned by the caller (404, never 403, if not owned/found)
+//	@Summary	Delete a review owned by the caller (404, never 403, if not owned/found). Deleting the review a night out is posted as (its night review) deletes the whole night out, as does deleting its last review.
 //	@Tags		reviews
 //	@Produce	json
 //	@Param		id	path		string	true	"review id"
@@ -76,12 +96,20 @@ func (h *Handlers) DeleteReview(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(r.Context())
 
-	if err := queries.DeleteReview(r.Context(), tx, id); err != nil {
+	leadID, err := queries.GetLeadReviewID(r.Context(), tx, id)
+	if err != nil && !errors.Is(err, queries.ErrNotFound) {
 		InternalError(w, err)
 		return
 	}
-	// The night goes with its last review.
-	if err := queries.DeleteLogIfEmpty(r.Context(), tx, review.LogID); err != nil {
+	if leadID == id {
+		// The post's own review goes with the post: deleting just it would
+		// drop the night's likes and comments and leave a night unrated.
+		err = queries.DeleteLog(r.Context(), tx, review.LogID, user.ID)
+	} else if err = queries.DeleteReview(r.Context(), tx, id); err == nil {
+		// The night goes with its last review.
+		err = queries.DeleteLogIfEmpty(r.Context(), tx, review.LogID)
+	}
+	if err != nil {
 		InternalError(w, err)
 		return
 	}
@@ -180,12 +208,13 @@ func (h *Handlers) ListReviewsByUser(w http.ResponseWriter, r *http.Request) {
 
 // LikeReview godoc
 //
-//	@Summary	Like a review
+//	@Summary	Like a review's night out (likes go on its lead review, whichever of the log's reviews is given)
 //	@Tags		reviews
 //	@Produce	json
 //	@Param		id	path		string	true	"review id"
 //	@Success	200	{object}	SuccessResponse
 //	@Failure	401	{object}	errorEnvelope
+//	@Failure	404	{object}	errorEnvelope
 //	@Security	BearerAuth
 //	@Router		/api/reviews/{id}/like [post]
 func (h *Handlers) LikeReview(w http.ResponseWriter, r *http.Request) {
@@ -193,7 +222,10 @@ func (h *Handlers) LikeReview(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	id := chi.URLParam(r, "id")
+	id, ok := h.leadReviewID(r.Context(), w, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
 
 	isNew, err := queries.LikeReview(r.Context(), h.Pool, id, user.ID)
 	if err != nil {
@@ -208,12 +240,13 @@ func (h *Handlers) LikeReview(w http.ResponseWriter, r *http.Request) {
 
 // UnlikeReview godoc
 //
-//	@Summary	Unlike a review
+//	@Summary	Unlike a review's night out
 //	@Tags		reviews
 //	@Produce	json
 //	@Param		id	path		string	true	"review id"
 //	@Success	200	{object}	SuccessResponse
 //	@Failure	401	{object}	errorEnvelope
+//	@Failure	404	{object}	errorEnvelope
 //	@Security	BearerAuth
 //	@Router		/api/reviews/{id}/like [delete]
 func (h *Handlers) UnlikeReview(w http.ResponseWriter, r *http.Request) {
@@ -221,7 +254,10 @@ func (h *Handlers) UnlikeReview(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	id := chi.URLParam(r, "id")
+	id, ok := h.leadReviewID(r.Context(), w, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
 
 	if err := queries.UnlikeReview(r.Context(), h.Pool, id, user.ID); err != nil {
 		InternalError(w, err)
@@ -232,14 +268,18 @@ func (h *Handlers) UnlikeReview(w http.ResponseWriter, r *http.Request) {
 
 // ListComments godoc
 //
-//	@Summary	List a review's comments, oldest first
+//	@Summary	List the comments on a review's night out (its lead review's), oldest first
 //	@Tags		reviews
 //	@Produce	json
 //	@Param		id	path	string	true	"review id"
 //	@Success	200	{array}	db.ReviewComment
+//	@Failure	404	{object}	errorEnvelope
 //	@Router		/api/reviews/{id}/comments [get]
 func (h *Handlers) ListComments(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
+	id, ok := h.leadReviewID(r.Context(), w, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
 	comments, err := queries.ListComments(r.Context(), h.Pool, id)
 	if err != nil {
 		InternalError(w, err)
@@ -254,7 +294,7 @@ type addCommentRequest struct {
 
 // AddComment godoc
 //
-//	@Summary	Add a comment to a review
+//	@Summary	Comment on a review's night out (comments go on its lead review)
 //	@Tags		reviews
 //	@Accept		json
 //	@Produce	json
@@ -263,6 +303,7 @@ type addCommentRequest struct {
 //	@Success	200		{object}	db.ReviewComment
 //	@Failure	400		{object}	errorEnvelope
 //	@Failure	401		{object}	errorEnvelope
+//	@Failure	404	{object}	errorEnvelope
 //	@Security	BearerAuth
 //	@Router		/api/reviews/{id}/comments [post]
 func (h *Handlers) AddComment(w http.ResponseWriter, r *http.Request) {
@@ -270,7 +311,10 @@ func (h *Handlers) AddComment(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	reviewID := chi.URLParam(r, "id")
+	reviewID, ok := h.leadReviewID(r.Context(), w, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
 
 	var req addCommentRequest
 	if err := DecodeJSON(r, &req); err != nil {

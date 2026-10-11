@@ -13,6 +13,10 @@ func TestRAEventName(t *testing.T) {
 		{"Wata Igarashi all night long / ISAbella", []string{"Wata Igarashi", "ISAbella"}, ""},
 		{"Innervisions NY", []string{"Dixon", "Âme"}, "Innervisions NY"},
 		{"Nowadays: Mister Saturday Night", nil, ""},
+		{"Dixon: All Night Long", []string{"Dixon"}, ""},
+		{"Ben UFO: Extended Set", []string{"Ben UFO (extended)"}, ""},
+		{"Ben UFO b2b Joy Orbison: Hessle Audio", []string{"Ben UFO", "Joy Orbison"}, ""},
+		{"Gamechanger: Âme", []string{"Ame"}, "Gamechanger"},
 	}
 	for _, tc := range cases {
 		e := RAEvent{Title: tc.title, Venue: venue}
