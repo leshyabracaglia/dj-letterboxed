@@ -88,6 +88,24 @@ ALB-based design.
    instance, which re-reads every Secrets Manager-backed value into
    `/opt/beatboxd/.env`.
 
+## Inspecting production data
+
+`npm run db:prod` (from the repo root) opens an SSM port-forward through the
+app instance to RDS on `localhost:5434` and opens it in TablePlus/Postico
+(Ctrl-C closes it); `npm run db:prod:query -- "SELECT …"` runs one query on
+the instance and prints the result. Both log in as `beatboxd_readonly`
+(SELECT only, every transaction read-only by default), never the API's role,
+so they can't change data. See `scripts/prod-db.sh`.
+
+- The tunnel needs `brew install --cask session-manager-plugin` once.
+- The role's URL lives in the `beatboxd/database-url-readonly` secret
+  (`modules/secrets`), which the instance can read but `.env` never gets.
+  `migrate readonly-role` creates/syncs the role on every deploy
+  (`server/deploy/migrate.sh`), skipping it with a warning until that
+  secret exists — so it works after one `terraform apply` plus one deploy.
+- Fixing data still means writing as another role on purpose, e.g. the
+  app's `DATABASE_URL` from the instance's `.env` via SSM.
+
 ## Rotating secrets
 
 `user_data` only writes `/opt/beatboxd/.env` on first boot, and changing a

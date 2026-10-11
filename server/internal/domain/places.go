@@ -195,3 +195,68 @@ func cityFromAddressComponents(components []placeAddressComponent) *string {
 	}
 	return nil
 }
+
+// GeocodedCity is the city and region (state/province) at a point.
+type GeocodedCity struct {
+	City   *string
+	Region *string
+}
+
+// ReverseGeocodeCity looks up the city at a point with the Geocoding API
+// (for web clients, which can't reverse geocode on the device). It needs
+// the Geocoding API enabled for the same key.
+func (c *PlacesClient) ReverseGeocodeCity(ctx context.Context, lat, lng float64) (*GeocodedCity, error) {
+	if !c.Configured() {
+		return nil, ErrPlacesNotConfigured
+	}
+	u := fmt.Sprintf("https://maps.googleapis.com/maps/api/geocode/json?latlng=%f,%f&key=%s",
+		lat, lng, url.QueryEscape(c.apiKey))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var data struct {
+		Status       string `json:"status"`
+		ErrorMessage string `json:"error_message"`
+		Results      []struct {
+			AddressComponents []struct {
+				LongName string   `json:"long_name"`
+				Types    []string `json:"types"`
+			} `json:"address_components"`
+		} `json:"results"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, err
+	}
+	if data.Status != "OK" && data.Status != "ZERO_RESULTS" {
+		return nil, fmt.Errorf("google geocoding failed: %s: %s", data.Status, data.ErrorMessage)
+	}
+	out := &GeocodedCity{}
+	for _, r := range data.Results {
+		components := make([]placeAddressComponent, 0, len(r.AddressComponents))
+		for _, ac := range r.AddressComponents {
+			components = append(components, placeAddressComponent{LongText: ac.LongName, Types: ac.Types})
+		}
+		if out.City == nil {
+			out.City = cityFromAddressComponents(components)
+		}
+		if out.Region == nil {
+			for _, ac := range components {
+				if len(ac.Types) > 0 && ac.Types[0] == "administrative_area_level_1" {
+					region := ac.LongText
+					out.Region = &region
+				}
+			}
+		}
+		if out.City != nil && out.Region != nil {
+			break
+		}
+	}
+	return out, nil
+}

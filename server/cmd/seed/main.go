@@ -158,12 +158,10 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	review1, err := review(aliceNight, dj1, 5, "Absolutely electric set, the buildup into the last hour in the Main Hall was insane.", "groovy", "packed")
-	if err != nil {
+	if _, err := review(aliceNight, dj1, 5, "Absolutely electric set, the buildup into the last hour in the Main Hall was insane.", "groovy", "packed"); err != nil {
 		return err
 	}
-	review4, err := review(aliceNight, dj4, 5, "The live set was the highlight of the night, that room was made for it.", "emotional")
-	if err != nil {
+	if _, err := review(aliceNight, dj4, 5, "The live set was the highlight of the night, that room was made for it.", "emotional"); err != nil {
 		return err
 	}
 	// A review of the night as a whole (no DJ).
@@ -187,8 +185,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	review5, err := review(bobDay, dj5, 4, "Caught him in The Ruins at golden hour, perfect vibe for the open air.", "sunset")
-	if err != nil {
+	if _, err := review(bobDay, dj5, 4, "Caught him in The Ruins at golden hour, perfect vibe for the open air.", "sunset"); err != nil {
 		return err
 	}
 	if _, err := review(bobDay, dj7, 3, "Nice hypnotic stuff but the early slot meant half the crowd was still in line."); err != nil {
@@ -197,7 +194,8 @@ func run() error {
 	if _, err := review(bobDay, dj8, 4, ""); err != nil {
 		return err
 	}
-	if _, err := review(bobDay, nil, 4, "The Ruins in the sun with this lineup back to back. Lines were long but worth it.", "sunny", "friendly"); err != nil {
+	bobDayNight, err := review(bobDay, nil, 4, "The Ruins in the sun with this lineup back to back. Lines were long but worth it.", "sunny", "friendly")
+	if err != nil {
 		return err
 	}
 
@@ -215,7 +213,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	if _, err := review(bobPublicRecords, dj2, 4, "Solid deep house groove, warmed up the room well.", "relaxed", "older crowd"); err != nil {
+	if _, err := review(bobPublicRecords, dj2, 4, "Solid deep house groove, warmed up the room well.", "chill", "older crowd"); err != nil {
 		return err
 	}
 	bobElsewhere, err := logNight(bob, nil, elsewhere, "2026-04-10T22:00:00Z", false, true, dj3)
@@ -231,32 +229,27 @@ func run() error {
 		return err
 	}
 
-	if _, err := queries.LikeReview(ctx, pool, review1.ID, bob.ID); err != nil {
+	// Likes and comments go on a night out's post: its night review when it
+	// has one (see queries.leadReviewCond).
+	if _, err := queries.LikeReview(ctx, pool, review8.ID, bob.ID); err != nil {
 		return err
 	}
 	if _, err := queries.LikeReview(ctx, pool, review3.ID, alice.ID); err != nil {
 		return err
 	}
-
-	if _, err := queries.AddComment(ctx, pool, review1.ID, bob.ID, "Wish I was there for this one!"); err != nil {
+	if _, err := queries.LikeReview(ctx, pool, bobDayNight.ID, alice.ID); err != nil {
+		return err
+	}
+	if _, err := queries.AddComment(ctx, pool, review8.ID, bob.ID, "Wish I was there for this one!"); err != nil {
+		return err
+	}
+	if _, err := queries.AddComment(ctx, pool, review8.ID, bob.ID, "Missed Âme live, was stuck at the bar. Never again."); err != nil {
 		return err
 	}
 	if _, err := queries.AddComment(ctx, pool, review3.ID, alice.ID, "Adding this to my list."); err != nil {
 		return err
 	}
-	if _, err := queries.LikeReview(ctx, pool, review4.ID, bob.ID); err != nil {
-		return err
-	}
-	if _, err := queries.LikeReview(ctx, pool, review5.ID, alice.ID); err != nil {
-		return err
-	}
-	if _, err := queries.LikeReview(ctx, pool, review8.ID, bob.ID); err != nil {
-		return err
-	}
-	if _, err := queries.AddComment(ctx, pool, review4.ID, bob.ID, "Missed Âme live, was stuck at the bar. Never again."); err != nil {
-		return err
-	}
-	if _, err := queries.AddComment(ctx, pool, review5.ID, alice.ID, "The Ruins at sunset is unbeatable."); err != nil {
+	if _, err := queries.AddComment(ctx, pool, bobDayNight.ID, alice.ID, "The Ruins at sunset is unbeatable."); err != nil {
 		return err
 	}
 

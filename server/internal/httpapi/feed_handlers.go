@@ -27,7 +27,7 @@ func (h *Handlers) fetchPopularReviews(ctx context.Context, limit, offset int, e
 
 	dtos, err := h.hydrateReviews(ctx, reviews, hydrateOpts{
 		IncludeUser: true, IncludeDj: true, IncludeLog: true,
-		IncludeEngagement: true, CurrentUserID: currentUserID,
+		IncludeEngagement: true, IncludeDjReviews: true, CurrentUserID: currentUserID,
 	})
 	if err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ func (h *Handlers) GetActivity(w http.ResponseWriter, r *http.Request) {
 
 	followedDTOs, err := h.hydrateReviews(r.Context(), followedReviews, hydrateOpts{
 		IncludeUser: true, IncludeDj: true, IncludeLog: true,
-		IncludeEngagement: true, CurrentUserID: &user.ID,
+		IncludeEngagement: true, IncludeDjReviews: true, CurrentUserID: &user.ID,
 	})
 	if err != nil {
 		InternalError(w, err)

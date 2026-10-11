@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
 	"beatboxd/server/internal/db"
 	"beatboxd/server/internal/db/queries"
 	"beatboxd/server/internal/domain"
@@ -43,11 +45,10 @@ type createNightLogRequest struct {
 	// DJs you saw. DJs in djReviews are added too, whether or not they're
 	// listed here.
 	LineupDjIDs []string `json:"lineupDjIds"`
-	// Review of the night as a whole. Required unless djReviews has one.
+	// Review of the night as a whole. Required.
 	Night     *nightReviewInput `json:"night"`
 	DjReviews []djReviewInput   `json:"djReviews"`
-	// Tag names and tagged friends go on the night review, or on every DJ
-	// review when there's no night review.
+	// Tag names and tagged friends go on the night review.
 	Tags          []string `json:"tags"`
 	TaggedUserIDs []string `json:"taggedUserIds"`
 }
@@ -69,13 +70,11 @@ func (req createNightLogRequest) validate() (seenAt time.Time, lineup []string, 
 	if errMsg != "" {
 		return time.Time{}, nil, nil, errMsg
 	}
-	if req.Night == nil && len(req.DjReviews) == 0 {
-		return time.Time{}, nil, nil, "review the night or at least one DJ"
+	if req.Night == nil {
+		return time.Time{}, nil, nil, "rate the night"
 	}
-	if req.Night != nil {
-		if msg := validateRatingAndText(req.Night.Rating, req.Night.ReviewText); msg != "" {
-			return time.Time{}, nil, nil, msg
-		}
+	if msg := validateRatingAndText(req.Night.Rating, req.Night.ReviewText); msg != "" {
+		return time.Time{}, nil, nil, msg
 	}
 
 	seen := map[string]bool{}
@@ -211,11 +210,9 @@ func (h *Handlers) CreateNightLog(w http.ResponseWriter, r *http.Request) {
 		reviews = append(reviews, *review)
 		return nil
 	}
-	if req.Night != nil {
-		if err := create(nil, req.Night.Rating, req.Night.ReviewText); err != nil {
-			InternalError(w, err)
-			return
-		}
+	if err := create(nil, req.Night.Rating, req.Night.ReviewText); err != nil {
+		InternalError(w, err)
+		return
 	}
 	for _, dr := range req.DjReviews {
 		djID := dr.DjID
@@ -225,24 +222,18 @@ func (h *Handlers) CreateNightLog(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// The night review carries the night's tags and friends; without one,
-	// each DJ review does so they aren't dropped.
-	tagTargets := reviews
-	if req.Night != nil {
-		tagTargets = reviews[:1]
-	}
-	for _, review := range tagTargets {
-		if len(req.TaggedUserIDs) > 0 {
-			if err := queries.SetReviewTags(ctx, tx, review.ID, req.TaggedUserIDs); err != nil {
-				InternalError(w, err)
-				return
-			}
+	// The night review carries the night's tags and friends.
+	night := reviews[0]
+	if len(req.TaggedUserIDs) > 0 {
+		if err := queries.SetReviewTags(ctx, tx, night.ID, req.TaggedUserIDs); err != nil {
+			InternalError(w, err)
+			return
 		}
-		if len(tagNames) > 0 {
-			if err := queries.SetReviewTagLinks(ctx, tx, review.ID, user.ID, tagNames); err != nil {
-				InternalError(w, err)
-				return
-			}
+	}
+	if len(tagNames) > 0 {
+		if err := queries.SetReviewTagLinks(ctx, tx, night.ID, user.ID, tagNames); err != nil {
+			InternalError(w, err)
+			return
 		}
 	}
 
@@ -266,4 +257,136 @@ func writeResolveError(w http.ResponseWriter, err error) {
 	default:
 		InternalError(w, err)
 	}
+}
+
+// DeleteNightLog godoc
+//
+//	@Summary	Delete a night out owned by the caller, with all its reviews (404, never 403, if not owned/found)
+//	@Tags		logs
+//	@Produce	json
+//	@Param		id	path		string	true	"log id"
+//	@Success	200	{object}	SuccessResponse
+//	@Failure	401	{object}	errorEnvelope
+//	@Failure	404	{object}	errorEnvelope
+//	@Security	BearerAuth
+//	@Router		/api/logs/{id} [delete]
+func (h *Handlers) DeleteNightLog(w http.ResponseWriter, r *http.Request) {
+	user, ok := mustUser(w, r)
+	if !ok {
+		return
+	}
+	id := chi.URLParam(r, "id")
+	if !uuidPattern.MatchString(id) {
+		NotFound(w)
+		return
+	}
+	err := queries.DeleteLog(r.Context(), h.Pool, id, user.ID)
+	if errors.Is(err, queries.ErrNotFound) {
+		NotFound(w)
+		return
+	}
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, SuccessResponse{Success: true})
+}
+
+const maxTaggedUsers = 30
+
+// A log can't be rewritten once it's logged; the friends you tagged as
+// being there with you are the one thing that can change.
+type updateNightLogRequest struct {
+	// Replaces the tagged friends; [] clears them.
+	TaggedUserIDs []string `json:"taggedUserIds"`
+}
+
+type UpdateNightLogResponse struct {
+	TaggedUsers []db.User `json:"taggedUsers"`
+}
+
+// UpdateNightLog godoc
+//
+//	@Summary		Change who was tagged as being at a night out owned by the caller (404, never 403, if not owned/found)
+//	@Description	The rest of a log - event, venue, date, lineup, ratings, reviews and tags - is fixed once logged. Tagged friends go on the night review, or on every DJ review when there's no night review.
+//	@Tags			logs
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string					true	"log id"
+//	@Param			body	body		updateNightLogRequest	true	"who was there"
+//	@Success		200		{object}	UpdateNightLogResponse
+//	@Failure		400		{object}	errorEnvelope
+//	@Failure		401		{object}	errorEnvelope
+//	@Failure		404		{object}	errorEnvelope
+//	@Security		BearerAuth
+//	@Router			/api/logs/{id} [patch]
+func (h *Handlers) UpdateNightLog(w http.ResponseWriter, r *http.Request) {
+	user, ok := mustUser(w, r)
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+	id := chi.URLParam(r, "id")
+	if !uuidPattern.MatchString(id) {
+		NotFound(w)
+		return
+	}
+	var req updateNightLogRequest
+	if err := DecodeJSON(r, &req); err != nil || req.TaggedUserIDs == nil {
+		BadRequest(w, "taggedUserIds is required")
+		return
+	}
+	userIDs := queries.DedupeStrings(req.TaggedUserIDs)
+	if len(userIDs) > maxTaggedUsers {
+		BadRequest(w, "too many tagged friends")
+		return
+	}
+	for _, uid := range userIDs {
+		if !uuidPattern.MatchString(uid) {
+			BadRequest(w, "unknown user in taggedUserIds")
+			return
+		}
+	}
+	users, err := queries.GetUsersByIDs(ctx, h.Pool, userIDs)
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	if len(users) != len(userIDs) {
+		BadRequest(w, "unknown user in taggedUserIds")
+		return
+	}
+
+	tx, err := h.Pool.Begin(ctx)
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	defer tx.Rollback(ctx)
+
+	reviewIDs, err := queries.LogTagTargets(ctx, tx, id, user.ID)
+	if errors.Is(err, queries.ErrNotFound) {
+		NotFound(w)
+		return
+	}
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	for _, reviewID := range reviewIDs {
+		if err := queries.SetReviewTags(ctx, tx, reviewID, userIDs); err != nil {
+			InternalError(w, err)
+			return
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		InternalError(w, err)
+		return
+	}
+
+	tagged := make([]db.User, 0, len(userIDs))
+	for _, uid := range userIDs {
+		tagged = append(tagged, users[uid])
+	}
+	WriteJSON(w, http.StatusOK, UpdateNightLogResponse{TaggedUsers: tagged})
 }

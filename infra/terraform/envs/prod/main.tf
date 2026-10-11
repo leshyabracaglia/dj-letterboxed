@@ -107,6 +107,7 @@ module "ec2" {
   spotify_client_id_secret_arn            = module.secrets.spotify_client_id_secret_arn
   spotify_client_secret_secret_arn        = module.secrets.spotify_client_secret_secret_arn
   google_places_api_key_secret_arn        = module.secrets.google_places_api_key_secret_arn
+  database_url_readonly_secret_arn        = module.secrets.database_url_readonly_secret_arn
   clerk_jwks_url                          = var.clerk_jwks_url
   clerk_issuer                            = var.clerk_issuer
 }

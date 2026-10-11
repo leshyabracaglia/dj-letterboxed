@@ -3,6 +3,8 @@
 // internally via pageParam.
 export const queryKeys = {
   appVersion: () => ["app-version"] as const,
+  // The device's current place (lib/location), not an API call.
+  location: () => ["location"] as const,
   djs: {
     search: (q: string) => ["djs", "search", q] as const,
     bySlug: (slug: string) => ["djs", "slug", slug] as const,
@@ -17,6 +19,14 @@ export const queryKeys = {
     search: (q: string) => ["venues", "search", q] as const,
     byId: (id: string) => ["venues", id] as const,
     placesSearch: (q: string) => ["venues", "places-search", q] as const,
+  },
+  ra: {
+    areas: (q: string) => ["ra", "areas", q] as const,
+    // `where` is the query's area params: an areaId, or where the caller is
+    // (none = the area of their latest log).
+    events: (where: Record<string, string | number | undefined>, from: string, to: string) =>
+      ["ra", "events", where, from, to] as const,
+    match: (eventId: string) => ["ra", "match", eventId] as const,
   },
   tags: {
     list: (q: string) => ["tags", q] as const,

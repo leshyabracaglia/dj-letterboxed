@@ -84,8 +84,10 @@ export function FollowButton({ userId, username }: { userId: string; username?: 
             : follow.mutate()
           : router.push(ROUTES.SIGN_IN)
       }
-      className={`rounded-lg px-4 py-2 active:opacity-80 ${
-        isFollowing ? "border-2 border-paper/60" : "bg-paper shadow-md shadow-white/30"
+      // Shadow classes on in both states (see SegmentedTabs): toggling a
+      // shadow color after the first render crashes NativeWind's remount.
+      className={`rounded-lg px-4 py-2 shadow-md active:opacity-80 ${
+        isFollowing ? "border-2 border-paper/60 shadow-transparent" : "bg-paper shadow-white/30"
       }`}
     >
       <Text className={`font-display text-lg uppercase leading-5 ${isFollowing ? "text-paper" : "text-ink"}`}>

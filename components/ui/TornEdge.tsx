@@ -8,14 +8,31 @@ const TEETH = Array.from({ length: 70 }, (_, i) => {
   return { width: 8 + Math.round(r * 10), depth: 0.35 + ((r * 7) % 1) * 0.65 };
 });
 
-/** A ragged paper edge hanging off the bottom of a colored block: a row of
- * uneven triangles in that block's color. Place it as the block's last child
- * (it's absolutely positioned just below the block). */
-export function TornEdge({ color, height = 10 }: { color: string; height?: number }) {
+/** A ragged paper edge hanging off the bottom (or, with `side="top"`, the
+ * top) of a colored block: a row of uneven triangles in that block's color.
+ * It's absolutely positioned just outside the block. */
+export function TornEdge({
+  color,
+  height = 10,
+  side = "bottom",
+}: {
+  color: string;
+  height?: number;
+  side?: "top" | "bottom";
+}) {
+  const top = side === "top";
   return (
     <View
       pointerEvents="none"
-      style={{ position: "absolute", left: 0, right: 0, bottom: -height + 1, height, overflow: "hidden" }}
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        [side]: -height + 1,
+        height,
+        overflow: "hidden",
+        alignItems: top ? "flex-end" : "flex-start",
+      }}
       className="flex-row"
     >
       {TEETH.map((tooth, i) => (
@@ -26,10 +43,10 @@ export function TornEdge({ color, height = 10 }: { color: string; height?: numbe
             height: 0,
             borderLeftWidth: tooth.width / 2,
             borderRightWidth: tooth.width / 2,
-            borderTopWidth: height * tooth.depth,
+            [top ? "borderBottomWidth" : "borderTopWidth"]: height * tooth.depth,
             borderLeftColor: "transparent",
             borderRightColor: "transparent",
-            borderTopColor: color,
+            [top ? "borderBottomColor" : "borderTopColor"]: color,
           }}
         />
       ))}

@@ -116,3 +116,67 @@ func DeleteLogIfEmpty(ctx context.Context, q DBTX, logID string) error {
 		WHERE l.id = $1 AND NOT EXISTS (SELECT 1 FROM reviews r WHERE r.log_id = l.id)`, logID)
 	return err
 }
+
+// DeleteLog removes a user's night out; its reviews (and their likes,
+// comments and tags) and lineup go with it via ON DELETE CASCADE. Returns
+// ErrNotFound if there's no such log owned by userID.
+func DeleteLog(ctx context.Context, q DBTX, id, userID string) error {
+	tag, err := q.Exec(ctx, "DELETE FROM logs WHERE id = $1 AND user_id = $2", id, userID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// LatestLogCity is the city of the user's most recent night out with one,
+// or nil if they haven't logged one.
+func LatestLogCity(ctx context.Context, q DBTX, userID string) (*string, error) {
+	var city string
+	err := q.QueryRow(ctx, `
+		SELECT COALESCE(NULLIF(l.city, ''), v.city) FROM logs l
+		LEFT JOIN venues v ON v.id = l.venue_id
+		WHERE l.user_id = $1 AND COALESCE(NULLIF(l.city, ''), v.city) IS NOT NULL
+		ORDER BY l.seen_at DESC
+		LIMIT 1`, userID).Scan(&city)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &city, nil
+}
+
+// LogTagTargets returns the reviews of a user's log that carry its tagged
+// friends: the night review, or every DJ review when there isn't one (as
+// POST /logs saves them). ErrNotFound if there's no such log owned by userID.
+func LogTagTargets(ctx context.Context, q DBTX, logID, userID string) ([]string, error) {
+	rows, err := q.Query(ctx, `
+		SELECT r.id FROM reviews r
+		JOIN logs l ON l.id = r.log_id
+		WHERE l.id = $1 AND l.user_id = $2
+			AND (r.dj_id IS NULL OR NOT EXISTS (
+				SELECT 1 FROM reviews n WHERE n.log_id = l.id AND n.dj_id IS NULL))`, logID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, ErrNotFound
+	}
+	return ids, nil
+}

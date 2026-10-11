@@ -756,6 +756,328 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/logs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a night out owned by the caller, with all its reviews (404, never 403, if not owned/found) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description log id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Change who was tagged as being at a night out owned by the caller (404, never 403, if not owned/found)
+         * @description The rest of a log - event, venue, date, lineup, ratings, reviews and tags - is fixed once logged. Tagged friends go on the night review, or on every DJ review when there's no night review.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description log id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description who was there */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["updateNightLogRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UpdateNightLogResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/ra/areas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Resident Advisor's areas (cities and regions) by name */
+        get: {
+            parameters: {
+                query: {
+                    /** @description area name */
+                    q: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RAArea"][];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Bad Gateway */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ra/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Resident Advisor nights in an area over a few days, most attended first
+         * @description The area is areaId if given, else the RA area of where the caller is (city/region, as their device geocoded it, or lat/lng, geocoded here), else of the city of their latest night out. area is null, with no events, if none is known. from/to are the caller's local days; at most two weeks back.
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description RA area id */
+                    areaId?: string;
+                    /** @description the caller's current city */
+                    city?: string;
+                    /** @description the caller's current state/province, tried when the city isn't an RA area */
+                    region?: string;
+                    /** @description the caller's latitude, when the device couldn't name the city */
+                    lat?: number;
+                    /** @description the caller's longitude */
+                    lng?: number;
+                    /** @description first day, YYYY-MM-DD */
+                    from: string;
+                    /** @description last day, YYYY-MM-DD */
+                    to: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RAEventsResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Bad Gateway */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ra/events/{id}/match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Turn a Resident Advisor night into a log to fill in
+         * @description Matches the lineup to Beatboxd DJs or Spotify artists, and the venue to a saved venue or a Google place, so the log form can be prefilled. Nothing is saved.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description RA event id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RAEventMatchResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Bad Gateway */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reviews/{id}": {
         parameters: {
             query?: never;
@@ -763,7 +1085,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a review with its relations, engagement, and tagged users */
+        /** Get the night-out post a review belongs to: its lead review (which may not be the id asked for) with its relations, the night's DJ reviews, engagement, and tagged users */
         get: {
             parameters: {
                 query?: never;
@@ -842,62 +1164,7 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        /** Update a review owned by the caller (404, never 403, if not owned/found) */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description review id */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            /** @description fields to update */
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["updateReviewRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Review"];
-                    };
-                };
-                /** @description Bad Request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["errorEnvelope"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["errorEnvelope"];
-                    };
-                };
-                /** @description Not Found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["errorEnvelope"];
-                    };
-                };
-            };
-        };
+        patch?: never;
         trace?: never;
     };
     "/api/reviews/{id}/comments": {
@@ -1585,7 +1852,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List a user's reviews, cursor-paginated by seenAt desc */
+        /** List a user's nights out (one lead review each, with the night's DJ reviews), cursor-paginated by seenAt desc */
         get: {
             parameters: {
                 query?: {
@@ -1861,6 +2128,20 @@ export interface components {
             recentReviews: components["schemas"]["ReviewDTO"][];
             reviewCount: number;
         };
+        DjReviewDTO: {
+            createdAt: string;
+            dj?: components["schemas"]["Dj"];
+            /** @description DjID is nil for a review of the night as a whole. */
+            djId: string;
+            id: string;
+            logId: string;
+            rating: number;
+            reviewText: string;
+            /** @description SeenAt mirrors the log's, kept here for ordering and pagination. */
+            seenAt: string;
+            updatedAt: string;
+            userId: string;
+        };
         Event: {
             createdAt: string;
             createdByUserId: string;
@@ -1975,6 +2256,71 @@ export interface components {
         PopularResponse: {
             items: components["schemas"]["ReviewDTO"][];
         };
+        RAArea: {
+            country: string;
+            id: string;
+            name: string;
+        };
+        RAArtist: {
+            id: string;
+            name: string;
+        };
+        RAArtistMatch: {
+            dj: components["schemas"]["Dj"];
+            name: string;
+            spotify: components["schemas"]["SpotifyArtist"];
+        };
+        RAEvent: {
+            artists: components["schemas"]["RAArtist"][];
+            attending: number;
+            /** @description Date is the night's calendar day, YYYY-MM-DD. */
+            date: string;
+            endTime: string;
+            flyerUrl: string;
+            id: string;
+            /**
+             * @description StartTime/EndTime are local wall-clock times, RFC3339 without a zone
+             *     (RA doesn't give one).
+             */
+            startTime: string;
+            title: string;
+            url: string;
+            venue: components["schemas"]["RAVenue"];
+        };
+        RAEventMatchResponse: {
+            event: components["schemas"]["RAEvent"];
+            /**
+             * @description EventName is the party's name, or null when the night has none (an
+             *     RA title that's just the lineup) and is headed by the venue.
+             */
+            eventName: string;
+            isDay: boolean;
+            isNight: boolean;
+            lineup: components["schemas"]["RAArtistMatch"][];
+            seenAt: string;
+            venue: components["schemas"]["RAVenueMatch"];
+        };
+        RAEventsResponse: {
+            /**
+             * @description Area is the one listed: the one asked for, or the area of the
+             *     caller's latest night out; null when neither is known.
+             */
+            area: components["schemas"]["RAArea"];
+            events: components["schemas"]["RAEvent"][];
+        };
+        RAVenue: {
+            address: string;
+            area: string;
+            id: string;
+            name: string;
+        };
+        RAVenueMatch: {
+            city: string;
+            name: string;
+            place: components["schemas"]["PlaceSuggestion"];
+            placeSessionToken: string;
+            venue: components["schemas"]["VenueSummary"];
+        };
         Review: {
             createdAt: string;
             /** @description DjID is nil for a review of the night as a whole. */
@@ -2002,6 +2348,12 @@ export interface components {
             dj?: components["schemas"]["Dj"];
             /** @description DjID is nil for a review of the night as a whole. */
             djId: string;
+            /**
+             * @description DjReviews are the log's other DJ reviews, by DJ name, on a review
+             *     that stands for its whole night out (see queries.leadReviewCond) - the
+             *     feed, profiles, event and venue pages, and a review's own page.
+             */
+            djReviews?: components["schemas"]["DjReviewDTO"][];
             id: string;
             isLikedByMe?: boolean;
             isPopular?: boolean;
@@ -2044,6 +2396,9 @@ export interface components {
         TopVenue: {
             reviewCount: number;
             venue: string;
+        };
+        UpdateNightLogResponse: {
+            taggedUsers: components["schemas"]["User"][];
         };
         User: {
             avatarUrl: string;
@@ -2111,16 +2466,13 @@ export interface components {
              *     listed here.
              */
             lineupDjIds: string[];
-            /** @description Review of the night as a whole. Required unless djReviews has one. */
+            /** @description Review of the night as a whole. Required. */
             night: components["schemas"]["nightReviewInput"];
             placeId: string;
             placeSessionToken: string;
             seenAt: string;
             taggedUserIds: string[];
-            /**
-             * @description Tag names and tagged friends go on the night review, or on every DJ
-             *     review when there's no night review.
-             */
+            /** @description Tag names and tagged friends go on the night review. */
             tags: string[];
             venue: string;
             venueId: string;
@@ -2146,21 +2498,15 @@ export interface components {
         setFavoritesRequest: {
             reviewIds: string[];
         };
+        updateNightLogRequest: {
+            /** @description Replaces the tagged friends; [] clears them. */
+            taggedUserIds: string[];
+        };
         updateProfileRequest: {
             avatarUrl: string;
             bio: string;
             displayName: string;
             username: string;
-        };
-        updateReviewRequest: {
-            rating: number;
-            reviewText: string;
-            taggedUserIds: string[];
-            /**
-             * @description Tag names (new ones are added to the library). Omitted = leave
-             *     as-is, [] = clear - same contract as TaggedUserIDs.
-             */
-            tags: string[];
         };
     };
     responses: never;

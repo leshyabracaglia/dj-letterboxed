@@ -15,13 +15,23 @@ type ReviewDTO struct {
 	Dj   *db.Dj   `json:"dj,omitempty"`
 	// Log is the night out this review is part of: event, venue, date,
 	// day/night and lineup.
-	Log          *LogDTO   `json:"log,omitempty"`
-	TaggedUsers  []db.User `json:"taggedUsers"`
-	Tags         []string  `json:"tags"`
-	LikeCount    *int64    `json:"likeCount,omitempty"`
-	CommentCount *int64    `json:"commentCount,omitempty"`
-	IsLikedByMe  *bool     `json:"isLikedByMe,omitempty"`
-	IsPopular    *bool     `json:"isPopular,omitempty"`
+	Log *LogDTO `json:"log,omitempty"`
+	// DjReviews are the log's other DJ reviews, by DJ name, on a review
+	// that stands for its whole night out (see queries.leadReviewCond) - the
+	// feed, profiles, event and venue pages, and a review's own page.
+	DjReviews    []DjReviewDTO `json:"djReviews,omitempty"`
+	TaggedUsers  []db.User     `json:"taggedUsers"`
+	Tags         []string      `json:"tags"`
+	LikeCount    *int64        `json:"likeCount,omitempty"`
+	CommentCount *int64        `json:"commentCount,omitempty"`
+	IsLikedByMe  *bool         `json:"isLikedByMe,omitempty"`
+	IsPopular    *bool         `json:"isPopular,omitempty"`
+}
+
+// DjReviewDTO is one DJ's review inside a night-out post.
+type DjReviewDTO struct {
+	db.Review
+	Dj *db.Dj `json:"dj,omitempty"`
 }
 
 func newReviewDTO(r db.Review) ReviewDTO {

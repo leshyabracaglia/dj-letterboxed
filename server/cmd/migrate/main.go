@@ -3,7 +3,8 @@
 //
 //	go run ./cmd/migrate up
 //	go run ./cmd/migrate down 1
-//	go run ./cmd/migrate app-role   # needs APP_DATABASE_URL too; see app_role.go
+//	go run ./cmd/migrate app-role        # needs APP_DATABASE_URL too; see app_role.go
+//	go run ./cmd/migrate readonly-role   # needs READONLY_DATABASE_URL too
 package main
 
 import (
@@ -36,15 +37,15 @@ func run() error {
 		args = []string{"up"}
 	}
 
-	if args[0] == "app-role" {
-		appURL := os.Getenv("APP_DATABASE_URL")
-		if appURL == "" {
-			return fmt.Errorf("missing APP_DATABASE_URL")
+	if level, ok := roleCommands[args[0]]; ok {
+		roleURL := os.Getenv(level.envVar)
+		if roleURL == "" {
+			return fmt.Errorf("missing %s", level.envVar)
 		}
-		if err := ensureAppRole(context.Background(), databaseURL, appURL); err != nil {
+		if err := ensureRole(context.Background(), databaseURL, roleURL, level); err != nil {
 			return err
 		}
-		fmt.Println("migrate: app role ready")
+		fmt.Printf("migrate: %s ready\n", args[0])
 		return nil
 	}
 
@@ -76,7 +77,7 @@ func run() error {
 			runErr = m.Down()
 		}
 	default:
-		return fmt.Errorf("unknown command %q (expected up, down or app-role)", args[0])
+		return fmt.Errorf("unknown command %q (expected up, down, app-role or readonly-role)", args[0])
 	}
 
 	if runErr != nil && !errors.Is(runErr, migrate.ErrNoChange) {

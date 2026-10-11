@@ -19,11 +19,12 @@ type RouterConfig struct {
 	Spotify                   *domain.SpotifyClient
 	Places                    *domain.PlacesClient
 	Push                      *domain.PushClient
+	RA                        *domain.RAClient
 	ClerkWebhookSigningSecret string
 }
 
 func NewRouter(cfg RouterConfig) http.Handler {
-	h := NewHandlers(cfg.Pool, cfg.Spotify, cfg.Places, cfg.Push)
+	h := NewHandlers(cfg.Pool, cfg.Spotify, cfg.Places, cfg.Push, cfg.RA)
 	a := &Auth{Verifier: cfg.Verifier, Pool: cfg.Pool}
 
 	r := chi.NewRouter()
@@ -82,6 +83,11 @@ func NewRouter(cfg RouterConfig) http.Handler {
 
 			r.Post("/djs", h.CreateDj)
 			r.Post("/logs", h.CreateNightLog)
+			r.Delete("/logs/{id}", h.DeleteNightLog)
+			r.Patch("/logs/{id}", h.UpdateNightLog)
+			r.Get("/ra/areas", h.SearchRAAreas)
+			r.Get("/ra/events", h.ListRAEvents)
+			r.Get("/ra/events/{id}/match", h.MatchRAEvent)
 			// Auth-only (unlike Spotify search) since every call is billed.
 			r.Get("/venues/places-search", h.SearchPlaces)
 
@@ -89,7 +95,6 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Post("/follows/{userId}", h.Follow)
 			r.Delete("/follows/{userId}", h.Unfollow)
 
-			r.Patch("/reviews/{id}", h.UpdateReview)
 			r.Delete("/reviews/{id}", h.DeleteReview)
 			r.Post("/reviews/{id}/like", h.LikeReview)
 			r.Delete("/reviews/{id}/like", h.UnlikeReview)

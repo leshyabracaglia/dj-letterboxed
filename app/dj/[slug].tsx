@@ -116,7 +116,7 @@ function RatingLevels({ counts, reviewCount }: { counts: number[]; reviewCount: 
   );
 }
 
-// One review of this DJ as a paper strip, purple and red alternating: the night, who logged it and when,
+// One night of this DJ (their review, or the night review) as a paper strip, purple and red alternating: the night, who logged it and when,
 // then what they wrote and their tags.
 function LogRow({ review, index }: { review: Review; index: number }) {
   const where = review.log?.event?.name || review.log?.venue || "A night out";
@@ -124,6 +124,9 @@ function LogRow({ review, index }: { review: Review; index: number }) {
     review.user && `@${review.user.username}`,
     formatCardDate(review.seenAt),
     review.log && formatEventTiming(review.log),
+    // A night they played that was only rated as a whole: the stamp is the
+    // night's rating, not theirs.
+    !review.djId && "Whole night",
   ].filter(Boolean);
   const paper = paperAt(index);
   return (

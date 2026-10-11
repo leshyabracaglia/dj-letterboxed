@@ -11,8 +11,9 @@ type Handlers struct {
 	Spotify *domain.SpotifyClient
 	Places  *domain.PlacesClient
 	Push    *domain.PushClient
+	RA      *domain.RAClient
 }
 
-func NewHandlers(pool *pgxpool.Pool, spotify *domain.SpotifyClient, places *domain.PlacesClient, push *domain.PushClient) *Handlers {
-	return &Handlers{Pool: pool, Spotify: spotify, Places: places, Push: push}
+func NewHandlers(pool *pgxpool.Pool, spotify *domain.SpotifyClient, places *domain.PlacesClient, push *domain.PushClient, ra *domain.RAClient) *Handlers {
+	return &Handlers{Pool: pool, Spotify: spotify, Places: places, Push: push, RA: ra}
 }

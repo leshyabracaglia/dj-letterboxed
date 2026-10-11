@@ -18,7 +18,9 @@ function emWidth(word: string): number {
  * single word wouldn't fit on one line at that size (a long one-word DJ
  * name) - then it steps down just enough for that word to fit, instead of
  * breaking it mid-word. Multi-word names still wrap normally at full size.
- * `className` sets color/margins; size comes from `fontSize`. */
+ * `className` sets color/margins; size comes from `fontSize`.
+ * `lastWordClassName` sets the last of several words apart (a poster title's
+ * red last line). */
 export function FitText({
   children,
   fontSize,
@@ -26,6 +28,7 @@ export function FitText({
   lineHeightRatio = 0.94,
   numberOfLines,
   className = "",
+  lastWordClassName,
 }: {
   children: string;
   fontSize: number;
@@ -33,12 +36,15 @@ export function FitText({
   lineHeightRatio?: number;
   numberOfLines?: number;
   className?: string;
+  lastWordClassName?: string;
 }) {
   const [width, setWidth] = useState(0);
   const longest = Math.max(...children.split(/\s+/).map(emWidth), 0.01);
   // 4% slack for rounding and the font's side bearings.
   const fitting = width ? Math.min(fontSize, (width * 0.96) / longest) : fontSize;
   const size = Math.max(minFontSize, Math.floor(fitting));
+  const words = children.trim().split(/\s+/);
+  const lastWord = lastWordClassName && words.length > 1 ? words.pop() : undefined;
 
   return (
     <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
@@ -47,7 +53,13 @@ export function FitText({
         style={{ fontSize: size, lineHeight: Math.round(size * lineHeightRatio) }}
         numberOfLines={numberOfLines}
       >
-        {children}
+        {lastWord ? (
+          <>
+            {words.join(" ")} <Text className={`font-display ${lastWordClassName}`}>{lastWord}</Text>
+          </>
+        ) : (
+          children
+        )}
       </Text>
     </View>
   );

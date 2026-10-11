@@ -17,6 +17,12 @@ variable "db_app_username" {
   default     = "beatboxd_app"
 }
 
+variable "db_readonly_username" {
+  type        = string
+  description = "SELECT-only Postgres role for inspecting prod (scripts/prod-db.sh)."
+  default     = "beatboxd_readonly"
+}
+
 variable "clerk_secret_key" {
   type      = string
   sensitive = true

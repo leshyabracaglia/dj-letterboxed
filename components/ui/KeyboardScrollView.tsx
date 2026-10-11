@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type Ref, useEffect, useImperativeHandle, useRef, useState } from "react";
 import {
   Keyboard,
   Platform,
@@ -31,9 +31,11 @@ const HIDE_EVENT = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide
 // the scroll view the keyboard leaves visible, padding the bottom by the
 // keyboard overlap so even the last field can get there. Replaces a
 // KeyboardAvoidingView wrapper — don't nest it in one or the overlap is
-// counted twice. No-op on web, which has no keyboard events.
-export function KeyboardScrollView({ children, ...props }: ScrollViewProps) {
+// counted twice. No-op on web, which has no keyboard events. `ref` reaches
+// the ScrollView (for scrollTo).
+export function KeyboardScrollView({ children, ref, ...props }: ScrollViewProps & { ref?: Ref<ScrollView> }) {
   const scrollRef = useRef<ScrollView>(null);
+  useImperativeHandle(ref, () => scrollRef.current!, []);
   const innerRef = useRef<View>(null);
   const [overlap, setOverlap] = useState(0);
 

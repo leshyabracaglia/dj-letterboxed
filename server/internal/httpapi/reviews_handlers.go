@@ -10,28 +10,7 @@ import (
 
 	"beatboxd/server/internal/db"
 	"beatboxd/server/internal/db/queries"
-	"beatboxd/server/internal/domain"
 )
-
-// validateReviewFields checks the editable review fields. Each is optional (nil = "not provided"/"leave unset"), but if
-// present must satisfy these constraints. Returns the normalized tag names
-// (nil when tags were omitted).
-func validateReviewFields(rating *int16, reviewText *string, tags *[]string) (tagNames []string, errMsg string) {
-	if rating != nil && (*rating < 1 || *rating > 5) {
-		return nil, "rating must be 1-5"
-	}
-	if reviewText != nil && len(*reviewText) > 5000 {
-		return nil, "reviewText too long"
-	}
-	if tags != nil {
-		names, err := domain.NormalizeTags(*tags)
-		if err != nil {
-			return nil, err.Error()
-		}
-		return names, ""
-	}
-	return nil, ""
-}
 
 // seenAtFutureSlack is how far past now a seenAt may land. Clients send
 // midday local time on the day picked, so a set logged this morning can
@@ -51,15 +30,6 @@ func parseSeenAt(s string, now time.Time) (time.Time, string) {
 	return t, ""
 }
 
-type updateReviewRequest struct {
-	Rating     *int16  `json:"rating"`
-	ReviewText *string `json:"reviewText"`
-	// Tag names (new ones are added to the library). Omitted = leave
-	// as-is, [] = clear - same contract as TaggedUserIDs.
-	Tags          *[]string `json:"tags"`
-	TaggedUserIDs *[]string `json:"taggedUserIds"`
-}
-
 // requireOwnedReview loads a review and 404s (never 403) if it doesn't
 // exist or isn't owned by the caller — existence and ownership must be
 // indistinguishable to the caller, per lib/server/routers/reviews.ts.
@@ -74,78 +44,6 @@ func (h *Handlers) requireOwnedReview(ctx context.Context, w http.ResponseWriter
 		return nil, false
 	}
 	return review, true
-}
-
-// UpdateReview godoc
-//
-//	@Summary	Update a review owned by the caller (404, never 403, if not owned/found)
-//	@Tags		reviews
-//	@Accept		json
-//	@Produce	json
-//	@Param		id		path		string					true	"review id"
-//	@Param		body	body		updateReviewRequest	true	"fields to update"
-//	@Success	200		{object}	db.Review
-//	@Failure	400		{object}	errorEnvelope
-//	@Failure	401		{object}	errorEnvelope
-//	@Failure	404		{object}	errorEnvelope
-//	@Security	BearerAuth
-//	@Router		/api/reviews/{id} [patch]
-func (h *Handlers) UpdateReview(w http.ResponseWriter, r *http.Request) {
-	user, ok := mustUser(w, r)
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-
-	if _, ok := h.requireOwnedReview(r.Context(), w, id, user.ID); !ok {
-		return
-	}
-
-	var req updateReviewRequest
-	if err := DecodeJSON(r, &req); err != nil {
-		BadRequest(w, "invalid request body")
-		return
-	}
-	tagNames, errMsg := validateReviewFields(req.Rating, req.ReviewText, req.Tags)
-	if errMsg != "" {
-		BadRequest(w, errMsg)
-		return
-	}
-	tx, err := h.Pool.Begin(r.Context())
-	if err != nil {
-		InternalError(w, err)
-		return
-	}
-	defer tx.Rollback(r.Context())
-
-	updated, err := queries.UpdateReview(r.Context(), tx, queries.UpdateReviewParams{
-		ID: id, Rating: req.Rating, ReviewText: req.ReviewText,
-	})
-	if err != nil {
-		InternalError(w, err)
-		return
-	}
-
-	if req.TaggedUserIDs != nil {
-		if err := queries.SetReviewTags(r.Context(), tx, id, *req.TaggedUserIDs); err != nil {
-			InternalError(w, err)
-			return
-		}
-	}
-
-	if tagNames != nil {
-		if err := queries.SetReviewTagLinks(r.Context(), tx, id, user.ID, tagNames); err != nil {
-			InternalError(w, err)
-			return
-		}
-	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		InternalError(w, err)
-		return
-	}
-
-	WriteJSON(w, http.StatusOK, updated)
 }
 
 // DeleteReview godoc
@@ -196,7 +94,7 @@ func (h *Handlers) DeleteReview(w http.ResponseWriter, r *http.Request) {
 
 // GetReviewByID godoc
 //
-//	@Summary	Get a review with its relations, engagement, and tagged users
+//	@Summary	Get the night-out post a review belongs to: its lead review (which may not be the id asked for) with its relations, the night's DJ reviews, engagement, and tagged users
 //	@Tags		reviews
 //	@Produce	json
 //	@Param		id	path		string	true	"review id"
@@ -211,12 +109,18 @@ func (h *Handlers) GetReviewByID(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// A DJ review opened from a DJ's page (or an old link) shows its whole
+	// night, like everywhere else.
+	if review, err = queries.GetLeadReview(r.Context(), h.Pool, review.LogID); err != nil {
+		InternalError(w, err)
+		return
+	}
 
 	currentUserID := optionalUserID(r)
 
 	dtos, err := h.hydrateReviews(r.Context(), []db.Review{*review}, hydrateOpts{
 		IncludeUser: true, IncludeDj: true, IncludeLog: true,
-		IncludeEngagement: true, CurrentUserID: currentUserID,
+		IncludeEngagement: true, IncludeDjReviews: true, CurrentUserID: currentUserID,
 	})
 	if err != nil {
 		InternalError(w, err)
@@ -224,7 +128,7 @@ func (h *Handlers) GetReviewByID(w http.ResponseWriter, r *http.Request) {
 	}
 	dto := dtos[0]
 
-	taggedUsers, err := queries.GetTaggedUsers(r.Context(), h.Pool, id)
+	taggedUsers, err := queries.GetTaggedUsers(r.Context(), h.Pool, review.ID)
 	if err != nil {
 		InternalError(w, err)
 		return
@@ -236,7 +140,7 @@ func (h *Handlers) GetReviewByID(w http.ResponseWriter, r *http.Request) {
 
 // ListReviewsByUser godoc
 //
-//	@Summary	List a user's reviews, cursor-paginated by seenAt desc
+//	@Summary	List a user's nights out (one lead review each, with the night's DJ reviews), cursor-paginated by seenAt desc
 //	@Tags		reviews
 //	@Produce	json
 //	@Param		username	path		string	true	"username"
@@ -264,7 +168,7 @@ func (h *Handlers) ListReviewsByUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dtos, err := h.hydrateReviews(r.Context(), reviews, hydrateOpts{
-		IncludeDj: true, IncludeLog: true, IncludeEngagement: true, CurrentUserID: optionalUserID(r),
+		IncludeDj: true, IncludeLog: true, IncludeEngagement: true, IncludeDjReviews: true, CurrentUserID: optionalUserID(r),
 	})
 	if err != nil {
 		InternalError(w, err)

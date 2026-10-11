@@ -187,11 +187,11 @@ func ListEventVenues(ctx context.Context, q DBTX, eventID string) ([]EventVenue,
 	return out, rows.Err()
 }
 
-// ListEventReviews returns the most recent reviews (night and DJ) across
-// every log of an event.
+// ListEventReviews returns the most recent nights out (their lead reviews)
+// across every log of an event.
 func ListEventReviews(ctx context.Context, q DBTX, eventID string, limit int) ([]db.Review, error) {
 	rows, err := q.Query(ctx, "SELECT "+reviewCols+` FROM reviews
-		WHERE log_id IN (SELECT id FROM logs WHERE event_id = $1)
+		WHERE log_id IN (SELECT id FROM logs WHERE event_id = $1) AND `+leadReviewCond("reviews")+`
 		ORDER BY seen_at DESC, created_at DESC
 		LIMIT $2`, eventID, limit)
 	return collectReviews(rows, err)

@@ -101,7 +101,7 @@ func (h *Handlers) GetVenueByID(w http.ResponseWriter, r *http.Request) {
 	}
 	dtos, err := h.hydrateReviews(r.Context(), reviews, hydrateOpts{
 		IncludeUser: true, IncludeDj: true, IncludeLog: true,
-		IncludeEngagement: true, CurrentUserID: optionalUserID(r),
+		IncludeEngagement: true, IncludeDjReviews: true, CurrentUserID: optionalUserID(r),
 	})
 	if err != nil {
 		InternalError(w, err)

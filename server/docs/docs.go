@@ -621,6 +621,302 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/logs/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "logs"
+                ],
+                "summary": "Delete a night out owned by the caller, with all its reviews (404, never 403, if not owned/found)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "log id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "The rest of a log - event, venue, date, lineup, ratings, reviews and tags - is fixed once logged. Tagged friends go on the night review, or on every DJ review when there's no night review.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "logs"
+                ],
+                "summary": "Change who was tagged as being at a night out owned by the caller (404, never 403, if not owned/found)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "log id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "who was there",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/updateNightLogRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/UpdateNightLogResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/ra/areas": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ra"
+                ],
+                "summary": "Search Resident Advisor's areas (cities and regions) by name",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "area name",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/RAArea"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/ra/events": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "The area is areaId if given, else the RA area of where the caller is (city/region, as their device geocoded it, or lat/lng, geocoded here), else of the city of their latest night out. area is null, with no events, if none is known. from/to are the caller's local days; at most two weeks back.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ra"
+                ],
+                "summary": "List Resident Advisor nights in an area over a few days, most attended first",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "RA area id",
+                        "name": "areaId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "the caller's current city",
+                        "name": "city",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "the caller's current state/province, tried when the city isn't an RA area",
+                        "name": "region",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "the caller's latitude, when the device couldn't name the city",
+                        "name": "lat",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "the caller's longitude",
+                        "name": "lng",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "first day, YYYY-MM-DD",
+                        "name": "from",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "last day, YYYY-MM-DD",
+                        "name": "to",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/RAEventsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/ra/events/{id}/match": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Matches the lineup to Beatboxd DJs or Spotify artists, and the venue to a saved venue or a Google place, so the log form can be prefilled. Nothing is saved.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ra"
+                ],
+                "summary": "Turn a Resident Advisor night into a log to fill in",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "RA event id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/RAEventMatchResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/api/reviews/{id}": {
             "get": {
                 "produces": [
@@ -629,7 +925,7 @@ const docTemplate = `{
                 "tags": [
                     "reviews"
                 ],
-                "summary": "Get a review with its relations, engagement, and tagged users",
+                "summary": "Get the night-out post a review belongs to: its lead review (which may not be the id asked for) with its relations, the night's DJ reviews, engagement, and tagged users",
                 "parameters": [
                     {
                         "type": "string",
@@ -681,67 +977,6 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/SuccessResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errorEnvelope"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/errorEnvelope"
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "reviews"
-                ],
-                "summary": "Update a review owned by the caller (404, never 403, if not owned/found)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "review id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "fields to update",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/updateReviewRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/Review"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errorEnvelope"
                         }
                     },
                     "401": {
@@ -1369,7 +1604,7 @@ const docTemplate = `{
                 "tags": [
                     "reviews"
                 ],
-                "summary": "List a user's reviews, cursor-paginated by seenAt desc",
+                "summary": "List a user's nights out (one lead review each, with the night's DJ reviews), cursor-paginated by seenAt desc",
                 "parameters": [
                     {
                         "type": "string",
@@ -1664,6 +1899,54 @@ const docTemplate = `{
                 },
                 "reviewCount": {
                     "type": "integer"
+                }
+            }
+        },
+        "DjReviewDTO": {
+            "type": "object",
+            "required": [
+                "createdAt",
+                "djId",
+                "id",
+                "logId",
+                "rating",
+                "reviewText",
+                "seenAt",
+                "updatedAt",
+                "userId"
+            ],
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "dj": {
+                    "$ref": "#/definitions/Dj"
+                },
+                "djId": {
+                    "description": "DjID is nil for a review of the night as a whole.",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "logId": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "integer"
+                },
+                "reviewText": {
+                    "type": "string"
+                },
+                "seenAt": {
+                    "description": "SeenAt mirrors the log's, kept here for ordering and pagination.",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
                 }
             }
         },
@@ -2055,6 +2338,223 @@ const docTemplate = `{
                 }
             }
         },
+        "RAArea": {
+            "type": "object",
+            "required": [
+                "country",
+                "id",
+                "name"
+            ],
+            "properties": {
+                "country": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "RAArtist": {
+            "type": "object",
+            "required": [
+                "id",
+                "name"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "RAArtistMatch": {
+            "type": "object",
+            "required": [
+                "dj",
+                "name",
+                "spotify"
+            ],
+            "properties": {
+                "dj": {
+                    "$ref": "#/definitions/Dj"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "spotify": {
+                    "$ref": "#/definitions/SpotifyArtist"
+                }
+            }
+        },
+        "RAEvent": {
+            "type": "object",
+            "required": [
+                "artists",
+                "attending",
+                "date",
+                "endTime",
+                "flyerUrl",
+                "id",
+                "startTime",
+                "title",
+                "url",
+                "venue"
+            ],
+            "properties": {
+                "artists": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/RAArtist"
+                    }
+                },
+                "attending": {
+                    "type": "integer"
+                },
+                "date": {
+                    "description": "Date is the night's calendar day, YYYY-MM-DD.",
+                    "type": "string"
+                },
+                "endTime": {
+                    "type": "string"
+                },
+                "flyerUrl": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "startTime": {
+                    "description": "StartTime/EndTime are local wall-clock times, RFC3339 without a zone\n(RA doesn't give one).",
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "venue": {
+                    "$ref": "#/definitions/RAVenue"
+                }
+            }
+        },
+        "RAEventMatchResponse": {
+            "type": "object",
+            "required": [
+                "event",
+                "eventName",
+                "isDay",
+                "isNight",
+                "lineup",
+                "seenAt",
+                "venue"
+            ],
+            "properties": {
+                "event": {
+                    "$ref": "#/definitions/RAEvent"
+                },
+                "eventName": {
+                    "description": "EventName is the party's name, or null when the night has none (an\nRA title that's just the lineup) and is headed by the venue.",
+                    "type": "string"
+                },
+                "isDay": {
+                    "type": "boolean"
+                },
+                "isNight": {
+                    "type": "boolean"
+                },
+                "lineup": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/RAArtistMatch"
+                    }
+                },
+                "seenAt": {
+                    "type": "string"
+                },
+                "venue": {
+                    "$ref": "#/definitions/RAVenueMatch"
+                }
+            }
+        },
+        "RAEventsResponse": {
+            "type": "object",
+            "required": [
+                "area",
+                "events"
+            ],
+            "properties": {
+                "area": {
+                    "description": "Area is the one listed: the one asked for, or the area of the\ncaller's latest night out; null when neither is known.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/RAArea"
+                        }
+                    ]
+                },
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/RAEvent"
+                    }
+                }
+            }
+        },
+        "RAVenue": {
+            "type": "object",
+            "required": [
+                "address",
+                "area",
+                "id",
+                "name"
+            ],
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "area": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "RAVenueMatch": {
+            "type": "object",
+            "required": [
+                "city",
+                "name",
+                "place",
+                "placeSessionToken",
+                "venue"
+            ],
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "place": {
+                    "$ref": "#/definitions/PlaceSuggestion"
+                },
+                "placeSessionToken": {
+                    "type": "string"
+                },
+                "venue": {
+                    "$ref": "#/definitions/VenueSummary"
+                }
+            }
+        },
         "Review": {
             "type": "object",
             "required": [
@@ -2158,6 +2658,13 @@ const docTemplate = `{
                 "djId": {
                     "description": "DjID is nil for a review of the night as a whole.",
                     "type": "string"
+                },
+                "djReviews": {
+                    "description": "DjReviews are the log's other DJ reviews, by DJ name, on a review\nthat stands for its whole night out (see queries.leadReviewCond) - the\nfeed, profiles, event and venue pages, and a review's own page.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/DjReviewDTO"
+                    }
                 },
                 "id": {
                     "type": "string"
@@ -2302,6 +2809,20 @@ const docTemplate = `{
                 },
                 "venue": {
                     "type": "string"
+                }
+            }
+        },
+        "UpdateNightLogResponse": {
+            "type": "object",
+            "required": [
+                "taggedUsers"
+            ],
+            "properties": {
+                "taggedUsers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/User"
+                    }
                 }
             }
         },
@@ -2570,7 +3091,7 @@ const docTemplate = `{
                     }
                 },
                 "night": {
-                    "description": "Review of the night as a whole. Required unless djReviews has one.",
+                    "description": "Review of the night as a whole. Required.",
                     "allOf": [
                         {
                             "$ref": "#/definitions/nightReviewInput"
@@ -2593,7 +3114,7 @@ const docTemplate = `{
                     }
                 },
                 "tags": {
-                    "description": "Tag names and tagged friends go on the night review, or on every DJ\nreview when there's no night review.",
+                    "description": "Tag names and tagged friends go on the night review.",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -2683,6 +3204,21 @@ const docTemplate = `{
                 }
             }
         },
+        "updateNightLogRequest": {
+            "type": "object",
+            "required": [
+                "taggedUserIds"
+            ],
+            "properties": {
+                "taggedUserIds": {
+                    "description": "Replaces the tagged friends; [] clears them.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "updateProfileRequest": {
             "type": "object",
             "required": [
@@ -2703,36 +3239,6 @@ const docTemplate = `{
                 },
                 "username": {
                     "type": "string"
-                }
-            }
-        },
-        "updateReviewRequest": {
-            "type": "object",
-            "required": [
-                "rating",
-                "reviewText",
-                "taggedUserIds",
-                "tags"
-            ],
-            "properties": {
-                "rating": {
-                    "type": "integer"
-                },
-                "reviewText": {
-                    "type": "string"
-                },
-                "taggedUserIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "tags": {
-                    "description": "Tag names (new ones are added to the library). Omitted = leave\nas-is, [] = clear - same contract as TaggedUserIDs.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 }
             }
         }

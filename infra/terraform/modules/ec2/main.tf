@@ -68,6 +68,7 @@ data "aws_iam_policy_document" "instance_permissions" {
       var.spotify_client_id_secret_arn,
       var.spotify_client_secret_secret_arn,
       var.google_places_api_key_secret_arn,
+      var.database_url_readonly_secret_arn,
     ]
   }
 }

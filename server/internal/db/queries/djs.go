@@ -110,3 +110,12 @@ func GetDjAggregate(ctx context.Context, q DBTX, djID string) (*DjAggregate, err
 	}
 	return &agg, nil
 }
+
+// GetDjByName finds a DJ by exact (case-insensitive) name, preferring a
+// Spotify-linked one, then the most reviewed.
+func GetDjByName(ctx context.Context, q DBTX, name string) (*db.Dj, error) {
+	return scanDj(q.QueryRow(ctx, "SELECT "+djCols+` FROM djs
+		WHERE lower(name) = lower($1)
+		ORDER BY spotify_id IS NULL, (SELECT COUNT(*) FROM reviews r WHERE r.dj_id = djs.id) DESC
+		LIMIT 1`, name))
+}

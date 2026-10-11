@@ -21,7 +21,7 @@ export function ProfileHeader({
   channel?: string;
 }) {
   return (
-    <PageHeader border="primary">
+    <PageHeader border="primary" compact>
       {(!!channel || !!action) && (
         <View className="mb-3 flex-row items-center justify-between">
           {channel ? <ChannelLabel label={channel} /> : <View />}

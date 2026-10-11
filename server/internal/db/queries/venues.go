@@ -156,3 +156,20 @@ func ListVenueEvents(ctx context.Context, q DBTX, venueID string) ([]VenueEvent,
 	}
 	return out, rows.Err()
 }
+
+// GetVenueSummaryByName finds a saved venue by exact (case-insensitive)
+// name, the busiest one if several share it.
+func GetVenueSummaryByName(ctx context.Context, q DBTX, name string) (*VenueSummary, error) {
+	return scanVenueSummary(q.QueryRow(ctx, venueSummarySelect+`
+		WHERE lower(v.name) = lower($1)
+		GROUP BY v.id
+		ORDER BY log_count DESC
+		LIMIT 1`, name))
+}
+
+// GetVenueSummaryByPlaceID is the saved venue linked to a Google place.
+func GetVenueSummaryByPlaceID(ctx context.Context, q DBTX, placeID string) (*VenueSummary, error) {
+	return scanVenueSummary(q.QueryRow(ctx, venueSummarySelect+`
+		WHERE v.google_place_id = $1
+		GROUP BY v.id`, placeID))
+}

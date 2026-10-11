@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import { Link, router, Stack, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Modal,
   Platform,
@@ -17,15 +18,14 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import {
   Avatar,
   Button,
-  Card,
   CARD_COLORS,
-  FitText,
   Icon,
   KeyboardScrollView,
   Page,
   paperFor,
   type Paper,
   RatingStamp,
+  Sheet,
   Skeleton,
   Tape,
   Text,
@@ -33,16 +33,51 @@ import {
   usePageContentStyle,
   WallBackground,
 } from "../../components/ui";
+import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
+import { TagFriendsPicker } from "../../components/TagFriendsPicker";
 import { useCurrentUser } from "../../lib/auth";
 import { useApi } from "../../lib/api/client";
 import { queryKeys } from "../../lib/api/queryKeys";
-import type { Dj, Review, ReviewComment, User } from "../../lib/api/types";
+import type {
+  Dj,
+  Review,
+  ReviewComment,
+  UpdateNightLogInput,
+  UpdateNightLogResponse,
+  User,
+} from "../../lib/api/types";
 import { formatCardDate, formatEventTiming } from "../../lib/format";
-import { logWhere, reviewSubject } from "../../lib/review";
+import { reviewSubject } from "../../lib/review";
 import { ROUTES } from "../../lib/routes";
 import { captureStory, shareStory, WEB_URL, type CapturedStory } from "../../lib/shareStory";
-import { ReviewTags } from "../../components/ReviewTags";
-import { isIos } from "@/lib/utils";
+import { isIos, isWeb } from "@/lib/utils";
+
+// Every list a review's card might sit in (feed, profiles, DJ/event/venue
+// pages), so a like or comment here shows up in the card's counts on the way
+// back without refetching those lists.
+const LIST_PREFIXES = ["feed", "reviews", "users", "djs", "events", "venues"];
+
+function patchCachedReview(queryClient: QueryClient, id: string, patch: (review: Review) => Review) {
+  const visit = (value: unknown, depth: number): unknown => {
+    if (!value || typeof value !== "object" || depth > 6) return value;
+    if (Array.isArray(value)) {
+      const next = value.map((item) => visit(item, depth + 1));
+      return next.some((item, i) => item !== value[i]) ? next : value;
+    }
+    const obj = value as Record<string, unknown>;
+    if (obj.id === id && "rating" in obj && "userId" in obj) return patch(obj as unknown as Review);
+    let changed = false;
+    const next: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(obj)) {
+      next[key] = visit(child, depth + 1);
+      if (next[key] !== child) changed = true;
+    }
+    return changed ? next : value;
+  };
+  for (const prefix of LIST_PREFIXES) {
+    queryClient.setQueriesData({ queryKey: [prefix] }, (data: unknown) => visit(data, 0));
+  }
+}
 
 function CommentSection({ reviewId }: { reviewId: string }) {
   const { isSignedIn } = useAuth();
@@ -58,6 +93,12 @@ function CommentSection({ reviewId }: { reviewId: string }) {
 
   const commentsKey = queryKeys.reviews.comments(reviewId);
   const invalidate = () => queryClient.invalidateQueries({ queryKey: commentsKey });
+  // The detail query and every list card both carry the count.
+  const bumpCommentCount = (by: number) =>
+    patchCachedReview(queryClient, reviewId, (review) => ({
+      ...review,
+      commentCount: Math.max(0, (review.commentCount ?? 0) + by),
+    }));
 
   const addComment = useMutation({
     mutationFn: (input: { body: string }) =>
@@ -78,11 +119,13 @@ function CommentSection({ reviewId }: { reviewId: string }) {
         optimisticComment,
       ]);
       setBody("");
+      bumpCommentCount(1);
       return { previous, submittedBody: input.body };
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) queryClient.setQueryData(commentsKey, ctx.previous);
       if (ctx?.submittedBody) setBody(ctx.submittedBody);
+      bumpCommentCount(-1);
     },
     onSettled: invalidate,
   });
@@ -94,10 +137,12 @@ function CommentSection({ reviewId }: { reviewId: string }) {
       queryClient.setQueryData<ReviewComment[]>(commentsKey, (old) =>
         (old ?? []).filter((c) => c.id !== id),
       );
+      bumpCommentCount(-1);
       return { previous };
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) queryClient.setQueryData(commentsKey, ctx.previous);
+      bumpCommentCount(1);
     },
     onSettled: invalidate,
   });
@@ -182,23 +227,23 @@ function LikeButton({
   const queryClient = useQueryClient();
   const reviewKey = queryKeys.reviews.byId(reviewId);
 
+  // Written to the detail query and every list card's copy, so the counts
+  // match on the way back.
+  const setLiked = (liked: boolean) =>
+    patchCachedReview(queryClient, reviewId, (review) =>
+      !!review.isLikedByMe === liked
+        ? review
+        : { ...review, isLikedByMe: liked, likeCount: Math.max(0, (review.likeCount ?? 0) + (liked ? 1 : -1)) },
+    );
+
   const applyOptimistic = async (liked: boolean) => {
     await queryClient.cancelQueries({ queryKey: reviewKey });
-    const previous = queryClient.getQueryData<Review>(reviewKey);
-    queryClient.setQueryData<Review>(reviewKey, (old) =>
-      old
-        ? {
-            ...old,
-            isLikedByMe: liked,
-            likeCount: (old.likeCount ?? 0) + (liked ? 1 : -1),
-          }
-        : old,
-    );
-    return { previous };
+    setLiked(liked);
+    return { liked };
   };
 
-  const rollback = (ctx?: { previous?: Review }) => {
-    if (ctx?.previous) queryClient.setQueryData(reviewKey, ctx.previous);
+  const rollback = (ctx?: { liked: boolean }) => {
+    if (ctx) setLiked(!ctx.liked);
   };
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: reviewKey });
@@ -230,6 +275,22 @@ function LikeButton({
       <Icon name={isLiked ? "heart" : "heart-outline"} size={16} className="text-paper" />
       <Text className="font-numeric text-lg leading-5 text-paper">{likeCount}</Text>
     </Pressable>
+  );
+}
+
+// The comment count beside the like button, from the loaded comments once
+// there are any (same query as CommentSection, so no extra fetch).
+function CommentCount({ reviewId, fallback }: { reviewId: string; fallback: number }) {
+  const api = useApi();
+  const { data: comments } = useQuery({
+    queryKey: queryKeys.reviews.comments(reviewId),
+    queryFn: () => api.get<ReviewComment[]>(`/reviews/${reviewId}/comments`),
+  });
+  return (
+    <View className="flex-row items-center gap-1.5 rounded-lg bg-black/25 px-3 py-1.5">
+      <Icon name="chatbubble-outline" size={15} className="text-paper" />
+      <Text className="font-numeric text-lg leading-5 text-paper">{comments?.length ?? fallback}</Text>
+    </View>
   );
 }
 
@@ -630,31 +691,123 @@ function ShareStoryButton({
   );
 }
 
-// Blank paper laid out like the detail card below: label, big name, event
-// line, a few lines of text, and the reviewer/like row.
+// A log is fixed once it's logged, except for who you tagged as being there
+// with you: this opens a sheet to change that.
+function WhoWasThereButton({ review }: { review: ReviewDetail }) {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const { me } = useCurrentUser();
+  const [open, setOpen] = useState(false);
+  const [tagged, setTagged] = useState<User[]>(review.taggedUsers);
+  const save = useMutation({
+    mutationFn: (input: UpdateNightLogInput) => api.patch<UpdateNightLogResponse>(`/logs/${review.logId}`, input),
+    onSuccess: ({ taggedUsers }) => {
+      patchCachedReview(queryClient, review.id, (r) => ({ ...r, taggedUsers }));
+      setOpen(false);
+    },
+  });
+
+  const openSheet = () => {
+    setTagged(review.taggedUsers);
+    save.reset();
+    setOpen(true);
+  };
+  const hasTagged = !!review.taggedUsers.length;
+
+  return (
+    <>
+      <Pressable
+        onPress={openSheet}
+        className="mt-4 flex-row items-center justify-center gap-2 self-center border border-dashed border-paper/60 px-4 py-2 active:opacity-70"
+      >
+        <Icon name="people-outline" size={16} className="text-paper" />
+        <Text className="font-display text-lg uppercase leading-5 text-paper">
+          {hasTagged ? "Edit who was there" : "Tag who was there"}
+        </Text>
+      </Pressable>
+      {open && (
+        <Sheet title="Who was there?" tag="With you" onClose={() => setOpen(false)}>
+          <View className="gap-4 px-4">
+            <Text className="text-xs text-paper/60">
+              Your log is pinned to the wall. Who you went with is the one thing you can still change.
+            </Text>
+            <TagFriendsPicker
+              taggedUsers={tagged}
+              excludeUserId={me?.id}
+              startTyping={!tagged.length}
+              onAdd={(user) => setTagged((prev) => [...prev, user])}
+              onRemove={(userId) => setTagged((prev) => prev.filter((u) => u.id !== userId))}
+            />
+            {save.isError && (
+              <Text className="text-danger-dark">{(save.error as Error)?.message ?? "Could not save. Try again."}</Text>
+            )}
+            <Button
+              disabled={save.isPending}
+              onPress={() => save.mutate({ taggedUserIds: tagged.map((u) => u.id) })}
+              className="py-3"
+            >
+              <Text className="font-display text-xl uppercase text-paper">{save.isPending ? "Saving…" : "Save"}</Text>
+            </Button>
+          </View>
+        </Sheet>
+      )}
+    </>
+  );
+}
+
+// Deletes the whole night out this post stands for (the night review and
+// every DJ review in it), since the page shows them as one post.
+function DeleteReviewButton({ logId }: { logId: string }) {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const remove = useMutation({
+    mutationFn: () => api.del(`/logs/${logId}`),
+    onSuccess: () => {
+      for (const prefix of LIST_PREFIXES) queryClient.invalidateQueries({ queryKey: [prefix] });
+      if (router.canGoBack()) router.back();
+      else router.replace(ROUTES.FEED);
+    },
+    onError: (err: any) => {
+      const message = err?.message ?? "Please try again.";
+      if (isWeb) window.alert(`Could not delete review. ${message}`);
+      else Alert.alert("Could not delete review", message);
+    },
+  });
+
+  const onPress = () => {
+    if (isWeb) {
+      if (window.confirm("Delete this review? This can't be undone.")) remove.mutate();
+      return;
+    }
+    Alert.alert("Delete review", "This deletes your review of the night and every DJ in it. This can't be undone.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: () => remove.mutate() },
+    ]);
+  };
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={remove.isPending}
+      className="mt-4 flex-row items-center gap-1.5 self-center px-3 py-2 active:opacity-70"
+    >
+      {remove.isPending ? (
+        <ActivityIndicator size="small" color="#F6F6F9" />
+      ) : (
+        <Icon name="trash-outline" size={16} className="text-paper/60" />
+      )}
+      <Text className="font-display text-lg uppercase text-paper/60">Delete review</Text>
+    </Pressable>
+  );
+}
+
 function ReviewDetailSkeleton({ tint }: { tint: string | undefined }) {
   const contentStyle = usePageContentStyle();
   return (
     <Page>
       <View style={[contentStyle, { paddingTop: 24, alignItems: "center" }]}>
         <View className="w-full max-w-xl">
-          <Card blank tint={paperFor(tint).tint} torn tilt={-0.6} className="pb-7">
-            <View className="pr-24">
-              <Skeleton tone="paper" className="h-4 w-44" />
-              <Skeleton tone="paper" className="mt-3 h-14 w-56" />
-              <Skeleton tone="paper" className="mt-2 h-5 w-40" />
-            </View>
-            <Skeleton tone="paper" className="mt-5 h-4 w-full" />
-            <Skeleton tone="paper" className="mt-2.5 h-4 w-full" />
-            <Skeleton tone="paper" className="mt-2.5 h-4 w-2/3" />
-            <View className="mt-5 flex-row items-center justify-between border-t-2 border-black/15 pt-4">
-              <View className="flex-row items-center gap-2">
-                <Skeleton tone="paper" className="h-[30px] w-[30px] rounded-full" />
-                <Skeleton tone="paper" className="h-4 w-32" />
-              </View>
-              <Skeleton tone="paper" className="h-8 w-14 rounded-lg" />
-            </View>
-          </Card>
+          <ReviewCardSkeleton paper={paperFor(tint)} />
         </View>
       </View>
     </Page>
@@ -676,7 +829,8 @@ export default function ReviewDetailScreen() {
   if (!review) {
     return <ReviewDetailSkeleton tint={tint} />;
   }
-  const subject = reviewSubject(review);
+  // A night out with several DJ reviews is titled after the night.
+  const subject = reviewSubject(review.djReviews?.length ? { log: review.log } : review);
   // The color of the card it was opened from (purple when opened from
   // anywhere else, like a notification or a shared link).
   const paper = paperFor(tint);
@@ -686,79 +840,26 @@ export default function ReviewDetailScreen() {
       <Stack.Screen options={{ title: subject.name }} />
       <KeyboardScrollView contentContainerStyle={[contentStyle, { paddingTop: 24, alignItems: "center" }]}>
         <View className="w-full max-w-xl">
-          <Card tint={paper.tint} torn tilt={-0.6} className="pb-7">
-            <Tape style={{ top: -10, left: 28 }} rotate={-4} />
-            <View className="pr-24">
-              <Text
-                className={`font-display text-base uppercase ${paper.inkClassName}`}
-              >
-                {[formatCardDate(review.seenAt), review.log && formatEventTiming(review.log), subject.isNight && "Whole night"]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </Text>
-              <Link href={subject.href ?? ROUTES.REVIEW_DETAIL(review.id)} asChild>
-                <Pressable className="mt-2 active:opacity-80">
-                  <FitText fontSize={60} className="text-paper">
-                    {subject.name}
-                  </FitText>
-                </Pressable>
-              </Link>
-              {/* The event (on a DJ review - a night review's title already
-                  links there) and the venue, each to its own page. */}
-              {!!review.log?.venue && (
-                <Text className="mt-1 font-display text-xl uppercase leading-6 text-paper">
-                  {!subject.isNight && !!review.log.event && (
-                    <>
-                      <Link href={ROUTES.EVENT(review.log.event.slug)}>
-                        <Text className="underline">{review.log.event.name}</Text>
-                      </Link>{" "}
-                    </>
-                  )}
-                  @{" "}
-                  {review.log.venueId ? (
-                    <Link href={ROUTES.VENUE(review.log.venueId)}>
-                      <Text className="underline">{review.log.venue}</Text>
-                    </Link>
-                  ) : (
-                    review.log.venue
-                  )}
-                </Text>
-              )}
-            </View>
-            <View className="absolute right-3 top-3">
-              <RatingStamp value={review.rating} size={84} />
-            </View>
-
-            {review.reviewText && <Text className="mt-4 text-lg leading-7 text-paper">{review.reviewText}</Text>}
-
-            {!!review.tags?.length && (
-              <View className="mt-4">
-                <ReviewTags tags={review.tags} />
+          <ReviewCard
+            review={review}
+            index={0}
+            paper={paper}
+            expanded
+            actions={
+              <View className="flex-row items-center gap-2">
+                <LikeButton
+                  reviewId={review.id}
+                  likeCount={review.likeCount}
+                  isLiked={review.isLikedByMe}
+                  disabled={isPlaceholderData}
+                />
+                <CommentCount reviewId={review.id} fallback={review.commentCount ?? 0} />
               </View>
-            )}
-
-            {!!review.taggedUsers?.length && (
-              <Text className="mt-3 font-display text-lg uppercase text-paper/85">
-                With {review.taggedUsers.map((u) => `@${u.username}`).join(", ")}
-              </Text>
-            )}
-
-            <View className="mt-5 flex-row items-center justify-between border-t-2 border-paper/25 pt-4">
-              <Link href={ROUTES.USER(review.user.username)} asChild>
-                <Pressable className="flex-row items-center gap-2 active:opacity-80">
-                  <Avatar uri={review.user.avatarUrl} name={review.user.username} size={30} />
-                  <Text className="font-display text-lg uppercase text-paper">@{review.user.username}</Text>
-                </Pressable>
-              </Link>
-              <LikeButton
-                reviewId={review.id}
-                likeCount={review.likeCount}
-                isLiked={review.isLikedByMe}
-                disabled={isPlaceholderData}
-              />
-            </View>
-          </Card>
+            }
+          />
         </View>
+
+        {!isPlaceholderData && me?.id === review.userId && <WhoWasThereButton review={review} />}
 
         {/* Story sharing hands the image to Instagram via the OS share sheet,
             which only works well from the native iOS app. */}
@@ -768,6 +869,7 @@ export default function ReviewDetailScreen() {
 
         <View className="w-full max-w-xl">
           <CommentSection reviewId={review.id} />
+          {!isPlaceholderData && me?.id === review.userId && <DeleteReviewButton logId={review.logId} />}
         </View>
       </KeyboardScrollView>
     </Page>

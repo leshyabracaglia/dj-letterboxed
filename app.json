@@ -34,6 +34,12 @@
       "expo-router",
       "expo-secure-store",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Beatboxd uses your location to show the nights on near you when you log one."
+        }
+      ],
+      [
         "expo-web-browser",
         {
           "experimentalLauncherActivity": true

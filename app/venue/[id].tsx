@@ -41,7 +41,7 @@ function VenueSkeleton() {
   const contentStyle = usePageContentStyle();
   return (
     <Page>
-      <PageHeader border="accent">
+      <PageHeader border="accent" compact>
         <Skeleton className="h-7 w-48" />
         <Skeleton className="mt-2 h-4 w-36" />
       </PageHeader>
@@ -70,7 +70,7 @@ export default function VenueScreen() {
   return (
     <Page>
       <Stack.Screen options={{ title: venue.name }} />
-      <PageHeader border="accent">
+      <PageHeader border="accent" compact>
         <FadeInView>
           <Text className="font-display text-lg uppercase text-zine-red-ink">Venue</Text>
           <FitText fontSize={60} numberOfLines={3} className="text-paper">

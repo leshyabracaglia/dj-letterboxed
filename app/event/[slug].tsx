@@ -2,6 +2,7 @@ import { Link, Stack, useLocalSearchParams } from "expo-router";
 import { FlatList, Pressable, View } from "react-native";
 
 import { DjAvatarRow } from "../../components/DjAvatarRow";
+import { Poster, POSTER_RECORD_STYLE } from "../../components/Poster";
 import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
 import {
   EmptyState,
@@ -9,13 +10,16 @@ import {
   FitText,
   Page,
   PageHeader,
-  RatingStamp,
   Skeleton,
   Text,
   usePageContentStyle,
 } from "../../components/ui";
 import { useEventDetail } from "../../lib/api/hooks";
+import type { EventDetail } from "../../lib/api/types";
 import { ROUTES } from "../../lib/routes";
+
+// How many of the most-logged DJs the poster lists as its lineup.
+const POSTER_LINEUP = 6;
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
@@ -23,15 +27,89 @@ function EventSkeleton() {
   const contentStyle = usePageContentStyle();
   return (
     <Page>
-      <PageHeader border="accent">
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="mt-2 h-14 w-56" />
-        <Skeleton className="mt-2 h-4 w-40" />
+      <PageHeader compact>
+        <Skeleton className="mt-3 h-80 w-full rounded-none" />
       </PageHeader>
       <View style={contentStyle}>
         <ReviewCardSkeleton count={3} />
       </View>
     </Page>
+  );
+}
+
+// The event as a gig poster, like the one you fill in when logging a night:
+// its name headlining, the DJs people saw as the lineup (each a link), the record showing
+// how it rates, and where it's been along the bottom strip.
+function EventPoster({ data }: { data: EventDetail }) {
+  const { event } = data;
+  const lineup = data.djs.slice(0, POSTER_LINEUP);
+  const moreDjs = data.djs.length - lineup.length;
+  const [venue] = data.venues;
+  return (
+    <Poster>
+      <View className="flex-row items-center justify-between px-3 pt-3">
+        <Text className="font-display text-sm uppercase tracking-widest text-paper/80">Beatboxd presents</Text>
+        <Text className="font-display text-sm uppercase text-stamp-red">Event</Text>
+      </View>
+
+      <View style={POSTER_RECORD_STYLE} className="items-center justify-center bg-zine-purple">
+        <Text className="font-display text-sm uppercase leading-4 text-paper/80">Avg</Text>
+        <Text className="font-numeric text-4xl leading-9 text-paper">
+          {event.avgRating == null ? "–" : event.avgRating.toFixed(1)}
+        </Text>
+        <Text className="font-display text-xs leading-3 text-paper/80">of 5</Text>
+      </View>
+
+      <View className="px-3 pb-3 pt-24">
+        <View style={{ paddingRight: 72 }}>
+          <FitText fontSize={52} numberOfLines={4} className="text-paper" lastWordClassName="text-stamp-red">
+            {event.name}
+          </FitText>
+        </View>
+        {!!lineup.length && (
+          <Text className="mt-3 font-display text-lg uppercase leading-5 text-paper">
+            {lineup.map(({ dj }, i) => (
+              <Text key={dj.id} className="font-display text-paper">
+                {!!i && " · "}
+                <Link href={ROUTES.DJ(dj.slug)} className="font-display text-paper">
+                  {dj.name}
+                </Link>
+              </Text>
+            ))}
+            {moreDjs > 0 && <Text className="font-display text-primary-dark">{` · +${moreDjs} more`}</Text>}
+          </Text>
+        )}
+      </View>
+
+      <View className="flex-row border-t border-white/15">
+        <View className="flex-1 border-r border-white/15 p-3">
+          <Text className="font-display text-sm uppercase leading-4 text-paper/60">
+            {data.venues.length > 1 ? `${data.venues.length} venues` : "Venue"}
+          </Text>
+          {venue ? (
+            <Link href={ROUTES.VENUE(venue.id)} asChild>
+              <Pressable className="active:opacity-70">
+                <Text numberOfLines={2} className="mt-1 font-display text-xl uppercase leading-5 text-paper">
+                  {venue.name}
+                </Text>
+                {!!venue.city && (
+                  <Text numberOfLines={1} className="text-xs text-paper/60">
+                    {venue.city}
+                  </Text>
+                )}
+              </Pressable>
+            </Link>
+          ) : (
+            <Text className="mt-1 font-display text-xl uppercase leading-5 text-paper/40">TBA</Text>
+          )}
+        </View>
+        <View className="p-3">
+          <Text className="font-display text-sm uppercase leading-4 text-paper/60">Logged</Text>
+          <Text className="mt-1 font-display text-xl uppercase leading-5 text-paper">{plural(event.logCount, "night")}</Text>
+          <Text className="text-xs text-paper/60">{plural(event.reviewCount, "review")}</Text>
+        </View>
+      </View>
+    </Poster>
   );
 }
 
@@ -51,25 +129,12 @@ export default function EventScreen() {
     return <EventSkeleton />;
   }
 
-  const { event } = data;
-
   return (
     <Page>
-      <Stack.Screen options={{ title: event.name }} />
-      <PageHeader border="accent">
-        <FadeInView>
-          <View className="flex-row items-center gap-3">
-            <View className="flex-1">
-              <Text className="font-display text-lg uppercase text-zine-red-ink">Event</Text>
-              <FitText fontSize={60} numberOfLines={3} className="text-paper">
-                {event.name}
-              </FitText>
-              <Text className="mt-1 font-display text-lg uppercase text-paper/70">
-                {plural(event.logCount, "night")} logged · {plural(event.reviewCount, "review")}
-              </Text>
-            </View>
-            <RatingStamp value={event.avgRating} size={92} />
-          </View>
+      <Stack.Screen options={{ title: data.event.name }} />
+      <PageHeader compact>
+        <FadeInView className="pt-3">
+          <EventPoster data={data} />
         </FadeInView>
       </PageHeader>
       <FlatList

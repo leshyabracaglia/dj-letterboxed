@@ -11,7 +11,7 @@ const (
 )
 
 // TestNightLogValidate covers the logging rules: the night review is
-// required unless a DJ is reviewed, ratings are 1-5, one review per DJ,
+// required, ratings are 1-5, one review per DJ,
 // and reviewed DJs join the lineup even when not listed in it.
 func TestNightLogValidate(t *testing.T) {
 	cases := []struct {
@@ -23,7 +23,12 @@ func TestNightLogValidate(t *testing.T) {
 		{
 			name:    "nothing reviewed",
 			body:    `{"seenAt":"2026-10-04T12:00:00Z","lineupDjIds":["` + djA + `"]}`,
-			wantErr: "review the night or at least one DJ",
+			wantErr: "rate the night",
+		},
+		{
+			name:    "DJ reviewed but not the night",
+			body:    `{"seenAt":"2026-10-04T12:00:00Z","djReviews":[{"djId":"` + djA + `","rating":5}]}`,
+			wantErr: "rate the night",
 		},
 		{
 			name:       "night only, lineup kept",
@@ -31,8 +36,8 @@ func TestNightLogValidate(t *testing.T) {
 			wantLineup: []string{djA},
 		},
 		{
-			name:       "DJ review only joins the lineup",
-			body:       `{"seenAt":"2026-10-04T12:00:00Z","lineupDjIds":["` + djA + `"],"djReviews":[{"djId":"` + djB + `","rating":5}]}`,
+			name:       "reviewed DJ joins the lineup",
+			body:       `{"seenAt":"2026-10-04T12:00:00Z","lineupDjIds":["` + djA + `"],"night":{"rating":4},"djReviews":[{"djId":"` + djB + `","rating":5}]}`,
 			wantLineup: []string{djA, djB},
 		},
 		{
@@ -42,7 +47,7 @@ func TestNightLogValidate(t *testing.T) {
 		},
 		{
 			name:    "DJ reviewed twice",
-			body:    `{"seenAt":"2026-10-04T12:00:00Z","djReviews":[{"djId":"` + djA + `","rating":5},{"djId":"` + djA + `","rating":3}]}`,
+			body:    `{"seenAt":"2026-10-04T12:00:00Z","night":{"rating":4},"djReviews":[{"djId":"` + djA + `","rating":5},{"djId":"` + djA + `","rating":3}]}`,
 			wantErr: "one review per DJ",
 		},
 		{

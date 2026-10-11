@@ -33,6 +33,8 @@ export type Log = Omit<Schemas["LogDTO"], "event" | "eventId" | "venue" | "venue
  * optional user/dj/log relations and engagement counts. `djId` (and so
  * `dj`) is null for a review of the night as a whole. */
 export type Review = Omit<Schemas["ReviewDTO"], "djId" | "log"> & { djId: string | null; log?: Log };
+/** One DJ's review inside a night-out post (`Review.djReviews`). */
+export type DjReview = Schemas["DjReviewDTO"];
 export type ReviewComment = Schemas["ReviewComment"];
 export type SpotifyArtist = Schemas["SpotifyArtist"];
 export type PlaceSuggestion = Schemas["PlaceSuggestion"];
@@ -63,6 +65,28 @@ export type FeedResponse = Schemas["FeedResponse"];
 export type PopularResponse = Schemas["PopularResponse"];
 export type AppVersion = Schemas["AppVersionResponse"];
 export type FavoriteReviewsResponse = Schemas["FavoriteReviewsResponse"];
+/** A Resident Advisor area (a city or region), whose listings the log
+ * screen searches. */
+export type RAArea = Schemas["RAArea"];
+/** A night listed on Resident Advisor. `startTime`/`endTime` are local
+ * wall-clock times with no zone. */
+export type RAEvent = Omit<Schemas["RAEvent"], "flyerUrl"> & { flyerUrl: string | null };
+export type RAEventsResponse = { area: RAArea | null; events: RAEvent[] };
+/** An RA night turned into a log to fill in: the lineup matched to
+ * Beatboxd DJs (`dj`) or Spotify artists (`spotify`) - neither means it's
+ * added by name - and the venue matched to a saved venue (`venue`) or a
+ * Google place (`place`, saved with `placeSessionToken`), else `name`/`city`
+ * to add by hand. `eventName` is null for a night with no party name. */
+export type RAEventMatch = Omit<Schemas["RAEventMatchResponse"], "event" | "eventName" | "venue" | "lineup"> & {
+  event: RAEvent;
+  eventName: string | null;
+  venue: Omit<Schemas["RAVenueMatch"], "venue" | "place"> & {
+    venue: VenueSummary | null;
+    place: PlaceSuggestion | null;
+  };
+  lineup: { name: string; dj: Dj | null; spotify: SpotifyArtist | null }[];
+};
+export type UpdateNightLogResponse = Schemas["UpdateNightLogResponse"];
 
 // Request bodies
 
@@ -71,9 +95,8 @@ export type FavoriteReviewsResponse = Schemas["FavoriteReviewsResponse"];
  * `venueId` (a saved venue), `placeId` (a Google Places result, saved on
  * first use; send the autocomplete session token with it), or `venue` (a
  * typed-in name), checked in that order - the day, the DJs seen, and the
- * reviews: `night` is required unless `djReviews` has one. Tags and tagged
- * friends go on the night review, or on each DJ review when there's no
- * night review. */
+ * reviews: `night` (required) and any `djReviews`. Tags and tagged friends
+ * go on the night review. */
 export type CreateNightLogInput = {
   eventId?: string;
   eventName?: string;
@@ -87,11 +110,15 @@ export type CreateNightLogInput = {
   isDay?: boolean;
   isNight?: boolean;
   lineupDjIds: string[];
-  night?: { rating: number; reviewText?: string };
+  night: { rating: number; reviewText?: string };
   djReviews: { djId: string; rating: number; reviewText?: string }[];
   tags: string[];
   taggedUserIds: string[];
 };
+
+/** PATCH /logs/{id}: a log is fixed once logged except for who you tagged
+ * as being there; this replaces them ([] clears). */
+export type UpdateNightLogInput = { taggedUserIds: string[] };
 
 /** Ordered review ids to showcase on the caller's profile, #1 favorite
  * first - at most 3, no duplicates, each must be a review the caller owns.

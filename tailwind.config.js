@@ -64,6 +64,9 @@ module.exports = {
         // of the weight-mapping override.
         display: ["Jersey10_400Regular", "sans-serif"],
         numeric: ["Jersey10_400Regular", "sans-serif"],
+        // Marker handwriting, for things written on by hand (the DJ's name
+        // on a review card's polaroid). Single weight, like Jersey 10.
+        hand: ["PermanentMarker_400Regular", "cursive"],
       },
     },
   },

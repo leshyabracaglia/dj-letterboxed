@@ -7,7 +7,7 @@ import (
 	"beatboxd/server/internal/db"
 )
 
-// RankPopularReviewIDs ranks review ids by (like_count + comment_count) desc,
+// RankPopularReviewIDs ranks nights out (their lead review ids) by (like_count + comment_count) desc,
 // then created_at desc, optionally excluding a set of ids. Ported from
 // feed.ts's fetchPopularReviews ranking step.
 func RankPopularReviewIDs(ctx context.Context, q DBTX, limit, offset int, excludeIDs []string) ([]string, error) {
@@ -20,7 +20,7 @@ func RankPopularReviewIDs(ctx context.Context, q DBTX, limit, offset int, exclud
 		FROM reviews r
 		LEFT JOIN review_likes rl ON rl.review_id = r.id
 		LEFT JOIN review_comments rc ON rc.review_id = r.id
-		WHERE $1::uuid[] IS NULL OR NOT (r.id = ANY($1))
+		WHERE ($1::uuid[] IS NULL OR NOT (r.id = ANY($1))) AND `+leadReviewCond("r")+`
 		GROUP BY r.id
 		ORDER BY (COUNT(DISTINCT rl.user_id) + COUNT(DISTINCT rc.id)) DESC, r.created_at DESC
 		LIMIT $2 OFFSET $3`, nullableIDs(excludeIDs), limit, offset)
@@ -82,7 +82,7 @@ func GetReviewsByIDsOrdered(ctx context.Context, q DBTX, ids []string) ([]db.Rev
 	return out, nil
 }
 
-// ListReviewsByUserIDs returns reviews authored by any of userIDs, ordered
+// ListReviewsByUserIDs returns nights out (their lead reviews) by any of userIDs, ordered
 // created_at desc, optionally paginated by a created_at cursor. Used by
 // feed.getActivity for the followed-users portion of the feed (note: this
 // orders/paginates by created_at, unlike listByUser/listByDj which use
@@ -91,5 +91,5 @@ func ListReviewsByUserIDs(ctx context.Context, q DBTX, userIDs []string, cursor 
 	if len(userIDs) == 0 {
 		return nil, nil
 	}
-	return listReviewsPage(ctx, q, "user_id = ANY($1)", "created_at", []any{userIDs}, cursor, limit)
+	return listReviewsPage(ctx, q, "user_id = ANY($1) AND "+leadReviewCond("reviews"), "created_at", []any{userIDs}, cursor, limit)
 }

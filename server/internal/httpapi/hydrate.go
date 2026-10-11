@@ -12,7 +12,10 @@ type hydrateOpts struct {
 	IncludeDj         bool
 	IncludeLog        bool
 	IncludeEngagement bool
-	CurrentUserID     *string
+	// IncludeDjReviews attaches each review's log's other DJ reviews; for
+	// lists of lead reviews, where each review is a whole night out.
+	IncludeDjReviews bool
+	CurrentUserID    *string
 }
 
 func (h *Handlers) hydrateReviews(ctx context.Context, reviews []db.Review, opts hydrateOpts) ([]ReviewDTO, error) {
@@ -112,14 +115,52 @@ func (h *Handlers) hydrateReviews(ctx context.Context, reviews []db.Review, opts
 		}
 	}
 
+	if opts.IncludeDjReviews {
+		byLog, err := queries.ListDjReviewsByLogIDs(ctx, h.Pool, queries.DedupeStrings(mapField(reviews, func(r db.Review) string { return r.LogID })))
+		if err != nil {
+			return nil, err
+		}
+		var djIDs []string
+		for _, rs := range byLog {
+			for _, r := range rs {
+				djIDs = append(djIDs, *r.DjID)
+			}
+		}
+		djs, err := queries.GetDjsByIDs(ctx, h.Pool, queries.DedupeStrings(djIDs))
+		if err != nil {
+			return nil, err
+		}
+		for i, r := range reviews {
+			for _, dr := range byLog[r.LogID] {
+				if dr.ID == r.ID {
+					continue
+				}
+				dto := DjReviewDTO{Review: dr}
+				if d, ok := djs[*dr.DjID]; ok {
+					dto.Dj = &d
+				}
+				dtos[i].DjReviews = append(dtos[i].DjReviews, dto)
+			}
+		}
+	}
+
 	if opts.IncludeEngagement {
-		ids := mapField(reviews, func(r db.Review) string { return r.ID })
+		// Likes and comments belong to the night-out post, so every review
+		// shows its log's lead review's.
+		leads, err := queries.GetLeadReviewIDs(ctx, h.Pool, queries.DedupeStrings(mapField(reviews, func(r db.Review) string { return r.LogID })))
+		if err != nil {
+			return nil, err
+		}
+		ids := make([]string, 0, len(leads))
+		for _, id := range leads {
+			ids = append(ids, id)
+		}
 		eng, err := queries.AttachEngagement(ctx, h.Pool, ids, opts.CurrentUserID)
 		if err != nil {
 			return nil, err
 		}
 		for i, r := range reviews {
-			if e, ok := eng[r.ID]; ok {
+			if e, ok := eng[leads[r.LogID]]; ok {
 				dtos[i] = dtos[i].withEngagement(e)
 			}
 		}

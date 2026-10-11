@@ -2,6 +2,7 @@ import "../global.css";
 
 import { ClerkProvider } from "@clerk/expo";
 import { Jersey10_400Regular } from "@expo-google-fonts/jersey-10";
+import { PermanentMarker_400Regular } from "@expo-google-fonts/permanent-marker";
 import { Roboto_400Regular, Roboto_500Medium, Roboto_700Bold } from "@expo-google-fonts/roboto";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import * as Application from "expo-application";
@@ -102,6 +103,7 @@ export default function RootLayout() {
     Roboto_500Medium,
     Roboto_700Bold,
     Jersey10_400Regular,
+    PermanentMarker_400Regular,
   });
   const { setColorScheme } = useColorScheme();
   const isDesktopWeb = useIsDesktopWeb();

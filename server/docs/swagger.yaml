@@ -72,6 +72,41 @@ definitions:
     - recentReviews
     - reviewCount
     type: object
+  DjReviewDTO:
+    properties:
+      createdAt:
+        type: string
+      dj:
+        $ref: '#/definitions/Dj'
+      djId:
+        description: DjID is nil for a review of the night as a whole.
+        type: string
+      id:
+        type: string
+      logId:
+        type: string
+      rating:
+        type: integer
+      reviewText:
+        type: string
+      seenAt:
+        description: SeenAt mirrors the log's, kept here for ordering and pagination.
+        type: string
+      updatedAt:
+        type: string
+      userId:
+        type: string
+    required:
+    - createdAt
+    - djId
+    - id
+    - logId
+    - rating
+    - reviewText
+    - seenAt
+    - updatedAt
+    - userId
+    type: object
   Event:
     properties:
       createdAt:
@@ -352,6 +387,163 @@ definitions:
     required:
     - items
     type: object
+  RAArea:
+    properties:
+      country:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    required:
+    - country
+    - id
+    - name
+    type: object
+  RAArtist:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    required:
+    - id
+    - name
+    type: object
+  RAArtistMatch:
+    properties:
+      dj:
+        $ref: '#/definitions/Dj'
+      name:
+        type: string
+      spotify:
+        $ref: '#/definitions/SpotifyArtist'
+    required:
+    - dj
+    - name
+    - spotify
+    type: object
+  RAEvent:
+    properties:
+      artists:
+        items:
+          $ref: '#/definitions/RAArtist'
+        type: array
+      attending:
+        type: integer
+      date:
+        description: Date is the night's calendar day, YYYY-MM-DD.
+        type: string
+      endTime:
+        type: string
+      flyerUrl:
+        type: string
+      id:
+        type: string
+      startTime:
+        description: |-
+          StartTime/EndTime are local wall-clock times, RFC3339 without a zone
+          (RA doesn't give one).
+        type: string
+      title:
+        type: string
+      url:
+        type: string
+      venue:
+        $ref: '#/definitions/RAVenue'
+    required:
+    - artists
+    - attending
+    - date
+    - endTime
+    - flyerUrl
+    - id
+    - startTime
+    - title
+    - url
+    - venue
+    type: object
+  RAEventMatchResponse:
+    properties:
+      event:
+        $ref: '#/definitions/RAEvent'
+      eventName:
+        description: |-
+          EventName is the party's name, or null when the night has none (an
+          RA title that's just the lineup) and is headed by the venue.
+        type: string
+      isDay:
+        type: boolean
+      isNight:
+        type: boolean
+      lineup:
+        items:
+          $ref: '#/definitions/RAArtistMatch'
+        type: array
+      seenAt:
+        type: string
+      venue:
+        $ref: '#/definitions/RAVenueMatch'
+    required:
+    - event
+    - eventName
+    - isDay
+    - isNight
+    - lineup
+    - seenAt
+    - venue
+    type: object
+  RAEventsResponse:
+    properties:
+      area:
+        allOf:
+        - $ref: '#/definitions/RAArea'
+        description: |-
+          Area is the one listed: the one asked for, or the area of the
+          caller's latest night out; null when neither is known.
+      events:
+        items:
+          $ref: '#/definitions/RAEvent'
+        type: array
+    required:
+    - area
+    - events
+    type: object
+  RAVenue:
+    properties:
+      address:
+        type: string
+      area:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    required:
+    - address
+    - area
+    - id
+    - name
+    type: object
+  RAVenueMatch:
+    properties:
+      city:
+        type: string
+      name:
+        type: string
+      place:
+        $ref: '#/definitions/PlaceSuggestion'
+      placeSessionToken:
+        type: string
+      venue:
+        $ref: '#/definitions/VenueSummary'
+    required:
+    - city
+    - name
+    - place
+    - placeSessionToken
+    - venue
+    type: object
   Review:
     properties:
       createdAt:
@@ -417,6 +609,14 @@ definitions:
       djId:
         description: DjID is nil for a review of the night as a whole.
         type: string
+      djReviews:
+        description: |-
+          DjReviews are the log's other DJ reviews, by DJ name, on a review
+          that stands for its whole night out (see queries.leadReviewCond) - the
+          feed, profiles, event and venue pages, and a review's own page.
+        items:
+          $ref: '#/definitions/DjReviewDTO'
+        type: array
       id:
         type: string
       isLikedByMe:
@@ -527,6 +727,15 @@ definitions:
     required:
     - reviewCount
     - venue
+    type: object
+  UpdateNightLogResponse:
+    properties:
+      taggedUsers:
+        items:
+          $ref: '#/definitions/User'
+        type: array
+    required:
+    - taggedUsers
     type: object
   User:
     properties:
@@ -704,8 +913,7 @@ definitions:
       night:
         allOf:
         - $ref: '#/definitions/nightReviewInput'
-        description: Review of the night as a whole. Required unless djReviews has
-          one.
+        description: Review of the night as a whole. Required.
       placeId:
         type: string
       placeSessionToken:
@@ -717,9 +925,7 @@ definitions:
           type: string
         type: array
       tags:
-        description: |-
-          Tag names and tagged friends go on the night review, or on every DJ
-          review when there's no night review.
+        description: Tag names and tagged friends go on the night review.
         items:
           type: string
         type: array
@@ -795,6 +1001,16 @@ definitions:
     required:
     - reviewIds
     type: object
+  updateNightLogRequest:
+    properties:
+      taggedUserIds:
+        description: Replaces the tagged friends; [] clears them.
+        items:
+          type: string
+        type: array
+    required:
+    - taggedUserIds
+    type: object
   updateProfileRequest:
     properties:
       avatarUrl:
@@ -810,29 +1026,6 @@ definitions:
     - bio
     - displayName
     - username
-    type: object
-  updateReviewRequest:
-    properties:
-      rating:
-        type: integer
-      reviewText:
-        type: string
-      taggedUserIds:
-        items:
-          type: string
-        type: array
-      tags:
-        description: |-
-          Tag names (new ones are added to the library). Omitted = leave
-          as-is, [] = clear - same contract as TaggedUserIDs.
-        items:
-          type: string
-        type: array
-    required:
-    - rating
-    - reviewText
-    - taggedUserIds
-    - tags
     type: object
 info:
   contact: {}
@@ -1229,6 +1422,206 @@ paths:
         venue, day, lineup, and the night and DJ reviews, in one go'
       tags:
       - logs
+  /api/logs/{id}:
+    delete:
+      parameters:
+      - description: log id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Delete a night out owned by the caller, with all its reviews (404,
+        never 403, if not owned/found)
+      tags:
+      - logs
+    patch:
+      consumes:
+      - application/json
+      description: The rest of a log - event, venue, date, lineup, ratings, reviews
+        and tags - is fixed once logged. Tagged friends go on the night review, or
+        on every DJ review when there's no night review.
+      parameters:
+      - description: log id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: who was there
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/updateNightLogRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UpdateNightLogResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Change who was tagged as being at a night out owned by the caller (404,
+        never 403, if not owned/found)
+      tags:
+      - logs
+  /api/ra/areas:
+    get:
+      parameters:
+      - description: area name
+        in: query
+        name: q
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/RAArea'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Search Resident Advisor's areas (cities and regions) by name
+      tags:
+      - ra
+  /api/ra/events:
+    get:
+      description: The area is areaId if given, else the RA area of where the caller
+        is (city/region, as their device geocoded it, or lat/lng, geocoded here),
+        else of the city of their latest night out. area is null, with no events,
+        if none is known. from/to are the caller's local days; at most two weeks back.
+      parameters:
+      - description: RA area id
+        in: query
+        name: areaId
+        type: string
+      - description: the caller's current city
+        in: query
+        name: city
+        type: string
+      - description: the caller's current state/province, tried when the city isn't
+          an RA area
+        in: query
+        name: region
+        type: string
+      - description: the caller's latitude, when the device couldn't name the city
+        in: query
+        name: lat
+        type: number
+      - description: the caller's longitude
+        in: query
+        name: lng
+        type: number
+      - description: first day, YYYY-MM-DD
+        in: query
+        name: from
+        required: true
+        type: string
+      - description: last day, YYYY-MM-DD
+        in: query
+        name: to
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/RAEventsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: List Resident Advisor nights in an area over a few days, most attended
+        first
+      tags:
+      - ra
+  /api/ra/events/{id}/match:
+    get:
+      description: Matches the lineup to Beatboxd DJs or Spotify artists, and the
+        venue to a saved venue or a Google place, so the log form can be prefilled.
+        Nothing is saved.
+      parameters:
+      - description: RA event id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/RAEventMatchResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Turn a Resident Advisor night into a log to fill in
+      tags:
+      - ra
   /api/reviews/{id}:
     delete:
       parameters:
@@ -1275,46 +1668,9 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
-      summary: Get a review with its relations, engagement, and tagged users
-      tags:
-      - reviews
-    patch:
-      consumes:
-      - application/json
-      parameters:
-      - description: review id
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: fields to update
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/updateReviewRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/Review'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/errorEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errorEnvelope'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/errorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Update a review owned by the caller (404, never 403, if not owned/found)
+      summary: 'Get the night-out post a review belongs to: its lead review (which
+        may not be the id asked for) with its relations, the night''s DJ reviews,
+        engagement, and tagged users'
       tags:
       - reviews
   /api/reviews/{id}/comments:
@@ -1554,7 +1910,8 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
-      summary: List a user's reviews, cursor-paginated by seenAt desc
+      summary: List a user's nights out (one lead review each, with the night's DJ
+        reviews), cursor-paginated by seenAt desc
       tags:
       - reviews
   /api/users/{username}/stats:

@@ -6,9 +6,11 @@ import (
 	"beatboxd/server/internal/db"
 )
 
+// CountReviewsByUser counts userID's nights out: a night and the DJs
+// reviewed on it are one post.
 func CountReviewsByUser(ctx context.Context, q DBTX, userID string) (int64, error) {
 	var n int64
-	err := q.QueryRow(ctx, "SELECT COUNT(*) FROM reviews WHERE user_id = $1", userID).Scan(&n)
+	err := q.QueryRow(ctx, "SELECT COUNT(DISTINCT log_id) FROM reviews WHERE user_id = $1", userID).Scan(&n)
 	return n, err
 }
 
@@ -65,7 +67,7 @@ type TopVenue struct {
 
 func GetTopVenuesForUser(ctx context.Context, q DBTX, userID string) ([]TopVenue, error) {
 	rows, err := q.Query(ctx, `
-		SELECT l.venue, COUNT(r.id) AS review_count
+		SELECT l.venue, COUNT(DISTINCT r.log_id) AS review_count
 		FROM reviews r
 		JOIN logs l ON l.id = r.log_id
 		WHERE r.user_id = $1 AND l.venue IS NOT NULL

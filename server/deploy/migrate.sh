@@ -34,3 +34,15 @@ export APP_DATABASE_URL
 export DATABASE_URL="$MASTER_DATABASE_URL"
 docker compose run --rm --no-deps -e DATABASE_URL --entrypoint /app/migrate api up
 docker compose run --rm --no-deps -e DATABASE_URL -e APP_DATABASE_URL --entrypoint /app/migrate api app-role
+
+# The read-only role people use to inspect prod (scripts/prod-db.sh). Its
+# secret is added by a later Terraform apply than the rest, so a deploy
+# before that apply skips it with a warning instead of failing.
+READONLY_SECRET="${READONLY_SECRET:-beatboxd/database-url-readonly}"
+if READONLY_DATABASE_URL=$(aws secretsmanager get-secret-value --region "$REGION" \
+    --secret-id "$READONLY_SECRET" --query SecretString --output text 2>/dev/null); then
+  export READONLY_DATABASE_URL
+  docker compose run --rm --no-deps -e DATABASE_URL -e READONLY_DATABASE_URL --entrypoint /app/migrate api readonly-role
+else
+  echo "migrate.sh: secret $READONLY_SECRET not readable; skipping the read-only role" >&2
+fi

@@ -19,21 +19,25 @@ export function ChannelLabel({ label }: { label: string }) {
 
 // Top-of-page block aligned to the page gutter. Pass `title` for a standard
 // display heading (with an optional `channel` label beside it), or omit it
-// and pass custom content (profile/detail headers).
+// and pass custom content (profile/detail headers). `compact` trims the top
+// padding for headers that sit right under a stack header or start with
+// their own big block (profiles, venue, event).
 export function PageHeader({
   title,
   channel,
   border = "none",
+  compact = false,
   children,
 }: {
   title?: string;
   channel?: string;
   border?: keyof typeof BORDER;
+  compact?: boolean;
   children?: ReactNode;
 }) {
   const gutter = usePageGutter();
   return (
-    <View className={`pt-6 ${BORDER[border]}`} style={{ paddingHorizontal: gutter }}>
+    <View className={`${compact ? "pt-2" : "pt-6"} ${BORDER[border]}`} style={{ paddingHorizontal: gutter }}>
       {!!title && (
         <View className="mb-3 flex-row items-center justify-between gap-3">
           <Text className="shrink text-4xl font-display text-paper" numberOfLines={1}>

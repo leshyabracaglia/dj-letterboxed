@@ -26,6 +26,23 @@ resource "aws_secretsmanager_secret_version" "database_url" {
   secret_string = local.database_url
 }
 
+# The read-only role people use to inspect prod (scripts/prod-db.sh), synced
+# by `migrate readonly-role` on each deploy the same way. Deliberately not in
+# refresh-env.sh/.env: the API container never sees it.
+resource "random_password" "db_readonly" {
+  length  = 40
+  special = false
+}
+
+resource "aws_secretsmanager_secret" "database_url_readonly" {
+  name = "${var.project}/database-url-readonly"
+}
+
+resource "aws_secretsmanager_secret_version" "database_url_readonly" {
+  secret_id     = aws_secretsmanager_secret.database_url_readonly.id
+  secret_string = "postgres://${var.db_readonly_username}:${random_password.db_readonly.result}@${var.db_endpoint}/${var.db_name}?sslmode=require"
+}
+
 resource "aws_secretsmanager_secret" "clerk_secret_key" {
   name = "${var.project}/clerk-secret-key"
 }
