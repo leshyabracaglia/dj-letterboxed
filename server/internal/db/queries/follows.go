@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"beatboxd/server/internal/db"
 )
@@ -21,11 +22,16 @@ func IsFollowing(ctx context.Context, q DBTX, followerID, followingID string) (b
 	return true, nil
 }
 
-// Follow reports whether this was a new follow (false if already following).
+// Follow reports whether this was a new follow (false if already following),
+// or ErrNotFound if there's no user followingID.
 func Follow(ctx context.Context, q DBTX, followerID, followingID string) (bool, error) {
 	tag, err := q.Exec(ctx, `
 		INSERT INTO follows (follower_id, following_id) VALUES ($1, $2)
 		ON CONFLICT DO NOTHING`, followerID, followingID)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolationCode {
+		return false, ErrNotFound
+	}
 	return tag.RowsAffected() > 0, err
 }
 
@@ -37,32 +43,7 @@ func Unfollow(ctx context.Context, q DBTX, followerID, followingID string) error
 // GetFollowingIDs returns the ids of users that userID follows.
 func GetFollowingIDs(ctx context.Context, q DBTX, userID string) ([]string, error) {
 	rows, err := q.Query(ctx, "SELECT following_id FROM follows WHERE follower_id = $1", userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		out = append(out, id)
-	}
-	return out, rows.Err()
-}
-
-func CountFollowers(ctx context.Context, q DBTX, userID string) (int64, error) {
-	var n int64
-	err := q.QueryRow(ctx, "SELECT COUNT(*) FROM follows WHERE following_id = $1", userID).Scan(&n)
-	return n, err
-}
-
-func CountFollowing(ctx context.Context, q DBTX, userID string) (int64, error) {
-	var n int64
-	err := q.QueryRow(ctx, "SELECT COUNT(*) FROM follows WHERE follower_id = $1", userID).Scan(&n)
-	return n, err
+	return collect(rows, err, pgx.RowTo[string])
 }
 
 const qualifiedUserCols = "u.id, u.clerk_id, u.username, u.display_name, u.bio, u.avatar_url, u.created_at, u.updated_at"
@@ -86,18 +67,5 @@ func GetFollowing(ctx context.Context, q DBTX, userID string) ([]db.User, error)
 }
 
 func scanUserRows(rows pgx.Rows, err error) ([]db.User, error) {
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []db.User
-	for rows.Next() {
-		u, err := scanUser(rows)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, *u)
-	}
-	return out, rows.Err()
+	return collect(rows, err, rowsOf(scanUser))
 }

@@ -14,7 +14,7 @@ import (
 type SpotifyArtist struct {
 	SpotifyID string   `json:"spotifyId"`
 	Name      string   `json:"name"`
-	ImageURL  *string  `json:"imageUrl"`
+	ImageURL  *string  `json:"imageUrl" extensions:"x-nullable"`
 	Genres    []string `json:"genres"`
 }
 

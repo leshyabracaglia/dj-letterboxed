@@ -1,6 +1,9 @@
 package queries
 
-import "context"
+import (
+	"context"
+	"github.com/jackc/pgx/v5"
+)
 
 // UpsertPushToken registers a device's token for userID, taking it over
 // from whoever had it before (a device signed in to a different account).
@@ -29,38 +32,23 @@ func DeletePushTokens(ctx context.Context, q DBTX, tokens []string) error {
 
 func ListPushTokens(ctx context.Context, q DBTX, userID string) ([]string, error) {
 	rows, err := q.Query(ctx, "SELECT token FROM push_tokens WHERE user_id = $1", userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		var t string
-		if err := rows.Scan(&t); err != nil {
-			return nil, err
-		}
-		out = append(out, t)
-	}
-	return out, rows.Err()
+	return collect(rows, err, pgx.RowTo[string])
 }
 
-// ReviewNotifyInfo is what a like/comment notification needs about the
-// review: whose it is, and what to call it.
+// ReviewNotifyInfo is what a like/comment/tag notification needs about the
+// night out: whose it is, and what to call it.
 type ReviewNotifyInfo struct {
 	OwnerID string
-	// Subject is the DJ's name, or for a whole-night review the event's
-	// name (or the venue's, for a night with no event name).
+	// Subject is the night's title (see nightTitleSQL); "" when it has none.
 	Subject string
 }
 
 func GetReviewNotifyInfo(ctx context.Context, q DBTX, reviewID string) (*ReviewNotifyInfo, error) {
 	var info ReviewNotifyInfo
 	err := q.QueryRow(ctx, `
-		SELECT r.user_id, COALESCE(d.name, e.name, l.venue, '')
+		SELECT r.user_id, COALESCE(`+nightTitleSQL("r", "e")+`, '')
 		FROM reviews r
-		JOIN logs l ON l.id = r.log_id
-		LEFT JOIN djs d ON d.id = r.dj_id
-		LEFT JOIN events e ON e.id = l.event_id
+		LEFT JOIN events e ON e.id = r.event_id
 		WHERE r.id = $1`, reviewID).Scan(&info.OwnerID, &info.Subject)
 	if err != nil {
 		return nil, err

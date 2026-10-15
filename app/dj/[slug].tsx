@@ -1,20 +1,22 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { router, Stack, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { FlatList, Pressable, StyleSheet, View } from "react-native";
+import { FlatList, Linking, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Path } from "react-native-svg";
 
 import {
   Card,
+  CardSeparator,
   EmptyState,
   FadeInView,
   FitText,
   Icon,
   LoadingFade,
-  Page,
   paperAt,
   Photo,
   RatingStamp,
+  SectionTitle,
   Skeleton,
   Text,
   TornEdge,
@@ -24,10 +26,11 @@ import {
   usePageContentStyle,
   usePageGutter,
 } from "../../components/ui";
+import { DetailPage } from "../../components/DetailPage";
 import { ReviewTags } from "../../components/ReviewTags";
 import { useDjDetail } from "../../lib/api/hooks";
 import type { DjDetail, Review } from "../../lib/api/types";
-import { formatCardDate, formatEventTiming } from "../../lib/format";
+import { getNightTitle, nightDateParts } from "../../lib/review";
 import { ROUTES } from "../../lib/routes";
 
 const HERO_HEIGHT = 280;
@@ -70,7 +73,7 @@ function DjBio({ bio }: { bio: string }) {
   const [expanded, setExpanded] = useState(false);
   const [overflows, setOverflows] = useState(false);
   return (
-    <View className="mt-2 pr-28">
+    <View className="pr-28">
       <View>
         <Text
           className="pointer-events-none absolute left-0 right-0 text-base leading-6 text-paper opacity-0"
@@ -94,6 +97,27 @@ function DjBio({ bio }: { bio: string }) {
   );
 }
 
+// Spotify's icon (via Simple Icons). Their branding rules require the
+// official mark next to anything shown from their API (the photo and
+// genres), linking back to the artist on Spotify.
+const SPOTIFY_ICON_PATH =
+  "M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z";
+
+function SpotifyLink({ spotifyId }: { spotifyId: string }) {
+  return (
+    <Pressable
+      onPress={() => Linking.openURL(`https://open.spotify.com/artist/${spotifyId}`)}
+      accessibilityRole="link"
+      className="mt-3 flex-row items-center gap-2 self-start active:opacity-70"
+    >
+      <Svg width={20} height={20} viewBox="0 0 24 24">
+        <Path d={SPOTIFY_ICON_PATH} fill="#F6F6F9" />
+      </Svg>
+      <Text className="font-display text-lg uppercase text-paper">Listen on Spotify</Text>
+    </Pressable>
+  );
+}
+
 function NameBand({ data }: { data: DjDetail }) {
   const gutter = usePageGutter();
   const avgRating = data.avgRating ? Number(data.avgRating) : null;
@@ -107,7 +131,13 @@ function NameBand({ data }: { data: DjDetail }) {
           {data.dj.genres.slice(0, 3).join(" · ")}
         </Text>
       )}
-      {!!data.dj.bio && <DjBio bio={data.dj.bio} />}
+      {!!data.dj.bio && (
+        <>
+          <View className="mt-2" />
+          <DjBio bio={data.dj.bio} />
+        </>
+      )}
+      {!!data.dj.spotifyId && <SpotifyLink spotifyId={data.dj.spotifyId} />}
       <TornEdge color={CARD_COLORS.accent} height={12} />
       <View className="absolute -bottom-12" style={{ right: gutter - 8 }}>
         <RatingStamp value={avgRating} size={124} color="purple" rotate={-4} />
@@ -119,38 +149,45 @@ function NameBand({ data }: { data: DjDetail }) {
 function RatingLevels({ counts, reviewCount }: { counts: number[]; reviewCount: number }) {
   const max = Math.max(1, ...counts);
   return (
-    <Card tilt={0.6} className="bg-zine-panel">
-      <View className="mb-3 flex-row justify-between">
+    <Card tilt={0.6} className="gap-3 bg-zine-panel">
+      <View className="flex-row justify-between">
         <Text className="font-display text-xl uppercase text-paper/70">Rating levels</Text>
         <Text className="font-display text-xl uppercase text-paper/70">Avg of {reviewCount}</Text>
       </View>
-      {[5, 4, 3, 2, 1].map((stars) => {
-        const count = counts[stars - 1] ?? 0;
-        return (
-          <View key={stars} className="mb-2 flex-row items-center gap-3">
-            <Text className="w-4 font-display text-lg text-paper">{stars}</Text>
-            <View className="h-3 flex-1 bg-[#2A0F14]">
-              {!!count && (
-                <View className="h-full bg-paper shadow-md shadow-white" style={{ width: `${(count / max) * 100}%` }} />
-              )}
+      <View className="gap-2">
+        {[5, 4, 3, 2, 1].map((stars) => {
+          const count = counts[stars - 1] ?? 0;
+          return (
+            <View key={stars} className="flex-row items-center gap-3">
+              <Text className="w-4 font-display text-lg text-paper">{stars}</Text>
+              <View className="h-3 flex-1 bg-[#2A0F14]">
+                {!!count && (
+                  <View
+                    className="h-full bg-paper shadow-md shadow-white"
+                    style={{ width: `${(count / max) * 100}%` }}
+                  />
+                )}
+              </View>
             </View>
-          </View>
-        );
-      })}
+          );
+        })}
+      </View>
     </Card>
   );
 }
 
-function LogRow({ review, index }: { review: Review; index: number }) {
-  const where = review.log?.event?.name || review.log?.venue || "A night out";
+// A night the DJ was on the lineup of: the reviewer's rating and review of
+// the DJ's set, or - when they only rated the night as a whole - the
+// night's.
+function LogRow({ review, djId, index }: { review: Review; djId: string; index: number }) {
+  const where = getNightTitle(review);
+  const set = review.lineup.find((entry) => entry.dj.id === djId && entry.rating != null);
+  const rating = set ? set.rating : review.rating;
+  const reviewText = set ? set.reviewText : review.reviewText;
   const meta = [
-    review.user && `@${review.user.username}`,
-    formatCardDate(review.seenAt),
-    review.log && formatEventTiming(review.log),
-    // A night they played that was only rated as a whole: the stamp is the
-    // night's rating, not theirs.
-    !review.djId && "Whole night",
-  ].filter(Boolean);
+    ...(review.user ? [`@${review.user.username}`] : []),
+    ...nightDateParts(review, { wholeNight: !set }),
+  ];
   const paper = paperAt(index);
   return (
     <Card href={ROUTES.REVIEW_DETAIL(review.id, { tint: paper.tint })} tint={paper.tint} tilt={tiltFor(review.id, 0.8)}>
@@ -161,14 +198,14 @@ function LogRow({ review, index }: { review: Review; index: number }) {
           </Text>
           <Text className={`font-display text-base uppercase ${paper.inkClassName}`}>{meta.join(" · ")}</Text>
         </View>
-        <RatingStamp value={review.rating} size={52} />
+        <RatingStamp value={rating} size={52} />
       </View>
-      {!!review.reviewText && (
+      {!!reviewText && (
         <Text className="mt-2 text-base leading-6 text-paper" numberOfLines={4}>
-          {review.reviewText}
+          {reviewText}
         </Text>
       )}
-      {!!review.tags?.length && (
+      {!!review.tags.length && (
         <View className="mt-3">
           <ReviewTags tags={review.tags} limit={3} />
         </View>
@@ -182,7 +219,7 @@ function DjProfileSkeleton() {
   const gutter = usePageGutter();
   const isDesktopWeb = useIsDesktopWeb();
   return (
-    <Page fullBleed={!isDesktopWeb}>
+    <>
       <Hero imageUrl={null} showBack={!isDesktopWeb} />
       <LoadingFade className="bg-zine-red/30 pb-8 pt-4" style={{ paddingHorizontal: gutter }}>
         <Skeleton tone="paper" className="h-16 w-56" />
@@ -192,59 +229,67 @@ function DjProfileSkeleton() {
       <View style={contentStyle}>
         <Skeleton className="mt-10 h-40 w-full rounded-none" />
       </View>
-    </Page>
+    </>
   );
 }
 
 export default function DjProfileScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const { data } = useDjDetail(slug);
-  const contentStyle = usePageContentStyle();
+  const query = useDjDetail(slug);
   const isDesktopWeb = useIsDesktopWeb();
 
   // Desktop web keeps its top navbar (the stack header); phones lose the
   // header so the photo runs full-bleed, with a floating back key instead.
-  const screenOptions = { headerShown: isDesktopWeb, title: data?.dj.name };
+  // The not-found state keeps the header, for its back button.
+  const fullBleed = !isDesktopWeb && !query.error;
+  return (
+    <DetailPage
+      fullBleed={fullBleed}
+      screenOptions={{ headerShown: !fullBleed }}
+      query={query}
+      title={(data) => data.dj.name}
+      skeleton={<DjProfileSkeleton />}
+      missing="This DJ isn't on Beatboxd."
+    >
+      {(data) => <DjProfileList data={data} />}
+    </DetailPage>
+  );
+}
 
-  if (!data) {
-    return (
-      <>
-        <Stack.Screen options={screenOptions} />
-        <DjProfileSkeleton />
-      </>
-    );
-  }
+function DjProfileList({ data }: { data: DjDetail }) {
+  const contentStyle = usePageContentStyle();
+  const isDesktopWeb = useIsDesktopWeb();
 
   return (
-    <Page fullBleed={!isDesktopWeb}>
-      <Stack.Screen options={screenOptions} />
-      <FlatList
-        data={data.recentReviews}
-        keyExtractor={(item) => item.id}
-        ListHeaderComponent={
-          <>
-            <Hero imageUrl={data.dj.imageUrl} showBack={!isDesktopWeb} />
-            <FadeInView className="z-10">
-              <NameBand data={data} />
-            </FadeInView>
-            <View style={[contentStyle, { paddingTop: 72, paddingBottom: 0 }]}>
-              <RatingLevels counts={data.ratingCounts} reviewCount={data.reviewCount} />
-              <Text className="mb-3 mt-4 font-display text-2xl uppercase text-paper/85">Recent logs</Text>
-            </View>
-          </>
-        }
-        renderItem={({ item, index }) => (
-          <View style={{ paddingHorizontal: contentStyle.paddingHorizontal }}>
-            <LogRow review={item} index={index} />
+    <FlatList
+      data={data.recentReviews}
+      keyExtractor={(item) => item.id}
+      ListHeaderComponent={
+        <>
+          <Hero imageUrl={data.dj.imageUrl} showBack={!isDesktopWeb} />
+          <FadeInView className="z-10">
+            <NameBand data={data} />
+          </FadeInView>
+          <View style={[contentStyle, { paddingTop: 72, paddingBottom: 0 }]} className="gap-4">
+            <RatingLevels counts={data.ratingCounts} reviewCount={data.reviewCount} />
+            <View className="mt-2" />
+            <SectionTitle>Recent logs</SectionTitle>
           </View>
-        )}
-        ListFooterComponent={<View style={{ height: contentStyle.paddingBottom }} />}
-        ListEmptyComponent={
-          <View style={{ paddingHorizontal: contentStyle.paddingHorizontal }}>
-            <EmptyState message="No logs yet for this DJ." className="mt-2 text-paper/60" />
-          </View>
-        }
-      />
-    </Page>
+          <View className="h-2" />
+        </>
+      }
+      renderItem={({ item, index }) => (
+        <View style={{ paddingHorizontal: contentStyle.paddingHorizontal }}>
+          <LogRow review={item} djId={data.dj.id} index={index} />
+        </View>
+      )}
+      ItemSeparatorComponent={CardSeparator}
+      ListFooterComponent={<View style={{ height: contentStyle.paddingBottom }} />}
+      ListEmptyComponent={
+        <View className="mt-2" style={{ paddingHorizontal: contentStyle.paddingHorizontal }}>
+          <EmptyState message="No logs yet for this DJ." />
+        </View>
+      }
+    />
   );
 }

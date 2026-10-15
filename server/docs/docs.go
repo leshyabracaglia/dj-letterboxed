@@ -34,6 +34,122 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/check-ins": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "The venue must have coordinates, and latitude/longitude must be within 150m of it (up to 400m for a less accurate fix). Only the distance is stored, not the coordinates. A repeat check-in the same night is a no-op.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "check-ins"
+                ],
+                "summary": "Check in at a venue, so the caller's log of it tonight shows as verified",
+                "parameters": [
+                    {
+                        "description": "the venue and where the caller is",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/checkInRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/CheckInResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/check-ins/nearby": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Saved venues with coordinates within a few hundred meters of lat/lng. The coordinates aren't stored.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "check-ins"
+                ],
+                "summary": "Venues the caller is at, to check in at, nearest first",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "the caller's latitude",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "the caller's longitude",
+                        "name": "lng",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/NearbyVenuesResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/api/comments/{id}": {
             "delete": {
                 "security": [
@@ -210,7 +326,7 @@ const docTemplate = `{
                 "tags": [
                     "djs"
                 ],
-                "summary": "List reviews for a DJ, cursor-paginated by seenAt desc",
+                "summary": "List the nights out a DJ was on the lineup of (with any rating of them in the lineup), cursor-paginated by seenAt desc",
                 "parameters": [
                     {
                         "type": "string",
@@ -237,6 +353,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/PaginatedReviews"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
                         }
                     }
                 }
@@ -359,11 +481,11 @@ const docTemplate = `{
                 "tags": [
                     "feed"
                 ],
-                "summary": "Activity feed: followed users' reviews interleaved with popular ones every 4th item",
+                "summary": "Following feed: followed users' nights out, newest logged first",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "pagination cursor (opaque, encodes createdAt + popular-pool offset)",
+                        "description": "pagination cursor (opaque, encodes the last item's createdAt)",
                         "name": "cursor",
                         "in": "query"
                     },
@@ -398,7 +520,7 @@ const docTemplate = `{
                 "tags": [
                     "feed"
                 ],
-                "summary": "Most-liked-and-commented reviews, ranked",
+                "summary": "Most-liked-and-commented nights out, ranked",
                 "parameters": [
                     {
                         "type": "integer",
@@ -452,6 +574,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/errorEnvelope"
                         }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
                     }
                 }
             }
@@ -497,6 +625,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/errorEnvelope"
                         }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
                     }
                 }
             },
@@ -534,11 +668,17 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/errorEnvelope"
                         }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
                     }
                 }
             }
         },
-        "/api/leaderboard": {
+        "/api/notifications": {
             "get": {
                 "security": [
                     {
@@ -549,17 +689,28 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "users"
+                    "notifications"
                 ],
-                "summary": "Leaderboard scoped to the caller and everyone they follow",
+                "summary": "The caller's notifications (follows, likes, comments, being tagged), newest first",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "pagination cursor (opaque, encodes the last item's createdAt)",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page size, 1-50, default 30",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/LeaderboardEntry"
-                            }
+                            "$ref": "#/definitions/NotificationsResponse"
                         }
                     },
                     "401": {
@@ -571,79 +722,20 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/logs": {
+        "/api/notifications/seen": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "logs"
+                    "notifications"
                 ],
-                "summary": "Log a night out: the event (picked, or found or created by name), venue, day, lineup, and the night and DJ reviews, in one go",
-                "parameters": [
-                    {
-                        "description": "the night to log",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/createNightLogRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/NightLogResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errorEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/logs/{id}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "logs"
-                ],
-                "summary": "Delete a night out owned by the caller, with all its reviews (404, never 403, if not owned/found)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "log id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
+                "summary": "Mark all of the caller's notifications read",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -656,71 +748,33 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/errorEnvelope"
                         }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/errorEnvelope"
-                        }
                     }
                 }
-            },
-            "patch": {
+            }
+        },
+        "/api/notifications/unread-count": {
+            "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "The rest of a log - event, venue, date, lineup, ratings, reviews and tags - is fixed once logged. Tagged friends go on the night review, or on every DJ review when there's no night review.",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "logs"
+                    "notifications"
                 ],
-                "summary": "Change who was tagged as being at a night out owned by the caller (404, never 403, if not owned/found)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "log id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "who was there",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/updateNightLogRequest"
-                        }
-                    }
-                ],
+                "summary": "How many of the caller's notifications came in since they last marked them seen",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/UpdateNightLogResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errorEnvelope"
+                            "$ref": "#/definitions/UnreadNotificationsResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errorEnvelope"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/errorEnvelope"
                         }
@@ -917,6 +971,112 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/reports": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "moderation"
+                ],
+                "summary": "Report a review, comment or user for moderation",
+                "parameters": [
+                    {
+                        "description": "what's reported, and why",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/createReportRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/reviews": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reviews"
+                ],
+                "summary": "Log a night out: the event (picked, or found or created by name), venue, day, rating, the DJs seen and any DJ reviews, tags and friends, in one go",
+                "parameters": [
+                    {
+                        "description": "the night to log",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/createReviewRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/ReviewDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/api/reviews/{id}": {
             "get": {
                 "produces": [
@@ -925,7 +1085,7 @@ const docTemplate = `{
                 "tags": [
                     "reviews"
                 ],
-                "summary": "Get the night-out post a review belongs to: its lead review (which may not be the id asked for) with its relations, the night's DJ reviews, engagement, and tagged users",
+                "summary": "Get a night out with its lineup and DJ reviews, engagement, tags and tagged friends",
                 "parameters": [
                     {
                         "type": "string",
@@ -962,7 +1122,7 @@ const docTemplate = `{
                 "tags": [
                     "reviews"
                 ],
-                "summary": "Delete a review owned by the caller (404, never 403, if not owned/found). Deleting the review a night out is posted as (its night review) deletes the whole night out, as does deleting its last review.",
+                "summary": "Delete a night out owned by the caller, with its DJ reviews, likes, comments and tags (404, never 403, if not owned/found)",
                 "parameters": [
                     {
                         "type": "string",
@@ -992,6 +1152,68 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "The rest of a review - event, venue, date, ratings, lineup, text and tags - is fixed once logged.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reviews"
+                ],
+                "summary": "Change who was tagged as being at a night out owned by the caller (404, never 403, if not owned/found)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "review id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "who was there",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/updateReviewRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/UpdateReviewResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
             }
         },
         "/api/reviews/{id}/comments": {
@@ -1002,7 +1224,7 @@ const docTemplate = `{
                 "tags": [
                     "reviews"
                 ],
-                "summary": "List the comments on a review's night out (its lead review's), oldest first",
+                "summary": "List the comments on a night out, oldest first",
                 "parameters": [
                     {
                         "type": "string",
@@ -1045,7 +1267,7 @@ const docTemplate = `{
                 "tags": [
                     "reviews"
                 ],
-                "summary": "Comment on a review's night out (comments go on its lead review)",
+                "summary": "Comment on a night out",
                 "parameters": [
                     {
                         "type": "string",
@@ -1083,6 +1305,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/errorEnvelope"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -1105,7 +1333,7 @@ const docTemplate = `{
                 "tags": [
                     "reviews"
                 ],
-                "summary": "Like a review's night out (likes go on its lead review, whichever of the log's reviews is given)",
+                "summary": "Like a night out",
                 "parameters": [
                     {
                         "type": "string",
@@ -1124,6 +1352,12 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/errorEnvelope"
                         }
@@ -1148,7 +1382,7 @@ const docTemplate = `{
                 "tags": [
                     "reviews"
                 ],
-                "summary": "Unlike a review's night out",
+                "summary": "Unlike a night out",
                 "parameters": [
                     {
                         "type": "string",
@@ -1300,6 +1534,39 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/users/me/blocks": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "moderation"
+                ],
+                "summary": "List the users the caller has blocked, most recent first",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/User"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/api/users/me/favorites": {
             "patch": {
                 "security": [
@@ -1316,7 +1583,7 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "Replace the caller's showcased favorite reviews (0-3, ordered, #1 first) - reviews must be the caller's own",
+                "summary": "Replace the caller's showcased favorite nights out (0-3, ordered, #1 first) - they must be the caller's own",
                 "parameters": [
                     {
                         "description": "ordered review ids, at most 3, no duplicates",
@@ -1490,6 +1757,94 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/users/{userId}/block": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "moderation"
+                ],
+                "summary": "Block a user: hides each of you from the other and unfollows both ways",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "user id to block",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "moderation"
+                ],
+                "summary": "Unblock a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "user id to unblock",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/api/users/{userId}/followers": {
             "get": {
                 "produces": [
@@ -1516,6 +1871,12 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/User"
                             }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
                         }
                     }
                 }
@@ -1547,6 +1908,12 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/User"
                             }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
                         }
                     }
                 }
@@ -1594,7 +1961,7 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "Get a user's showcased favorite reviews (top 3, ordered, #1 first)",
+                "summary": "Get a user's showcased favorite nights out (top 3, ordered, #1 first)",
                 "parameters": [
                     {
                         "type": "string",
@@ -1628,7 +1995,7 @@ const docTemplate = `{
                 "tags": [
                     "reviews"
                 ],
-                "summary": "List a user's nights out (one lead review each, with the night's DJ reviews), cursor-paginated by seenAt desc",
+                "summary": "List a user's nights out, cursor-paginated by seenAt desc",
                 "parameters": [
                     {
                         "type": "string",
@@ -1674,7 +2041,7 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "Get a user's review stats: totals, top DJs, top venues",
+                "summary": "Get a user's review stats: totals, most-seen and recently seen DJs, top venues",
                 "parameters": [
                     {
                         "type": "string",
@@ -1842,6 +2209,22 @@ const docTemplate = `{
                 }
             }
         },
+        "CheckInResponse": {
+            "type": "object",
+            "required": [
+                "checkedInAt",
+                "venue"
+            ],
+            "properties": {
+                "checkedInAt": {
+                    "description": "When the caller checked in there (an earlier check-in the same night\nstands). Logging the venue for that night shows as verified.",
+                    "type": "string"
+                },
+                "venue": {
+                    "$ref": "#/definitions/NearbyVenue"
+                }
+            }
+        },
         "Dj": {
             "type": "object",
             "required": [
@@ -1858,13 +2241,15 @@ const docTemplate = `{
             ],
             "properties": {
                 "bio": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "createdAt": {
                     "type": "string"
                 },
                 "createdByUserId": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "genres": {
                     "type": "array",
@@ -1876,7 +2261,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "imageUrl": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "name": {
                     "type": "string"
@@ -1885,7 +2271,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "spotifyId": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "updatedAt": {
                     "type": "string"
@@ -1903,13 +2290,14 @@ const docTemplate = `{
             ],
             "properties": {
                 "avgRating": {
-                    "type": "number"
+                    "type": "number",
+                    "x-nullable": true
                 },
                 "dj": {
                     "$ref": "#/definitions/Dj"
                 },
                 "ratingCounts": {
-                    "description": "RatingCounts is how many reviews gave each star rating: index 0 is\n1 star, index 4 is 5 stars.",
+                    "description": "RatingCounts is how many ratings of them gave each star rating: index\n0 is 1 star, index 4 is 5 stars.",
                     "type": "array",
                     "items": {
                         "type": "integer"
@@ -1923,54 +2311,6 @@ const docTemplate = `{
                 },
                 "reviewCount": {
                     "type": "integer"
-                }
-            }
-        },
-        "DjReviewDTO": {
-            "type": "object",
-            "required": [
-                "createdAt",
-                "djId",
-                "id",
-                "logId",
-                "rating",
-                "reviewText",
-                "seenAt",
-                "updatedAt",
-                "userId"
-            ],
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "dj": {
-                    "$ref": "#/definitions/Dj"
-                },
-                "djId": {
-                    "description": "DjID is nil for a review of the night as a whole.",
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "logId": {
-                    "type": "string"
-                },
-                "rating": {
-                    "type": "integer"
-                },
-                "reviewText": {
-                    "type": "string"
-                },
-                "seenAt": {
-                    "description": "SeenAt mirrors the log's, kept here for ordering and pagination.",
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
                 }
             }
         },
@@ -1988,7 +2328,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "createdByUserId": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "id": {
                     "type": "string"
@@ -2037,13 +2378,13 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "dj",
-                "logCount"
+                "reviewCount"
             ],
             "properties": {
                 "dj": {
                     "$ref": "#/definitions/Dj"
                 },
-                "logCount": {
+                "reviewCount": {
                     "type": "integer"
                 }
             }
@@ -2055,26 +2396,24 @@ const docTemplate = `{
                 "createdAt",
                 "createdByUserId",
                 "id",
-                "logCount",
                 "name",
                 "reviewCount",
                 "slug"
             ],
             "properties": {
                 "avgRating": {
-                    "type": "number"
+                    "type": "number",
+                    "x-nullable": true
                 },
                 "createdAt": {
                     "type": "string"
                 },
                 "createdByUserId": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "id": {
                     "type": "string"
-                },
-                "logCount": {
-                    "type": "integer"
                 },
                 "name": {
                     "type": "string"
@@ -2092,21 +2431,22 @@ const docTemplate = `{
             "required": [
                 "city",
                 "id",
-                "logCount",
-                "name"
+                "name",
+                "reviewCount"
             ],
             "properties": {
                 "city": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "id": {
                     "type": "string"
                 },
-                "logCount": {
-                    "type": "integer"
-                },
                 "name": {
                     "type": "string"
+                },
+                "reviewCount": {
+                    "type": "integer"
                 }
             }
         },
@@ -2142,7 +2482,8 @@ const docTemplate = `{
                     }
                 },
                 "nextCursor": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 }
             }
         },
@@ -2157,156 +2498,132 @@ const docTemplate = `{
                 }
             }
         },
-        "LeaderboardEntry": {
+        "LineupEntry": {
             "type": "object",
             "required": [
-                "reviewCount",
-                "user"
+                "dj",
+                "rating",
+                "reviewText"
             ],
             "properties": {
-                "reviewCount": {
+                "dj": {
+                    "$ref": "#/definitions/Dj"
+                },
+                "rating": {
+                    "type": "integer",
+                    "x-nullable": true
+                },
+                "reviewText": {
+                    "type": "string",
+                    "x-nullable": true
+                }
+            }
+        },
+        "NearbyVenue": {
+            "type": "object",
+            "required": [
+                "city",
+                "distanceM",
+                "id",
+                "name"
+            ],
+            "properties": {
+                "city": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "distanceM": {
                     "type": "integer"
                 },
-                "user": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "NearbyVenuesResponse": {
+            "type": "object",
+            "required": [
+                "venues"
+            ],
+            "properties": {
+                "venues": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/NearbyVenue"
+                    }
+                }
+            }
+        },
+        "Notification": {
+            "type": "object",
+            "required": [
+                "actor",
+                "commentBody",
+                "createdAt",
+                "id",
+                "isUnread",
+                "nightLogged",
+                "reviewId",
+                "subject",
+                "type"
+            ],
+            "properties": {
+                "actor": {
                     "$ref": "#/definitions/User"
-                }
-            }
-        },
-        "Log": {
-            "type": "object",
-            "required": [
-                "city",
-                "createdAt",
-                "eventId",
-                "id",
-                "isDay",
-                "isNight",
-                "seenAt",
-                "userId",
-                "venue",
-                "venueId"
-            ],
-            "properties": {
-                "city": {
+                },
+                "commentBody": {
+                    "description": "The comment's text, on comments.",
                     "type": "string"
                 },
                 "createdAt": {
                     "type": "string"
                 },
-                "eventId": {
-                    "description": "EventID is nil for a night with no event name (just a venue).",
-                    "type": "string"
-                },
                 "id": {
                     "type": "string"
                 },
-                "isDay": {
-                    "description": "IsDay and IsNight say when this person went; both is day into night.\nAt least one is set.",
+                "isUnread": {
                     "type": "boolean"
                 },
-                "isNight": {
+                "nightLogged": {
+                    "description": "On tags: whether the recipient has logged the night themselves (see\nsameNightLoggedCond), so the app only prompts them to if not.",
                     "type": "boolean"
                 },
-                "seenAt": {
+                "reviewId": {
+                    "description": "The night out it's about (not on follows), and its title (see\nnightTitleSQL).",
                     "type": "string"
                 },
-                "userId": {
+                "subject": {
                     "type": "string"
                 },
-                "venue": {
-                    "description": "Venue is the venue's display name, denormalized alongside VenueID.\nBoth are nil only on logs migrated from reviews that had no night.",
-                    "type": "string"
-                },
-                "venueId": {
-                    "type": "string"
-                }
-            }
-        },
-        "LogDTO": {
-            "type": "object",
-            "required": [
-                "city",
-                "createdAt",
-                "event",
-                "eventId",
-                "id",
-                "isDay",
-                "isNight",
-                "lineup",
-                "seenAt",
-                "userId",
-                "venue",
-                "venueId"
-            ],
-            "properties": {
-                "city": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "event": {
-                    "$ref": "#/definitions/Event"
-                },
-                "eventId": {
-                    "description": "EventID is nil for a night with no event name (just a venue).",
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "isDay": {
-                    "description": "IsDay and IsNight say when this person went; both is day into night.\nAt least one is set.",
-                    "type": "boolean"
-                },
-                "isNight": {
-                    "type": "boolean"
-                },
-                "lineup": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/Dj"
-                    }
-                },
-                "seenAt": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
-                },
-                "venue": {
-                    "description": "Venue is the venue's display name, denormalized alongside VenueID.\nBoth are nil only on logs migrated from reviews that had no night.",
-                    "type": "string"
-                },
-                "venueId": {
-                    "type": "string"
-                }
-            }
-        },
-        "NightLogResponse": {
-            "type": "object",
-            "required": [
-                "event",
-                "log",
-                "reviews"
-            ],
-            "properties": {
-                "event": {
-                    "description": "Event is nil for a night with no event name.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/Event"
-                        }
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "follow",
+                        "like",
+                        "comment",
+                        "tag"
                     ]
-                },
-                "log": {
-                    "$ref": "#/definitions/Log"
-                },
-                "reviews": {
+                }
+            }
+        },
+        "NotificationsResponse": {
+            "type": "object",
+            "required": [
+                "items",
+                "nextCursor"
+            ],
+            "properties": {
+                "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/Review"
+                        "$ref": "#/definitions/Notification"
                     }
+                },
+                "nextCursor": {
+                    "type": "string"
                 }
             }
         },
@@ -2324,7 +2641,8 @@ const docTemplate = `{
                     }
                 },
                 "nextCursor": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 }
             }
         },
@@ -2405,13 +2723,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "dj": {
-                    "$ref": "#/definitions/Dj"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/Dj"
+                        }
+                    ],
+                    "x-nullable": true
                 },
                 "name": {
                     "type": "string"
                 },
                 "spotify": {
-                    "$ref": "#/definitions/SpotifyArtist"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/SpotifyArtist"
+                        }
+                    ],
+                    "x-nullable": true
                 }
             }
         },
@@ -2447,7 +2775,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "flyerUrl": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "id": {
                     "type": "string"
@@ -2484,7 +2813,8 @@ const docTemplate = `{
                 },
                 "eventName": {
                     "description": "EventName is the party's name, or null when the night has none (an\nRA title that's just the lineup) and is headed by the venue.",
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "isDay": {
                     "type": "boolean"
@@ -2519,7 +2849,8 @@ const docTemplate = `{
                         {
                             "$ref": "#/definitions/RAArea"
                         }
-                    ]
+                    ],
+                    "x-nullable": true
                 },
                 "events": {
                     "type": "array",
@@ -2569,57 +2900,37 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "place": {
-                    "$ref": "#/definitions/PlaceSuggestion"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/PlaceSuggestion"
+                        }
+                    ],
+                    "x-nullable": true
                 },
                 "placeSessionToken": {
                     "type": "string"
                 },
                 "venue": {
-                    "$ref": "#/definitions/VenueSummary"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/VenueSummary"
+                        }
+                    ],
+                    "x-nullable": true
                 }
             }
         },
-        "Review": {
+        "RecentDj": {
             "type": "object",
             "required": [
-                "createdAt",
-                "djId",
-                "id",
-                "logId",
-                "rating",
-                "reviewText",
-                "seenAt",
-                "updatedAt",
-                "userId"
+                "dj",
+                "lastSeenAt"
             ],
             "properties": {
-                "createdAt": {
-                    "type": "string"
+                "dj": {
+                    "$ref": "#/definitions/Dj"
                 },
-                "djId": {
-                    "description": "DjID is nil for a review of the night as a whole.",
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "logId": {
-                    "type": "string"
-                },
-                "rating": {
-                    "type": "integer"
-                },
-                "reviewText": {
-                    "type": "string"
-                },
-                "seenAt": {
-                    "description": "SeenAt mirrors the log's, kept here for ordering and pagination.",
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "userId": {
+                "lastSeenAt": {
                     "type": "string"
                 }
             }
@@ -2657,43 +2968,63 @@ const docTemplate = `{
         "ReviewDTO": {
             "type": "object",
             "required": [
+                "city",
+                "commentCount",
                 "createdAt",
-                "djId",
+                "event",
+                "eventId",
                 "id",
-                "logId",
+                "isDay",
+                "isLikedByMe",
+                "isNight",
+                "likeCount",
+                "lineup",
                 "rating",
                 "reviewText",
                 "seenAt",
                 "taggedUsers",
                 "tags",
                 "updatedAt",
-                "userId"
+                "userId",
+                "venue",
+                "venueId",
+                "verified"
             ],
             "properties": {
+                "city": {
+                    "type": "string",
+                    "x-nullable": true
+                },
                 "commentCount": {
                     "type": "integer"
                 },
                 "createdAt": {
                     "type": "string"
                 },
-                "dj": {
-                    "$ref": "#/definitions/Dj"
+                "event": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/Event"
+                        }
+                    ],
+                    "x-nullable": true
                 },
-                "djId": {
-                    "description": "DjID is nil for a review of the night as a whole.",
-                    "type": "string"
-                },
-                "djReviews": {
-                    "description": "DjReviews are the log's other DJ reviews, by DJ name, on a review\nthat stands for its whole night out (see queries.leadReviewCond) - the\nfeed, profiles, event and venue pages, and a review's own page.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/DjReviewDTO"
-                    }
+                "eventId": {
+                    "description": "EventID is nil for a night with no event name (just a venue).",
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "id": {
                     "type": "string"
                 },
+                "isDay": {
+                    "description": "IsDay and IsNight say when this person went; both is day into night.\nAt least one is set.",
+                    "type": "boolean"
+                },
                 "isLikedByMe": {
+                    "type": "boolean"
+                },
+                "isNight": {
                     "type": "boolean"
                 },
                 "isPopular": {
@@ -2702,25 +3033,22 @@ const docTemplate = `{
                 "likeCount": {
                     "type": "integer"
                 },
-                "log": {
-                    "description": "Log is the night out this review is part of: event, venue, date,\nday/night and lineup.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/LogDTO"
-                        }
-                    ]
-                },
-                "logId": {
-                    "type": "string"
+                "lineup": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/LineupEntry"
+                    }
                 },
                 "rating": {
-                    "type": "integer"
+                    "description": "Rating of the night as a whole, 1-5. Nil only on nights logged before\nnights were rated, which only rated their DJs.",
+                    "type": "integer",
+                    "x-nullable": true
                 },
                 "reviewText": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "seenAt": {
-                    "description": "SeenAt mirrors the log's, kept here for ordering and pagination.",
                     "type": "string"
                 },
                 "taggedUsers": {
@@ -2743,6 +3071,23 @@ const docTemplate = `{
                 },
                 "userId": {
                     "type": "string"
+                },
+                "venue": {
+                    "description": "Venue is the venue's display name, denormalized alongside VenueID.\nBoth are nil only on nights migrated from reviews that never had one.",
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "venueId": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "verified": {
+                    "description": "Verified is whether this person checked in at the venue that night\n(see the check_ins table), worked out when the review is read.",
+                    "type": "boolean"
+                },
+                "viewerLoggedNight": {
+                    "description": "On a review's own page, when the caller is tagged in it: whether\nthey've logged the night themselves (the page prompts them to if not).",
+                    "type": "boolean"
                 }
             }
         },
@@ -2762,7 +3107,8 @@ const docTemplate = `{
                     }
                 },
                 "imageUrl": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "name": {
                     "type": "string"
@@ -2810,13 +3156,13 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "dj",
-                "reviewCount"
+                "timesSeen"
             ],
             "properties": {
                 "dj": {
                     "$ref": "#/definitions/Dj"
                 },
-                "reviewCount": {
+                "timesSeen": {
                     "type": "integer"
                 }
             }
@@ -2836,7 +3182,18 @@ const docTemplate = `{
                 }
             }
         },
-        "UpdateNightLogResponse": {
+        "UnreadNotificationsResponse": {
+            "type": "object",
+            "required": [
+                "count"
+            ],
+            "properties": {
+                "count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "UpdateReviewResponse": {
             "type": "object",
             "required": [
                 "taggedUsers"
@@ -2863,16 +3220,19 @@ const docTemplate = `{
             ],
             "properties": {
                 "avatarUrl": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "bio": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "createdAt": {
                     "type": "string"
                 },
                 "displayName": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "id": {
                     "type": "string"
@@ -2901,6 +3261,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "reviewCount": {
+                    "description": "ReviewCount is how many nights out they've logged.",
                     "type": "integer"
                 },
                 "user": {
@@ -2911,12 +3272,19 @@ const docTemplate = `{
         "UserStatsResponse": {
             "type": "object",
             "required": [
+                "recentDjs",
                 "topDjs",
                 "topVenues",
                 "totalReviews",
                 "uniqueDjs"
             ],
             "properties": {
+                "recentDjs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/RecentDj"
+                    }
+                },
                 "topDjs": {
                     "type": "array",
                     "items": {
@@ -2930,6 +3298,7 @@ const docTemplate = `{
                     }
                 },
                 "totalReviews": {
+                    "description": "TotalReviews is how many nights out they've logged.",
                     "type": "integer"
                 },
                 "uniqueDjs": {
@@ -2966,13 +3335,13 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "event",
-                "logCount"
+                "reviewCount"
             ],
             "properties": {
                 "event": {
                     "$ref": "#/definitions/Event"
                 },
-                "logCount": {
+                "reviewCount": {
                     "type": "integer"
                 }
             }
@@ -2984,28 +3353,31 @@ const docTemplate = `{
                 "city",
                 "googlePlaceId",
                 "id",
-                "logCount",
-                "name"
+                "name",
+                "reviewCount"
             ],
             "properties": {
                 "address": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "city": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "googlePlaceId": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "id": {
                     "type": "string"
                 },
-                "logCount": {
-                    "description": "LogCount is how many nights out people have logged there.",
-                    "type": "integer"
-                },
                 "name": {
                     "type": "string"
+                },
+                "reviewCount": {
+                    "description": "ReviewCount is how many nights out people have logged there.",
+                    "type": "integer"
                 }
             }
         },
@@ -3031,6 +3403,30 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "checkInRequest": {
+            "type": "object",
+            "required": [
+                "accuracyM",
+                "latitude",
+                "longitude",
+                "venueId"
+            ],
+            "properties": {
+                "accuracyM": {
+                    "description": "How accurate the device says the fix is, in meters.",
+                    "type": "number"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "venueId": {
                     "type": "string"
                 }
             }
@@ -3065,19 +3461,40 @@ const docTemplate = `{
                 }
             }
         },
-        "createNightLogRequest": {
+        "createReportRequest": {
+            "type": "object",
+            "required": [
+                "reason"
+            ],
+            "properties": {
+                "commentId": {
+                    "type": "string"
+                },
+                "reason": {
+                    "description": "spam, harassment, hate, sexual, violence or other.",
+                    "type": "string"
+                },
+                "reviewId": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "createReviewRequest": {
             "type": "object",
             "required": [
                 "city",
-                "djReviews",
                 "eventId",
                 "eventName",
                 "isDay",
                 "isNight",
-                "lineupDjIds",
-                "night",
+                "lineup",
                 "placeId",
                 "placeSessionToken",
+                "rating",
+                "reviewText",
                 "seenAt",
                 "taggedUserIds",
                 "tags",
@@ -3087,12 +3504,6 @@ const docTemplate = `{
             "properties": {
                 "city": {
                     "type": "string"
-                },
-                "djReviews": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/djReviewInput"
-                    }
                 },
                 "eventId": {
                     "type": "string"
@@ -3107,25 +3518,23 @@ const docTemplate = `{
                 "isNight": {
                     "type": "boolean"
                 },
-                "lineupDjIds": {
-                    "description": "DJs you saw. DJs in djReviews are added too, whether or not they're\nlisted here.",
+                "lineup": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/lineupEntryInput"
                     }
-                },
-                "night": {
-                    "description": "Review of the night as a whole. Required.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/nightReviewInput"
-                        }
-                    ]
                 },
                 "placeId": {
                     "type": "string"
                 },
                 "placeSessionToken": {
+                    "type": "string"
+                },
+                "rating": {
+                    "description": "The night as a whole, 1-5. Required.",
+                    "type": "integer"
+                },
+                "reviewText": {
                     "type": "string"
                 },
                 "seenAt": {
@@ -3138,7 +3547,7 @@ const docTemplate = `{
                     }
                 },
                 "tags": {
-                    "description": "Tag names and tagged friends go on the night review.",
+                    "description": "Descriptive tag names (\"packed\"), and friends who were there.",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -3148,25 +3557,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "venueId": {
-                    "type": "string"
-                }
-            }
-        },
-        "djReviewInput": {
-            "type": "object",
-            "required": [
-                "djId",
-                "rating",
-                "reviewText"
-            ],
-            "properties": {
-                "djId": {
-                    "type": "string"
-                },
-                "rating": {
-                    "type": "integer"
-                },
-                "reviewText": {
                     "type": "string"
                 }
             }
@@ -3182,13 +3572,17 @@ const docTemplate = `{
                 }
             }
         },
-        "nightReviewInput": {
+        "lineupEntryInput": {
             "type": "object",
             "required": [
+                "djId",
                 "rating",
                 "reviewText"
             ],
             "properties": {
+                "djId": {
+                    "type": "string"
+                },
                 "rating": {
                     "type": "integer"
                 },
@@ -3228,21 +3622,6 @@ const docTemplate = `{
                 }
             }
         },
-        "updateNightLogRequest": {
-            "type": "object",
-            "required": [
-                "taggedUserIds"
-            ],
-            "properties": {
-                "taggedUserIds": {
-                    "description": "Replaces the tagged friends; [] clears them.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "updateProfileRequest": {
             "type": "object",
             "required": [
@@ -3263,6 +3642,21 @@ const docTemplate = `{
                 },
                 "username": {
                     "type": "string"
+                }
+            }
+        },
+        "updateReviewRequest": {
+            "type": "object",
+            "required": [
+                "taggedUserIds"
+            ],
+            "properties": {
+                "taggedUserIds": {
+                    "description": "Replaces the tagged friends; [] clears them.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         }

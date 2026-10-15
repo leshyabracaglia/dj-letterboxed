@@ -88,3 +88,22 @@ resource "aws_secretsmanager_secret_version" "google_places_api_key" {
   secret_id     = aws_secretsmanager_secret.google_places_api_key.id
   secret_string = var.google_places_api_key != "" ? var.google_places_api_key : "unset"
 }
+
+# Content report emails (Resend), reaching the instance the same way as the
+# Places key: refresh-env.sh on each deploy. "unset" (either one) means reports
+# are only saved and logged, not emailed.
+resource "aws_secretsmanager_secret" "resend_api_key" {
+  name = "${var.project}/resend-api-key"
+}
+resource "aws_secretsmanager_secret_version" "resend_api_key" {
+  secret_id     = aws_secretsmanager_secret.resend_api_key.id
+  secret_string = var.resend_api_key != "" ? var.resend_api_key : "unset"
+}
+
+resource "aws_secretsmanager_secret" "reports_email" {
+  name = "${var.project}/reports-email"
+}
+resource "aws_secretsmanager_secret_version" "reports_email" {
+  secret_id     = aws_secretsmanager_secret.reports_email.id
+  secret_string = var.reports_email != "" ? var.reports_email : "unset"
+}

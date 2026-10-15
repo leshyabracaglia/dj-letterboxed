@@ -13,7 +13,10 @@ import (
 var ErrNotFound = errors.New("not found")
 var ErrUsernameTaken = errors.New("username taken")
 
-const uniqueViolationCode = "23505"
+const (
+	uniqueViolationCode     = "23505"
+	foreignKeyViolationCode = "23503"
+)
 
 func scanUser(row pgx.Row) (*db.User, error) {
 	var u db.User
@@ -77,9 +80,9 @@ func CreateUserFallback(ctx context.Context, q DBTX, clerkID, fallbackUsername s
 }
 
 // UpsertUserFromClerk is used by the Clerk webhook handler for
-// user.created/user.updated events. Matches api/webhooks/clerk.ts exactly:
-// username is only set on insert, never overwritten on an update conflict
-// (a user may have since changed their app-side username).
+// user.created/user.updated events. The username is only set on insert,
+// never overwritten on an update conflict (a user may have since changed
+// their app-side username).
 func UpsertUserFromClerk(ctx context.Context, q DBTX, clerkID, username string, displayName, avatarURL *string) (*db.User, error) {
 	row := q.QueryRow(ctx, `
 		INSERT INTO users (clerk_id, username, display_name, avatar_url)
@@ -105,41 +108,16 @@ func SearchUsers(ctx context.Context, q DBTX, query string, limit int) ([]db.Use
 		WHERE $1 = '' OR username ILIKE '%' || $1 || '%' OR display_name ILIKE '%' || $1 || '%'
 		ORDER BY (SELECT COUNT(*) FROM follows f WHERE f.following_id = users.id) DESC, lower(username)
 		LIMIT $2`, query, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []db.User
-	for rows.Next() {
-		u, err := scanUser(rows)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, *u)
-	}
-	return out, rows.Err()
+	return scanUserRows(rows, err)
 }
 
 // GetUsersByIDs batch-fetches users for hydrating relations, keyed by id.
 func GetUsersByIDs(ctx context.Context, q DBTX, ids []string) (map[string]db.User, error) {
-	out := make(map[string]db.User, len(ids))
 	if len(ids) == 0 {
-		return out, nil
+		return map[string]db.User{}, nil
 	}
 	rows, err := q.Query(ctx, "SELECT "+userCols+" FROM users WHERE id = ANY($1)", ids)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		u, err := scanUser(rows)
-		if err != nil {
-			return nil, err
-		}
-		out[u.ID] = *u
-	}
-	return out, rows.Err()
+	return collectMap(rows, err, rowsOf(scanUser), func(u db.User) string { return u.ID })
 }
 
 func UpdateUserProfile(ctx context.Context, q DBTX, id string, username, displayName, bio, avatarURL *string) (*db.User, error) {
@@ -161,35 +139,4 @@ func UpdateUserProfile(ctx context.Context, q DBTX, id string, username, display
 		return nil, err
 	}
 	return u, nil
-}
-
-type LeaderboardEntry struct {
-	User        db.User `json:"user"`
-	ReviewCount int64   `json:"reviewCount"`
-}
-
-// GetLeaderboard scopes to the caller and everyone they follow.
-func GetLeaderboard(ctx context.Context, q DBTX, userIDs []string) ([]LeaderboardEntry, error) {
-	rows, err := q.Query(ctx, `
-		SELECT u.id, u.clerk_id, u.username, u.display_name, u.bio, u.avatar_url, u.created_at, u.updated_at,
-			COUNT(r.id) AS review_count
-		FROM users u
-		LEFT JOIN reviews r ON r.user_id = u.id
-		WHERE u.id = ANY($1)
-		GROUP BY u.id
-		ORDER BY review_count DESC`, userIDs)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []LeaderboardEntry
-	for rows.Next() {
-		var e LeaderboardEntry
-		if err := rows.Scan(&e.User.ID, &e.User.ClerkID, &e.User.Username, &e.User.DisplayName, &e.User.Bio, &e.User.AvatarURL, &e.User.CreatedAt, &e.User.UpdatedAt, &e.ReviewCount); err != nil {
-			return nil, err
-		}
-		out = append(out, e)
-	}
-	return out, rows.Err()
 }

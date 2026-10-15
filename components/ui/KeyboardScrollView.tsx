@@ -77,12 +77,7 @@ export function KeyboardScrollView({ children, ref, ...props }: ScrollViewProps 
   }, []);
 
   return (
-    <ScrollView
-      {...KEYBOARD_DISMISS_PROPS}
-      {...props}
-      ref={scrollRef}
-      innerViewRef={innerRef as React.RefObject<View>}
-    >
+    <ScrollView {...KEYBOARD_DISMISS_PROPS} {...props} ref={scrollRef} innerViewRef={innerRef as React.RefObject<View>}>
       {children}
       {!!overlap && <View style={{ height: overlap }} />}
     </ScrollView>

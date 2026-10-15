@@ -13,15 +13,20 @@ export function usePageGutter(): number {
   return Math.max(MIN_GUTTER, (width - MAX_CONTENT_WIDTH) / 2);
 }
 
+// Space above a page's scroll content: "flush" for content that opens with
+// its own header block (profiles, detail pages under a stack header),
+// "roomy" for plain pages that open straight into text or rows.
+const CONTENT_TOP = { flush: 0, default: 16, roomy: 24 } as const;
+
 // For a FlatList/ScrollView's contentContainerStyle, so the scroll area
 // itself stays full-width (scrollbar at the window edge, card shadows not
 // clipped) while its content lines up with the page gutter.
-export function usePageContentStyle(): ViewStyle {
+export function usePageContentStyle(top: keyof typeof CONTENT_TOP = "default"): ViewStyle {
   const gutter = usePageGutter();
   const { bottom } = useSafeAreaInsets();
   // Page leaves out the bottom safe-area edge, so the inset goes here, inside
   // the scroll area, where it scrolls instead of sitting as a fixed gap.
-  return { paddingHorizontal: gutter, paddingTop: 16, paddingBottom: 16 + bottom };
+  return { paddingHorizontal: gutter, paddingTop: CONTENT_TOP[top], paddingBottom: 16 + bottom };
 }
 
 // The top WebNav only fits a desktop-width browser; phone-sized web gets the

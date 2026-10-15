@@ -50,3 +50,14 @@ variable "google_places_api_key" {
   sensitive = true
   default   = ""
 }
+
+variable "resend_api_key" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "reports_email" {
+  type    = string
+  default = ""
+}

@@ -10,14 +10,29 @@ definitions:
     - iosUpdateUrl
     - minIosBuild
     type: object
+  CheckInResponse:
+    properties:
+      checkedInAt:
+        description: |-
+          When the caller checked in there (an earlier check-in the same night
+          stands). Logging the venue for that night shows as verified.
+        type: string
+      venue:
+        $ref: '#/definitions/NearbyVenue'
+    required:
+    - checkedInAt
+    - venue
+    type: object
   Dj:
     properties:
       bio:
         type: string
+        x-nullable: true
       createdAt:
         type: string
       createdByUserId:
         type: string
+        x-nullable: true
       genres:
         items:
           type: string
@@ -26,12 +41,14 @@ definitions:
         type: string
       imageUrl:
         type: string
+        x-nullable: true
       name:
         type: string
       slug:
         type: string
       spotifyId:
         type: string
+        x-nullable: true
       updatedAt:
         type: string
     required:
@@ -50,12 +67,13 @@ definitions:
     properties:
       avgRating:
         type: number
+        x-nullable: true
       dj:
         $ref: '#/definitions/Dj'
       ratingCounts:
         description: |-
-          RatingCounts is how many reviews gave each star rating: index 0 is
-          1 star, index 4 is 5 stars.
+          RatingCounts is how many ratings of them gave each star rating: index
+          0 is 1 star, index 4 is 5 stars.
         items:
           type: integer
         type: array
@@ -72,47 +90,13 @@ definitions:
     - recentReviews
     - reviewCount
     type: object
-  DjReviewDTO:
-    properties:
-      createdAt:
-        type: string
-      dj:
-        $ref: '#/definitions/Dj'
-      djId:
-        description: DjID is nil for a review of the night as a whole.
-        type: string
-      id:
-        type: string
-      logId:
-        type: string
-      rating:
-        type: integer
-      reviewText:
-        type: string
-      seenAt:
-        description: SeenAt mirrors the log's, kept here for ordering and pagination.
-        type: string
-      updatedAt:
-        type: string
-      userId:
-        type: string
-    required:
-    - createdAt
-    - djId
-    - id
-    - logId
-    - rating
-    - reviewText
-    - seenAt
-    - updatedAt
-    - userId
-    type: object
   Event:
     properties:
       createdAt:
         type: string
       createdByUserId:
         type: string
+        x-nullable: true
       id:
         type: string
       name:
@@ -152,24 +136,24 @@ definitions:
     properties:
       dj:
         $ref: '#/definitions/Dj'
-      logCount:
+      reviewCount:
         type: integer
     required:
     - dj
-    - logCount
+    - reviewCount
     type: object
   EventSummary:
     properties:
       avgRating:
         type: number
+        x-nullable: true
       createdAt:
         type: string
       createdByUserId:
         type: string
+        x-nullable: true
       id:
         type: string
-      logCount:
-        type: integer
       name:
         type: string
       reviewCount:
@@ -181,7 +165,6 @@ definitions:
     - createdAt
     - createdByUserId
     - id
-    - logCount
     - name
     - reviewCount
     - slug
@@ -190,17 +173,18 @@ definitions:
     properties:
       city:
         type: string
+        x-nullable: true
       id:
         type: string
-      logCount:
-        type: integer
       name:
         type: string
+      reviewCount:
+        type: integer
     required:
     - city
     - id
-    - logCount
     - name
+    - reviewCount
     type: object
   FavoriteReviewsResponse:
     properties:
@@ -221,6 +205,7 @@ definitions:
         type: array
       nextCursor:
         type: string
+        x-nullable: true
     required:
     - followingCount
     - items
@@ -233,122 +218,101 @@ definitions:
     required:
     - following
     type: object
-  LeaderboardEntry:
+  LineupEntry:
     properties:
-      reviewCount:
+      dj:
+        $ref: '#/definitions/Dj'
+      rating:
         type: integer
-      user:
+        x-nullable: true
+      reviewText:
+        type: string
+        x-nullable: true
+    required:
+    - dj
+    - rating
+    - reviewText
+    type: object
+  NearbyVenue:
+    properties:
+      city:
+        type: string
+        x-nullable: true
+      distanceM:
+        type: integer
+      id:
+        type: string
+      name:
+        type: string
+    required:
+    - city
+    - distanceM
+    - id
+    - name
+    type: object
+  NearbyVenuesResponse:
+    properties:
+      venues:
+        items:
+          $ref: '#/definitions/NearbyVenue'
+        type: array
+    required:
+    - venues
+    type: object
+  Notification:
+    properties:
+      actor:
         $ref: '#/definitions/User'
-    required:
-    - reviewCount
-    - user
-    type: object
-  Log:
-    properties:
-      city:
+      commentBody:
+        description: The comment's text, on comments.
         type: string
       createdAt:
         type: string
-      eventId:
-        description: EventID is nil for a night with no event name (just a venue).
-        type: string
       id:
         type: string
-      isDay:
-        description: |-
-          IsDay and IsNight say when this person went; both is day into night.
-          At least one is set.
+      isUnread:
         type: boolean
-      isNight:
-        type: boolean
-      seenAt:
-        type: string
-      userId:
-        type: string
-      venue:
+      nightLogged:
         description: |-
-          Venue is the venue's display name, denormalized alongside VenueID.
-          Both are nil only on logs migrated from reviews that had no night.
+          On tags: whether the recipient has logged the night themselves (see
+          sameNightLoggedCond), so the app only prompts them to if not.
+        type: boolean
+      reviewId:
+        description: |-
+          The night out it's about (not on follows), and its title (see
+          nightTitleSQL).
         type: string
-      venueId:
+      subject:
+        type: string
+      type:
+        enum:
+        - follow
+        - like
+        - comment
+        - tag
         type: string
     required:
-    - city
+    - actor
+    - commentBody
     - createdAt
-    - eventId
     - id
-    - isDay
-    - isNight
-    - seenAt
-    - userId
-    - venue
-    - venueId
+    - isUnread
+    - nightLogged
+    - reviewId
+    - subject
+    - type
     type: object
-  LogDTO:
+  NotificationsResponse:
     properties:
-      city:
-        type: string
-      createdAt:
-        type: string
-      event:
-        $ref: '#/definitions/Event'
-      eventId:
-        description: EventID is nil for a night with no event name (just a venue).
-        type: string
-      id:
-        type: string
-      isDay:
-        description: |-
-          IsDay and IsNight say when this person went; both is day into night.
-          At least one is set.
-        type: boolean
-      isNight:
-        type: boolean
-      lineup:
+      items:
         items:
-          $ref: '#/definitions/Dj'
+          $ref: '#/definitions/Notification'
         type: array
-      seenAt:
-        type: string
-      userId:
-        type: string
-      venue:
-        description: |-
-          Venue is the venue's display name, denormalized alongside VenueID.
-          Both are nil only on logs migrated from reviews that had no night.
-        type: string
-      venueId:
+      nextCursor:
         type: string
     required:
-    - city
-    - createdAt
-    - event
-    - eventId
-    - id
-    - isDay
-    - isNight
-    - lineup
-    - seenAt
-    - userId
-    - venue
-    - venueId
-    type: object
-  NightLogResponse:
-    properties:
-      event:
-        allOf:
-        - $ref: '#/definitions/Event'
-        description: Event is nil for a night with no event name.
-      log:
-        $ref: '#/definitions/Log'
-      reviews:
-        items:
-          $ref: '#/definitions/Review'
-        type: array
-    required:
-    - event
-    - log
-    - reviews
+    - items
+    - nextCursor
     type: object
   PaginatedReviews:
     properties:
@@ -358,6 +322,7 @@ definitions:
         type: array
       nextCursor:
         type: string
+        x-nullable: true
     required:
     - items
     - nextCursor
@@ -413,11 +378,15 @@ definitions:
   RAArtistMatch:
     properties:
       dj:
-        $ref: '#/definitions/Dj'
+        allOf:
+        - $ref: '#/definitions/Dj'
+        x-nullable: true
       name:
         type: string
       spotify:
-        $ref: '#/definitions/SpotifyArtist'
+        allOf:
+        - $ref: '#/definitions/SpotifyArtist'
+        x-nullable: true
     required:
     - dj
     - name
@@ -438,6 +407,7 @@ definitions:
         type: string
       flyerUrl:
         type: string
+        x-nullable: true
       id:
         type: string
       startTime:
@@ -472,6 +442,7 @@ definitions:
           EventName is the party's name, or null when the night has none (an
           RA title that's just the lineup) and is headed by the venue.
         type: string
+        x-nullable: true
       isDay:
         type: boolean
       isNight:
@@ -501,6 +472,7 @@ definitions:
         description: |-
           Area is the one listed: the one asked for, or the area of the
           caller's latest night out; null when neither is known.
+        x-nullable: true
       events:
         items:
           $ref: '#/definitions/RAEvent'
@@ -532,11 +504,15 @@ definitions:
       name:
         type: string
       place:
-        $ref: '#/definitions/PlaceSuggestion'
+        allOf:
+        - $ref: '#/definitions/PlaceSuggestion'
+        x-nullable: true
       placeSessionToken:
         type: string
       venue:
-        $ref: '#/definitions/VenueSummary'
+        allOf:
+        - $ref: '#/definitions/VenueSummary'
+        x-nullable: true
     required:
     - city
     - name
@@ -544,38 +520,15 @@ definitions:
     - placeSessionToken
     - venue
     type: object
-  Review:
+  RecentDj:
     properties:
-      createdAt:
-        type: string
-      djId:
-        description: DjID is nil for a review of the night as a whole.
-        type: string
-      id:
-        type: string
-      logId:
-        type: string
-      rating:
-        type: integer
-      reviewText:
-        type: string
-      seenAt:
-        description: SeenAt mirrors the log's, kept here for ordering and pagination.
-        type: string
-      updatedAt:
-        type: string
-      userId:
+      dj:
+        $ref: '#/definitions/Dj'
+      lastSeenAt:
         type: string
     required:
-    - createdAt
-    - djId
-    - id
-    - logId
-    - rating
-    - reviewText
-    - seenAt
-    - updatedAt
-    - userId
+    - dj
+    - lastSeenAt
     type: object
   ReviewComment:
     properties:
@@ -600,45 +553,50 @@ definitions:
     type: object
   ReviewDTO:
     properties:
+      city:
+        type: string
+        x-nullable: true
       commentCount:
         type: integer
       createdAt:
         type: string
-      dj:
-        $ref: '#/definitions/Dj'
-      djId:
-        description: DjID is nil for a review of the night as a whole.
+      event:
+        allOf:
+        - $ref: '#/definitions/Event'
+        x-nullable: true
+      eventId:
+        description: EventID is nil for a night with no event name (just a venue).
         type: string
-      djReviews:
-        description: |-
-          DjReviews are the log's other DJ reviews, by DJ name, on a review
-          that stands for its whole night out (see queries.leadReviewCond) - the
-          feed, profiles, event and venue pages, and a review's own page.
-        items:
-          $ref: '#/definitions/DjReviewDTO'
-        type: array
+        x-nullable: true
       id:
         type: string
+      isDay:
+        description: |-
+          IsDay and IsNight say when this person went; both is day into night.
+          At least one is set.
+        type: boolean
       isLikedByMe:
+        type: boolean
+      isNight:
         type: boolean
       isPopular:
         type: boolean
       likeCount:
         type: integer
-      log:
-        allOf:
-        - $ref: '#/definitions/LogDTO'
-        description: |-
-          Log is the night out this review is part of: event, venue, date,
-          day/night and lineup.
-      logId:
-        type: string
+      lineup:
+        items:
+          $ref: '#/definitions/LineupEntry'
+        type: array
       rating:
+        description: |-
+          Rating of the night as a whole, 1-5. Nil only on nights logged before
+          nights were rated, which only rated their DJs.
         type: integer
+        x-nullable: true
       reviewText:
         type: string
+        x-nullable: true
       seenAt:
-        description: SeenAt mirrors the log's, kept here for ordering and pagination.
         type: string
       taggedUsers:
         items:
@@ -654,11 +612,37 @@ definitions:
         $ref: '#/definitions/User'
       userId:
         type: string
+      venue:
+        description: |-
+          Venue is the venue's display name, denormalized alongside VenueID.
+          Both are nil only on nights migrated from reviews that never had one.
+        type: string
+        x-nullable: true
+      venueId:
+        type: string
+        x-nullable: true
+      verified:
+        description: |-
+          Verified is whether this person checked in at the venue that night
+          (see the check_ins table), worked out when the review is read.
+        type: boolean
+      viewerLoggedNight:
+        description: |-
+          On a review's own page, when the caller is tagged in it: whether
+          they've logged the night themselves (the page prompts them to if not).
+        type: boolean
     required:
+    - city
+    - commentCount
     - createdAt
-    - djId
+    - event
+    - eventId
     - id
-    - logId
+    - isDay
+    - isLikedByMe
+    - isNight
+    - likeCount
+    - lineup
     - rating
     - reviewText
     - seenAt
@@ -666,6 +650,9 @@ definitions:
     - tags
     - updatedAt
     - userId
+    - venue
+    - venueId
+    - verified
     type: object
   SpotifyArtist:
     properties:
@@ -675,6 +662,7 @@ definitions:
         type: array
       imageUrl:
         type: string
+        x-nullable: true
       name:
         type: string
       spotifyId:
@@ -712,11 +700,11 @@ definitions:
     properties:
       dj:
         $ref: '#/definitions/Dj'
-      reviewCount:
+      timesSeen:
         type: integer
     required:
     - dj
-    - reviewCount
+    - timesSeen
     type: object
   TopVenue:
     properties:
@@ -728,7 +716,14 @@ definitions:
     - reviewCount
     - venue
     type: object
-  UpdateNightLogResponse:
+  UnreadNotificationsResponse:
+    properties:
+      count:
+        type: integer
+    required:
+    - count
+    type: object
+  UpdateReviewResponse:
     properties:
       taggedUsers:
         items:
@@ -741,12 +736,15 @@ definitions:
     properties:
       avatarUrl:
         type: string
+        x-nullable: true
       bio:
         type: string
+        x-nullable: true
       createdAt:
         type: string
       displayName:
         type: string
+        x-nullable: true
       id:
         type: string
       updatedAt:
@@ -769,6 +767,7 @@ definitions:
       followingCount:
         type: integer
       reviewCount:
+        description: ReviewCount is how many nights out they've logged.
         type: integer
       user:
         $ref: '#/definitions/User'
@@ -780,6 +779,10 @@ definitions:
     type: object
   UserStatsResponse:
     properties:
+      recentDjs:
+        items:
+          $ref: '#/definitions/RecentDj'
+        type: array
       topDjs:
         items:
           $ref: '#/definitions/TopDj'
@@ -789,10 +792,12 @@ definitions:
           $ref: '#/definitions/TopVenue'
         type: array
       totalReviews:
+        description: TotalReviews is how many nights out they've logged.
         type: integer
       uniqueDjs:
         type: integer
     required:
+    - recentDjs
     - topDjs
     - topVenues
     - totalReviews
@@ -819,34 +824,37 @@ definitions:
     properties:
       event:
         $ref: '#/definitions/Event'
-      logCount:
+      reviewCount:
         type: integer
     required:
     - event
-    - logCount
+    - reviewCount
     type: object
   VenueSummary:
     properties:
       address:
         type: string
+        x-nullable: true
       city:
         type: string
+        x-nullable: true
       googlePlaceId:
         type: string
+        x-nullable: true
       id:
         type: string
-      logCount:
-        description: LogCount is how many nights out people have logged there.
-        type: integer
       name:
         type: string
+      reviewCount:
+        description: ReviewCount is how many nights out people have logged there.
+        type: integer
     required:
     - address
     - city
     - googlePlaceId
     - id
-    - logCount
     - name
+    - reviewCount
     type: object
   addCommentRequest:
     properties:
@@ -864,6 +872,23 @@ definitions:
     required:
     - code
     - message
+    type: object
+  checkInRequest:
+    properties:
+      accuracyM:
+        description: How accurate the device says the fix is, in meters.
+        type: number
+      latitude:
+        type: number
+      longitude:
+        type: number
+      venueId:
+        type: string
+    required:
+    - accuracyM
+    - latitude
+    - longitude
+    - venueId
     type: object
   createDjRequest:
     properties:
@@ -886,14 +911,24 @@ definitions:
     - name
     - spotifyId
     type: object
-  createNightLogRequest:
+  createReportRequest:
+    properties:
+      commentId:
+        type: string
+      reason:
+        description: spam, harassment, hate, sexual, violence or other.
+        type: string
+      reviewId:
+        type: string
+      userId:
+        type: string
+    required:
+    - reason
+    type: object
+  createReviewRequest:
     properties:
       city:
         type: string
-      djReviews:
-        items:
-          $ref: '#/definitions/djReviewInput'
-        type: array
       eventId:
         type: string
       eventName:
@@ -903,20 +938,18 @@ definitions:
         type: boolean
       isNight:
         type: boolean
-      lineupDjIds:
-        description: |-
-          DJs you saw. DJs in djReviews are added too, whether or not they're
-          listed here.
+      lineup:
         items:
-          type: string
+          $ref: '#/definitions/lineupEntryInput'
         type: array
-      night:
-        allOf:
-        - $ref: '#/definitions/nightReviewInput'
-        description: Review of the night as a whole. Required.
       placeId:
         type: string
       placeSessionToken:
+        type: string
+      rating:
+        description: The night as a whole, 1-5. Required.
+        type: integer
+      reviewText:
         type: string
       seenAt:
         type: string
@@ -925,7 +958,7 @@ definitions:
           type: string
         type: array
       tags:
-        description: Tag names and tagged friends go on the night review.
+        description: Descriptive tag names ("packed"), and friends who were there.
         items:
           type: string
         type: array
@@ -935,22 +968,29 @@ definitions:
         type: string
     required:
     - city
-    - djReviews
     - eventId
     - eventName
     - isDay
     - isNight
-    - lineupDjIds
-    - night
+    - lineup
     - placeId
     - placeSessionToken
+    - rating
+    - reviewText
     - seenAt
     - taggedUserIds
     - tags
     - venue
     - venueId
     type: object
-  djReviewInput:
+  errorEnvelope:
+    properties:
+      error:
+        $ref: '#/definitions/apiError'
+    required:
+    - error
+    type: object
+  lineupEntryInput:
     properties:
       djId:
         type: string
@@ -960,23 +1000,6 @@ definitions:
         type: string
     required:
     - djId
-    - rating
-    - reviewText
-    type: object
-  errorEnvelope:
-    properties:
-      error:
-        $ref: '#/definitions/apiError'
-    required:
-    - error
-    type: object
-  nightReviewInput:
-    properties:
-      rating:
-        type: integer
-      reviewText:
-        type: string
-    required:
     - rating
     - reviewText
     type: object
@@ -1001,16 +1024,6 @@ definitions:
     required:
     - reviewIds
     type: object
-  updateNightLogRequest:
-    properties:
-      taggedUserIds:
-        description: Replaces the tagged friends; [] clears them.
-        items:
-          type: string
-        type: array
-    required:
-    - taggedUserIds
-    type: object
   updateProfileRequest:
     properties:
       avatarUrl:
@@ -1026,6 +1039,16 @@ definitions:
     - bio
     - displayName
     - username
+    type: object
+  updateReviewRequest:
+    properties:
+      taggedUserIds:
+        description: Replaces the tagged friends; [] clears them.
+        items:
+          type: string
+        type: array
+    required:
+    - taggedUserIds
     type: object
 info:
   contact: {}
@@ -1048,6 +1071,83 @@ paths:
       summary: Minimum supported native app build, for the client's force-update check
       tags:
       - app
+  /api/check-ins:
+    post:
+      consumes:
+      - application/json
+      description: The venue must have coordinates, and latitude/longitude must be
+        within 150m of it (up to 400m for a less accurate fix). Only the distance
+        is stored, not the coordinates. A repeat check-in the same night is a no-op.
+      parameters:
+      - description: the venue and where the caller is
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/checkInRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/CheckInResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Check in at a venue, so the caller's log of it tonight shows as verified
+      tags:
+      - check-ins
+  /api/check-ins/nearby:
+    get:
+      description: Saved venues with coordinates within a few hundred meters of lat/lng.
+        The coordinates aren't stored.
+      parameters:
+      - description: the caller's latitude
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: the caller's longitude
+        in: query
+        name: lng
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/NearbyVenuesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Venues the caller is at, to check in at, nearest first
+      tags:
+      - check-ins
   /api/comments/{id}:
     delete:
       parameters:
@@ -1131,7 +1231,12 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/PaginatedReviews'
-      summary: List reviews for a DJ, cursor-paginated by seenAt desc
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: List the nights out a DJ was on the lineup of (with any rating of them
+        in the lineup), cursor-paginated by seenAt desc
       tags:
       - djs
   /api/djs/{slug}:
@@ -1253,7 +1358,7 @@ paths:
   /api/feed:
     get:
       parameters:
-      - description: pagination cursor (opaque, encodes createdAt + popular-pool offset)
+      - description: pagination cursor (opaque, encodes the last item's createdAt)
         in: query
         name: cursor
         type: string
@@ -1274,8 +1379,7 @@ paths:
             $ref: '#/definitions/errorEnvelope'
       security:
       - BearerAuth: []
-      summary: 'Activity feed: followed users'' reviews interleaved with popular ones
-        every 4th item'
+      summary: 'Following feed: followed users'' nights out, newest logged first'
       tags:
       - feed
   /api/feed/popular:
@@ -1292,7 +1396,7 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/PopularResponse'
-      summary: Most-liked-and-commented reviews, ranked
+      summary: Most-liked-and-commented nights out, ranked
       tags:
       - feed
   /api/follows/{userId}:
@@ -1312,6 +1416,10 @@ paths:
             $ref: '#/definitions/SuccessResponse'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
       security:
@@ -1341,6 +1449,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
       security:
       - BearerAuth: []
       summary: Follow a user
@@ -1365,71 +1477,45 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
       security:
       - BearerAuth: []
       summary: Whether the caller follows the given user
       tags:
       - follows
-  /api/leaderboard:
+  /api/notifications:
     get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/LeaderboardEntry'
-            type: array
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Leaderboard scoped to the caller and everyone they follow
-      tags:
-      - users
-  /api/logs:
-    post:
-      consumes:
-      - application/json
       parameters:
-      - description: the night to log
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/createNightLogRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/NightLogResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/errorEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: 'Log a night out: the event (picked, or found or created by name),
-        venue, day, lineup, and the night and DJ reviews, in one go'
-      tags:
-      - logs
-  /api/logs/{id}:
-    delete:
-      parameters:
-      - description: log id
-        in: path
-        name: id
-        required: true
+      - description: pagination cursor (opaque, encodes the last item's createdAt)
+        in: query
+        name: cursor
         type: string
+      - description: page size, 1-50, default 30
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/NotificationsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: The caller's notifications (follows, likes, comments, being tagged),
+        newest first
+      tags:
+      - notifications
+  /api/notifications/seen:
+    post:
       produces:
       - application/json
       responses:
@@ -1441,59 +1527,30 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/errorEnvelope'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/errorEnvelope'
       security:
       - BearerAuth: []
-      summary: Delete a night out owned by the caller, with all its reviews (404,
-        never 403, if not owned/found)
+      summary: Mark all of the caller's notifications read
       tags:
-      - logs
-    patch:
-      consumes:
-      - application/json
-      description: The rest of a log - event, venue, date, lineup, ratings, reviews
-        and tags - is fixed once logged. Tagged friends go on the night review, or
-        on every DJ review when there's no night review.
-      parameters:
-      - description: log id
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: who was there
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/updateNightLogRequest'
+      - notifications
+  /api/notifications/unread-count:
+    get:
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/UpdateNightLogResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/errorEnvelope'
+            $ref: '#/definitions/UnreadNotificationsResponse'
         "401":
           description: Unauthorized
           schema:
             $ref: '#/definitions/errorEnvelope'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/errorEnvelope'
       security:
       - BearerAuth: []
-      summary: Change who was tagged as being at a night out owned by the caller (404,
-        never 403, if not owned/found)
+      summary: How many of the caller's notifications came in since they last marked
+        them seen
       tags:
-      - logs
+      - notifications
   /api/ra/areas:
     get:
       parameters:
@@ -1623,6 +1680,74 @@ paths:
       summary: Turn a Resident Advisor night into a log to fill in
       tags:
       - ra
+  /api/reports:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: what's reported, and why
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/createReportRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Report a review, comment or user for moderation
+      tags:
+      - moderation
+  /api/reviews:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: the night to log
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/createReviewRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ReviewDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 'Log a night out: the event (picked, or found or created by name),
+        venue, day, rating, the DJs seen and any DJ reviews, tags and friends, in
+        one go'
+      tags:
+      - reviews
   /api/reviews/{id}:
     delete:
       parameters:
@@ -1648,9 +1773,8 @@ paths:
             $ref: '#/definitions/errorEnvelope'
       security:
       - BearerAuth: []
-      summary: Delete a review owned by the caller (404, never 403, if not owned/found).
-        Deleting the review a night out is posted as (its night review) deletes the
-        whole night out, as does deleting its last review.
+      summary: Delete a night out owned by the caller, with its DJ reviews, likes,
+        comments and tags (404, never 403, if not owned/found)
       tags:
       - reviews
     get:
@@ -1671,9 +1795,50 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
-      summary: 'Get the night-out post a review belongs to: its lead review (which
-        may not be the id asked for) with its relations, the night''s DJ reviews,
-        engagement, and tagged users'
+      summary: Get a night out with its lineup and DJ reviews, engagement, tags and
+        tagged friends
+      tags:
+      - reviews
+    patch:
+      consumes:
+      - application/json
+      description: The rest of a review - event, venue, date, ratings, lineup, text
+        and tags - is fixed once logged.
+      parameters:
+      - description: review id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: who was there
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/updateReviewRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UpdateReviewResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Change who was tagged as being at a night out owned by the caller (404,
+        never 403, if not owned/found)
       tags:
       - reviews
   /api/reviews/{id}/comments:
@@ -1697,8 +1862,7 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
-      summary: List the comments on a review's night out (its lead review's), oldest
-        first
+      summary: List the comments on a night out, oldest first
       tags:
       - reviews
     post:
@@ -1731,13 +1895,17 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/errorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errorEnvelope'
         "404":
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
       security:
       - BearerAuth: []
-      summary: Comment on a review's night out (comments go on its lead review)
+      summary: Comment on a night out
       tags:
       - reviews
   /api/reviews/{id}/like:
@@ -1765,7 +1933,7 @@ paths:
             $ref: '#/definitions/errorEnvelope'
       security:
       - BearerAuth: []
-      summary: Unlike a review's night out
+      summary: Unlike a night out
       tags:
       - reviews
     post:
@@ -1786,14 +1954,17 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/errorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errorEnvelope'
         "404":
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
       security:
       - BearerAuth: []
-      summary: Like a review's night out (likes go on its lead review, whichever of
-        the log's reviews is given)
+      summary: Like a night out
       tags:
       - reviews
   /api/tags:
@@ -1820,6 +1991,62 @@ paths:
         used first
       tags:
       - tags
+  /api/users/{userId}/block:
+    delete:
+      parameters:
+      - description: user id to unblock
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Unblock a user
+      tags:
+      - moderation
+    post:
+      parameters:
+      - description: user id to block
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 'Block a user: hides each of you from the other and unfollows both
+        ways'
+      tags:
+      - moderation
   /api/users/{userId}/followers:
     get:
       parameters:
@@ -1837,6 +2064,10 @@ paths:
             items:
               $ref: '#/definitions/User'
             type: array
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
       summary: List the users who follow the given user
       tags:
       - follows
@@ -1857,6 +2088,10 @@ paths:
             items:
               $ref: '#/definitions/User'
             type: array
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
       summary: List the users the given user follows
       tags:
       - follows
@@ -1901,7 +2136,7 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
-      summary: 'Get a user''s showcased favorite reviews (top 3, ordered, #1 first)'
+      summary: 'Get a user''s showcased favorite nights out (top 3, ordered, #1 first)'
       tags:
       - users
   /api/users/{username}/reviews:
@@ -1931,8 +2166,7 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
-      summary: List a user's nights out (one lead review each, with the night's DJ
-        reviews), cursor-paginated by seenAt desc
+      summary: List a user's nights out, cursor-paginated by seenAt desc
       tags:
       - reviews
   /api/users/{username}/stats:
@@ -1954,7 +2188,8 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
-      summary: 'Get a user''s review stats: totals, top DJs, top venues'
+      summary: 'Get a user''s review stats: totals, most-seen and recently seen DJs,
+        top venues'
       tags:
       - users
   /api/users/me:
@@ -2009,6 +2244,26 @@ paths:
       summary: Update the caller's own profile
       tags:
       - users
+  /api/users/me/blocks:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/User'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: List the users the caller has blocked, most recent first
+      tags:
+      - moderation
   /api/users/me/favorites:
     patch:
       consumes:
@@ -2041,8 +2296,8 @@ paths:
             $ref: '#/definitions/errorEnvelope'
       security:
       - BearerAuth: []
-      summary: 'Replace the caller''s showcased favorite reviews (0-3, ordered, #1
-        first) - reviews must be the caller''s own'
+      summary: 'Replace the caller''s showcased favorite nights out (0-3, ordered,
+        #1 first) - they must be the caller''s own'
       tags:
       - users
   /api/users/me/push-tokens:

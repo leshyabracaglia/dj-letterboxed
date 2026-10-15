@@ -28,6 +28,8 @@ SECRETS=(
 
 OPTIONAL_SECRETS=(
   "GOOGLE_PLACES_API_KEY=beatboxd/google-places-api-key"
+  "RESEND_API_KEY=beatboxd/resend-api-key"
+  "REPORTS_EMAIL=beatboxd/reports-email"
 )
 
 tmp=$(mktemp)

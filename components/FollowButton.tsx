@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { Pressable } from "react-native";
 
 import { Text } from "./ui";
+import { useCurrentUser } from "../lib/auth";
 import { useApi } from "../lib/api/client";
 import { queryKeys } from "../lib/api/queryKeys";
 import type { UserProfile } from "../lib/api/types";
@@ -15,6 +16,7 @@ type FollowingSnapshot = { following: boolean } | undefined;
  * pass it when available so the profile's follower count updates in step. */
 export function FollowButton({ userId, username }: { userId: string; username?: string }) {
   const { isSignedIn } = useAuth();
+  const { me } = useCurrentUser();
   const api = useApi();
   const queryClient = useQueryClient();
   const followingKey = queryKeys.follows.isFollowing(userId);
@@ -56,6 +58,13 @@ export function FollowButton({ userId, username }: { userId: string; username?: 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: followingKey });
     if (profileKey) queryClient.invalidateQueries({ queryKey: profileKey });
+    // Your own following count and list.
+    if (me) {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.byUsername(me.username), exact: true });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.following(me.id) });
+    }
+    // Who you follow decides what's on (and whether there is) a Following feed.
+    queryClient.invalidateQueries({ queryKey: queryKeys.feed.activity(), exact: true });
   };
 
   const follow = useMutation({
@@ -77,13 +86,7 @@ export function FollowButton({ userId, username }: { userId: string; username?: 
   return (
     <Pressable
       disabled={pending}
-      onPress={() =>
-        isSignedIn
-          ? isFollowing
-            ? unfollow.mutate()
-            : follow.mutate()
-          : router.push(ROUTES.SIGN_IN)
-      }
+      onPress={() => (isSignedIn ? (isFollowing ? unfollow.mutate() : follow.mutate()) : router.push(ROUTES.SIGN_IN))}
       // Shadow classes on in both states (see SegmentedTabs): toggling a
       // shadow color after the first render crashes NativeWind's remount.
       className={`rounded-lg px-4 py-2 shadow-md active:opacity-80 ${

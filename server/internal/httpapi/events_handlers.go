@@ -59,17 +59,13 @@ func (h *Handlers) GetEventBySlug(w http.ResponseWriter, r *http.Request) {
 		InternalError(w, err)
 		return
 	}
-	reviews, err := queries.ListEventReviews(ctx, h.Pool, event.ID, 30)
+	reviews, err := queries.ListReviewsByEvent(ctx, h.Pool, event.ID, 30)
 	if err != nil {
 		InternalError(w, err)
 		return
 	}
-	dtos, err := h.hydrateReviews(ctx, reviews, hydrateOpts{
-		IncludeUser: true, IncludeDj: true, IncludeLog: true,
-		IncludeEngagement: true, IncludeDjReviews: true, CurrentUserID: optionalUserID(r),
-	})
-	if err != nil {
-		InternalError(w, err)
+	dtos, ok := h.visibleReviews(w, r, reviews)
+	if !ok {
 		return
 	}
 
@@ -81,17 +77,17 @@ func (h *Handlers) GetEventBySlug(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// resolveEvent returns the event a log names: an existing one by id, or one
+// resolveEvent returns the event a review names: an existing one by id, or one
 // found or created by name. Neither given means a night with no event name
 // (nil, nil).
 func resolveEvent(ctx context.Context, q queries.DBTX, id, name *string, userID string) (*db.Event, error) {
 	if id != nil && *id != "" {
 		if !uuidPattern.MatchString(*id) {
-			return nil, errVenueInput{"unknown eventId"}
+			return nil, errBadInput{"unknown eventId"}
 		}
 		e, err := queries.GetEventByID(ctx, q, *id)
 		if errors.Is(err, queries.ErrNotFound) {
-			return nil, errVenueInput{"unknown eventId"}
+			return nil, errBadInput{"unknown eventId"}
 		}
 		return e, err
 	}
@@ -103,7 +99,7 @@ func resolveEvent(ctx context.Context, q queries.DBTX, id, name *string, userID 
 		return nil, nil
 	}
 	if len([]rune(trimmed)) > 160 {
-		return nil, errVenueInput{"eventName max 160 chars"}
+		return nil, errBadInput{"eventName max 160 chars"}
 	}
 
 	existing, err := queries.GetEventByName(ctx, q, trimmed)

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { cssInterop } from "nativewind";
 import { Image, StyleSheet, View } from "react-native";
@@ -84,14 +84,13 @@ export function Page({
   // Let the content run up under the status bar (a full-bleed photo hero);
   // the screen then handles the top inset itself.
   fullBleed?: boolean;
-  // The screen sits under a stack header (detail pages: user, venue, event).
-  // The full top inset left a tall dead gap above the content there on
-  // phones, so these get half of it instead.
+  // The screen sits under a stack header (detail pages), which already
+  // clears the status bar, so the content starts right under it; the scroll
+  // content's own top padding spaces it from there.
   underHeader?: boolean;
   className?: string;
   children?: ReactNode;
 }) {
-  const { top } = useSafeAreaInsets();
   return (
     // No bottom edge: on tab screens the tab bar already covers the home
     // indicator inset, so padding it here left a dead, non-scrolling strip
@@ -100,7 +99,6 @@ export function Page({
     <SafeAreaView
       edges={fullBleed || underHeader ? ["left", "right"] : ["top", "left", "right"]}
       className={`flex-1 bg-ink ${className}`}
-      style={underHeader ? { paddingTop: top / 2 } : undefined}
     >
       <WallBackground />
       {!!title && (

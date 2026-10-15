@@ -12,7 +12,7 @@ const maxFavoriteReviews = 3
 
 // GetFavoriteReviews godoc
 //
-//	@Summary	Get a user's showcased favorite reviews (top 3, ordered, #1 first)
+//	@Summary	Get a user's showcased favorite nights out (top 3, ordered, #1 first)
 //	@Tags		users
 //	@Produce	json
 //	@Param		username	path		string	true	"username"
@@ -33,12 +33,8 @@ func (h *Handlers) GetFavoriteReviews(w http.ResponseWriter, r *http.Request) {
 		InternalError(w, err)
 		return
 	}
-
-	dtos, err := h.hydrateReviews(r.Context(), reviews, hydrateOpts{
-		IncludeDj: true, IncludeLog: true, IncludeEngagement: true, CurrentUserID: optionalUserID(r),
-	})
-	if err != nil {
-		InternalError(w, err)
+	dtos, ok := h.visibleReviews(w, r, reviews)
+	if !ok {
 		return
 	}
 
@@ -51,7 +47,7 @@ type setFavoritesRequest struct {
 
 // SetFavoriteReviews godoc
 //
-//	@Summary	Replace the caller's showcased favorite reviews (0-3, ordered, #1 first) - reviews must be the caller's own
+//	@Summary	Replace the caller's showcased favorite nights out (0-3, ordered, #1 first) - they must be the caller's own
 //	@Tags		users
 //	@Accept		json
 //	@Produce	json
@@ -100,9 +96,7 @@ func (h *Handlers) SetFavoriteReviews(w http.ResponseWriter, r *http.Request) {
 		InternalError(w, err)
 		return
 	}
-	dtos, err := h.hydrateReviews(r.Context(), reviews, hydrateOpts{
-		IncludeDj: true, IncludeLog: true, IncludeEngagement: true, CurrentUserID: &user.ID,
-	})
+	dtos, err := h.hydrateReviews(r.Context(), reviews, &user.ID)
 	if err != nil {
 		InternalError(w, err)
 		return

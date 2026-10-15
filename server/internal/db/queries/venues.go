@@ -11,7 +11,7 @@ import (
 
 // A venue is either linked to a Google Places place (google_place_id set,
 // unique) or was typed in by hand (no place id, unique by lower(name)).
-// Logs point at one via logs.venue_id.
+// Reviews point at one via reviews.venue_id.
 
 const venueCols = "id, name, city, address, google_place_id, latitude, longitude, created_by_user_id, created_at"
 
@@ -30,21 +30,21 @@ func scanVenue(row pgx.Row) (*db.Venue, error) {
 type VenueSummary struct {
 	ID            string  `json:"id"`
 	Name          string  `json:"name"`
-	City          *string `json:"city"`
-	Address       *string `json:"address"`
-	GooglePlaceID *string `json:"googlePlaceId"`
-	// LogCount is how many nights out people have logged there.
-	LogCount int64 `json:"logCount"`
+	City          *string `json:"city" extensions:"x-nullable"`
+	Address       *string `json:"address" extensions:"x-nullable"`
+	GooglePlaceID *string `json:"googlePlaceId" extensions:"x-nullable"`
+	// ReviewCount is how many nights out people have logged there.
+	ReviewCount int64 `json:"reviewCount"`
 }
 
 const venueSummarySelect = `
-	SELECT v.id, v.name, v.city, v.address, v.google_place_id, COUNT(l.id) AS log_count
+	SELECT v.id, v.name, v.city, v.address, v.google_place_id, COUNT(r.id) AS review_count
 	FROM venues v
-	LEFT JOIN logs l ON l.venue_id = v.id`
+	LEFT JOIN reviews r ON r.venue_id = v.id`
 
 func scanVenueSummary(row pgx.Row) (*VenueSummary, error) {
 	var v VenueSummary
-	if err := row.Scan(&v.ID, &v.Name, &v.City, &v.Address, &v.GooglePlaceID, &v.LogCount); err != nil {
+	if err := row.Scan(&v.ID, &v.Name, &v.City, &v.Address, &v.GooglePlaceID, &v.ReviewCount); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
 		}
@@ -59,22 +59,9 @@ func SearchVenues(ctx context.Context, q DBTX, query string, limit int) ([]Venue
 	rows, err := q.Query(ctx, venueSummarySelect+`
 		WHERE $1 = '' OR v.name ILIKE '%' || $1 || '%'
 		GROUP BY v.id
-		ORDER BY log_count DESC, v.name
+		ORDER BY review_count DESC, v.name
 		LIMIT $2`, query, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []VenueSummary
-	for rows.Next() {
-		v, err := scanVenueSummary(rows)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, *v)
-	}
-	return out, rows.Err()
+	return collect(rows, err, rowsOf(scanVenueSummary))
 }
 
 func GetVenueSummary(ctx context.Context, q DBTX, id string) (*VenueSummary, error) {
@@ -124,37 +111,28 @@ func UpsertUnlinkedVenue(ctx context.Context, q DBTX, name string, city *string,
 		RETURNING `+venueCols, name, city, createdByUserID))
 }
 
-// VenueEvent is a named event logged at a venue, with how many logs there.
+// VenueEvent is a named event logged at a venue, with how many nights there.
 type VenueEvent struct {
-	Event    db.Event `json:"event"`
-	LogCount int64    `json:"logCount"`
+	Event       db.Event `json:"event"`
+	ReviewCount int64    `json:"reviewCount"`
 }
 
 // ListVenueEvents returns the events people have logged at a venue, most
 // logged first.
 func ListVenueEvents(ctx context.Context, q DBTX, venueID string) ([]VenueEvent, error) {
 	rows, err := q.Query(ctx, `
-		SELECT e.id, e.name, e.slug, e.created_by_user_id, e.created_at, COUNT(l.id) AS log_count
-		FROM logs l
-		JOIN events e ON e.id = l.event_id
-		WHERE l.venue_id = $1
+		SELECT e.id, e.name, e.slug, e.created_by_user_id, e.created_at, COUNT(r.id) AS review_count
+		FROM reviews r
+		JOIN events e ON e.id = r.event_id
+		WHERE r.venue_id = $1
 		GROUP BY e.id
-		ORDER BY log_count DESC, MAX(l.seen_at) DESC`, venueID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []VenueEvent
-	for rows.Next() {
+		ORDER BY review_count DESC, MAX(r.seen_at) DESC`, venueID)
+	return collect(rows, err, func(row pgx.CollectableRow) (VenueEvent, error) {
 		var v VenueEvent
 		e := &v.Event
-		if err := rows.Scan(&e.ID, &e.Name, &e.Slug, &e.CreatedByUserID, &e.CreatedAt, &v.LogCount); err != nil {
-			return nil, err
-		}
-		out = append(out, v)
-	}
-	return out, rows.Err()
+		err := row.Scan(&e.ID, &e.Name, &e.Slug, &e.CreatedByUserID, &e.CreatedAt, &v.ReviewCount)
+		return v, err
+	})
 }
 
 // GetVenueSummaryByName finds a saved venue by exact (case-insensitive)
@@ -163,7 +141,7 @@ func GetVenueSummaryByName(ctx context.Context, q DBTX, name string) (*VenueSumm
 	return scanVenueSummary(q.QueryRow(ctx, venueSummarySelect+`
 		WHERE lower(v.name) = lower($1)
 		GROUP BY v.id
-		ORDER BY log_count DESC
+		ORDER BY review_count DESC
 		LIMIT 1`, name))
 }
 

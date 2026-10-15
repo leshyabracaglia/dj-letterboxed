@@ -3,9 +3,19 @@ import { Stack } from "expo-router";
 import { isClerkAPIResponseError, useUser } from "@clerk/expo";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Pressable, TextInput, View } from "react-native";
+import { Alert, Pressable, View } from "react-native";
 
-import { Avatar, Button, KeyboardScrollView, Page, Text, usePageContentStyle } from "../components/ui";
+import {
+  Avatar,
+  Button,
+  FormMessage,
+  KeyboardScrollView,
+  Page,
+  SectionTitle,
+  Text,
+  TextField,
+  usePageContentStyle,
+} from "../components/ui";
 import { useCurrentUser, useUpdateProfile } from "../lib/auth";
 import { pickAndUploadAvatar } from "../lib/avatarUpload";
 import { useSignOut } from "../lib/push";
@@ -22,7 +32,7 @@ function EditProfile() {
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(undefined);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -39,14 +49,14 @@ function EditProfile() {
   const onPickPhoto = async () => {
     if (!clerkUser) return;
     setError(null);
-    setUploadingPhoto(true);
+    setIsUploadingPhoto(true);
     try {
       const url = await pickAndUploadAvatar(clerkUser);
       if (url) setAvatarUrl(url);
     } catch {
       setError("Could not upload that photo. Try a different one.");
     } finally {
-      setUploadingPhoto(false);
+      setIsUploadingPhoto(false);
     }
   };
 
@@ -70,49 +80,31 @@ function EditProfile() {
   };
 
   return (
-    <View>
-      <Text className="mb-4 font-display text-2xl uppercase text-paper">Edit profile</Text>
-      <Pressable onPress={onPickPhoto} disabled={uploadingPhoto} className="mb-4 items-center">
+    <View className="gap-3">
+      <SectionTitle>Edit profile</SectionTitle>
+      <Pressable onPress={onPickPhoto} disabled={isUploadingPhoto} className="items-center">
         <Avatar uri={avatarUrl} name={displayUsername || "?"} size={72} />
-        <Text className="mt-2 text-sm text-muted">
-          {uploadingPhoto ? "Uploading..." : "Change photo"}
-        </Text>
+        <Text className="mt-2 text-sm text-muted">{isUploadingPhoto ? "Uploading..." : "Change photo"}</Text>
       </Pressable>
-      <TextInput
-        autoCapitalize="none"
-        autoCorrect={false}
-        placeholder="Username"
-        value={username}
-        onChangeText={setUsername}
-        className="mb-1 rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
-      />
-      {!!username.length && !usernameValid ? (
-        <Text className="mb-3 text-xs text-danger dark:text-danger-dark">
-          3-32 characters: lowercase letters, numbers, underscores.
-        </Text>
-      ) : (
-        <View className="mb-3" />
-      )}
-      <TextInput
-        placeholder="Bio"
-        value={bio}
-        onChangeText={setBio}
-        multiline
-        numberOfLines={3}
-        className="mb-4 min-h-20 rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
-      />
-      {!!error && <Text className="mb-2 text-danger dark:text-danger-dark">{error}</Text>}
-      {success && (
-        <Text className="mb-2 text-success dark:text-success-dark">Profile updated.</Text>
-      )}
-      <Button
-        disabled={save.isPending || !usernameValid}
-        onPress={onSave}
-        className="py-3"
-      >
-        <Text className="text-center font-semibold text-paper">
-          {save.isPending ? "Saving..." : "Save profile"}
-        </Text>
+      <View>
+        <TextField
+          autoCapitalize="none"
+          autoCorrect={false}
+          placeholder="Username"
+          value={username}
+          onChangeText={setUsername}
+        />
+        {!!username.length && !usernameValid && (
+          <Text className="mt-1 text-xs text-danger-dark">
+            3-32 characters: lowercase letters, numbers, underscores.
+          </Text>
+        )}
+      </View>
+      <TextField placeholder="Bio" value={bio} onChangeText={setBio} multiline numberOfLines={3} className="min-h-20" />
+      <FormMessage>{error}</FormMessage>
+      <FormMessage tone="success">{success && "Profile updated."}</FormMessage>
+      <Button disabled={save.isPending || !usernameValid} onPress={onSave} className="mt-1 py-3">
+        <Text className="text-center font-semibold text-paper">{save.isPending ? "Saving..." : "Save profile"}</Text>
       </Button>
     </View>
   );
@@ -199,67 +191,50 @@ function AccountSettings() {
       }
       return;
     }
-    Alert.alert(
-      "Delete account",
-      "This permanently deletes your account and all your reviews. This can't be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: deleteAccount },
-      ],
-    );
+    Alert.alert("Delete account", "This permanently deletes your account and all your reviews. This can't be undone.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: deleteAccount },
+    ]);
   };
 
   return (
-    <View className="mt-6 border-t border-primary/15 pt-4">
-      <Text className="mb-2 font-display text-2xl uppercase text-paper">
-        {hasPassword ? "Change password" : "Set a password"}
-      </Text>
+    <View className="gap-2 border-t border-primary/15 pt-10">
+      <SectionTitle>{hasPassword ? "Change password" : "Set a password"}</SectionTitle>
       {hasPassword && (
-        <TextInput
+        <TextField
           secureTextEntry
           autoComplete="current-password"
           placeholder="Current password"
           value={currentPassword}
           onChangeText={setCurrentPassword}
-          className="mb-2 rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
         />
       )}
-      <TextInput
+      <TextField
         secureTextEntry
         autoComplete="new-password"
         placeholder="New password"
         value={newPassword}
         onChangeText={setNewPassword}
-        className="mb-2 rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
-      <TextInput
+      <TextField
         secureTextEntry
         autoComplete="new-password"
         placeholder="Confirm new password"
         value={confirmPassword}
         onChangeText={setConfirmPassword}
-        className="mb-2 rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-3 text-ink dark:text-paper placeholder:text-muted"
       />
-      {!!passwordError && (
-        <Text className="mb-2 text-danger dark:text-danger-dark">{passwordError}</Text>
-      )}
-      {passwordSuccess && (
-        <Text className="mb-2 text-success dark:text-success-dark">Password updated. Other devices have been signed out.</Text>
-      )}
-      <Button
-        disabled={passwordPending}
-        onPress={onChangePassword}
-        className="py-3"
-      >
+      <FormMessage>{passwordError}</FormMessage>
+      <FormMessage tone="success">
+        {passwordSuccess && "Password updated. Other devices have been signed out."}
+      </FormMessage>
+      <Button disabled={passwordPending} onPress={onChangePassword} className="py-3">
         <Text className="text-center font-semibold text-paper">
           {passwordPending ? "Saving..." : hasPassword ? "Update password" : "Set password"}
         </Text>
       </Button>
       {hasPassword && (
-        <Pressable onPress={onForgotPassword} className="mt-3 self-center">
-          <Text className="text-sm text-primary dark:text-primary-dark">
-            Forgot your current password?
-          </Text>
+        <Pressable onPress={onForgotPassword} className="mt-1 self-center">
+          <Text className="text-sm text-primary-dark">Forgot your current password?</Text>
         </Pressable>
       )}
 
@@ -268,20 +243,27 @@ function AccountSettings() {
           await signOut();
           router.replace(ROUTES.SIGN_IN);
         }}
-        className="mt-8 rounded-xl border border-primary/30 py-3 active:opacity-80"
+        className="mt-6 rounded-xl border border-primary/30 py-3 active:opacity-80"
       >
-        <Text className="text-center font-semibold text-ink dark:text-paper">Sign out</Text>
+        <Text className="text-center font-semibold text-paper">Sign out</Text>
       </Pressable>
 
-      <Text className="mb-2 mt-8 text-xl font-display text-danger dark:text-danger-dark">
-        Danger zone
-      </Text>
+      <View className="mt-4 flex-row justify-center gap-6">
+        <Pressable onPress={() => router.push(ROUTES.SUPPORT)}>
+          <Text className="text-sm text-primary-dark">Help & support</Text>
+        </Pressable>
+        <Pressable onPress={() => router.push(ROUTES.PRIVACY)}>
+          <Text className="text-sm text-primary-dark">Privacy policy</Text>
+        </Pressable>
+      </View>
+
+      <Text className="mt-6 text-xl font-display text-danger-dark">Danger zone</Text>
       <Pressable
         disabled={deletePending}
         onPress={onDeletePress}
-        className="rounded-xl border border-danger py-3 active:opacity-80 dark:border-danger-dark"
+        className="rounded-xl border py-3 active:opacity-80 border-danger-dark"
       >
-        <Text className="text-center font-semibold text-danger dark:text-danger-dark">
+        <Text className="text-center font-semibold text-danger-dark">
           {deletePending ? "Deleting..." : "Delete account"}
         </Text>
       </Pressable>
@@ -290,13 +272,16 @@ function AccountSettings() {
 }
 
 export default function SettingsScreen() {
-  const contentStyle = usePageContentStyle();
+  const contentStyle = usePageContentStyle("roomy");
+
   return (
-    <Page>
+    <Page fullBleed>
       <Stack.Screen options={{ title: "Settings" }} />
-      <KeyboardScrollView contentContainerStyle={[contentStyle, { paddingTop: 24 }]}>
-        <EditProfile />
-        <AccountSettings />
+      <KeyboardScrollView contentContainerStyle={contentStyle}>
+        <View className="mt-6 gap-6">
+          <EditProfile />
+          <AccountSettings />
+        </View>
       </KeyboardScrollView>
     </Page>
   );

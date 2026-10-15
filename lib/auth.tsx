@@ -2,7 +2,7 @@ import { useAuth } from "@clerk/expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, type ReactNode } from "react";
 
-import { useApi } from "./api/client";
+import { ApiError, errorMessage, useApi } from "./api/client";
 import { queryKeys } from "./api/queryKeys";
 import type { User } from "./api/types";
 
@@ -16,7 +16,7 @@ type AuthContextValue = {
   isLoadingMe: boolean;
 };
 
-export type UpdateProfileInput = {
+type UpdateProfileInput = {
   username?: string;
   displayName?: string;
   bio?: string;
@@ -81,11 +81,11 @@ export function useUpdateProfile({
       queryClient.setQueryData(queryKeys.users.me(), updated);
       onSuccess?.(updated);
     },
-    onError: (err: any) => {
+    onError: (err) => {
       onError?.(
-        err?.code === "USERNAME_TAKEN"
+        err instanceof ApiError && err.code === "USERNAME_TAKEN"
           ? "That username is already taken."
-          : (err?.message ?? "Could not save your profile."),
+          : errorMessage(err, "Could not save your profile."),
       );
     },
   });

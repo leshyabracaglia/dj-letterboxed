@@ -7,30 +7,17 @@ import { Button, Text } from "./ui";
 // Shown when a signed-out user tries something that needs an account
 // (Review/Profile tabs, the web navbar's gated links) instead of dumping them
 // on a sign-in screen that replaces what they were browsing.
-export function SignInPromptModal({
-  visible,
-  onClose,
-}: {
-  visible: boolean;
-  onClose: () => void;
-}) {
+export function SignInPromptModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable
-        onPress={onClose}
-        className="flex-1 items-center justify-center bg-ink/40 px-6"
-      >
+      <Pressable onPress={onClose} className="flex-1 items-center justify-center bg-ink/40 px-6">
         <Pressable
           onPress={(e) => e.stopPropagation()}
-          className="w-full max-w-sm rounded-2xl bg-paper dark:bg-surface-dark p-6 shadow-lg"
+          className="w-full max-w-sm rounded-2xl bg-surface-dark p-6 shadow-lg"
         >
-          <Text className="mb-2 text-center text-xl font-display text-ink dark:text-paper">
-            Sign in required
-          </Text>
-          <Text className="mb-5 text-center text-muted">
-            Create an account or log in to do that.
-          </Text>
-          <View className="flex-row gap-3">
+          <Text className="text-center text-xl font-display text-paper">Sign in required</Text>
+          <Text className="mt-2 text-center text-muted">Create an account or log in to do that.</Text>
+          <View className="mt-5 flex-row gap-3">
             <Button
               onPress={() => {
                 onClose();
@@ -47,7 +34,7 @@ export function SignInPromptModal({
               }}
               className="flex-1 rounded-xl border border-primary/30 py-3 active:opacity-80"
             >
-              <Text className="text-center font-semibold text-ink dark:text-paper">Log in</Text>
+              <Text className="text-center font-semibold text-paper">Log in</Text>
             </Pressable>
           </View>
           <Pressable onPress={onClose} className="mt-4">

@@ -10,18 +10,8 @@ function initialsFor(name: string) {
   return (first + second).toUpperCase();
 }
 
-export function Avatar({
-  uri,
-  name,
-  size = 40,
-}: {
-  uri?: string | null;
-  name: string;
-  size?: number;
-}) {
+export function Avatar({ uri, name, size = 40 }: { uri?: string | null; name: string; size?: number }) {
   return (
-    // Rounded square; the corner radius scales with size so small and large
-    // avatars share the same shape. overflow-hidden clips image + fallback.
     <AvatarPrimitive.Root
       alt={name}
       className="relative shrink-0 overflow-hidden"

@@ -36,7 +36,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Beatboxd uses your location to show the nights on near you when you log one."
+          "locationWhenInUsePermission": "Beatboxd uses your location to show the nights on near you when you log one, and to check you in at a venue when you ask it to."
         }
       ],
       [

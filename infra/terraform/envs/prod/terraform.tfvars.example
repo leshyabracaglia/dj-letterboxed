@@ -16,3 +16,7 @@ clerk_webhook_signing_secret = "whsec_..."
 spotify_client_id            = ""
 spotify_client_secret        = ""
 google_places_api_key        = ""
+# Content report emails (resend.com -> API Keys); reports_email must be the
+# Resend account's address. Leave either empty to only save/log reports.
+resend_api_key               = ""
+reports_email                = ""

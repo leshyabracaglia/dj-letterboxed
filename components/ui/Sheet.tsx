@@ -33,12 +33,12 @@ export function Sheet({
           style={{ paddingBottom: 12 + bottom }}
         >
           <TornEdge color={CARD_COLORS.neutral} side="top" height={12} />
-          <View className="mb-3 h-1 w-10 self-center rounded-full bg-paper/25" />
-          <View className="mb-3 flex-row items-center justify-between px-4">
+          <View className="h-1 w-10 self-center rounded-full bg-paper/25" />
+          <View className="mt-3 flex-row items-center justify-between px-4">
             <Text className="font-display text-2xl uppercase text-paper">{title}</Text>
             {!!tag && <Text className={`font-display text-base uppercase ${tagClassName}`}>{tag}</Text>}
           </View>
-          {children}
+          <View className="mt-3 shrink">{children}</View>
         </View>
       </KeyboardAvoidingView>
     </Modal>

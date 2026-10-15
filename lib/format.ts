@@ -1,3 +1,14 @@
+/** "1 night", "3 nights". */
+export function plural(n: number, word: string): string {
+  return `${n} ${pluralWord(n, word)}`;
+}
+
+/** Just the word: "night" for 1, "nights" otherwise - for when the count is
+ * rendered separately. */
+export function pluralWord(n: number, word: string): string {
+  return n === 1 ? word : `${word}s`;
+}
+
 // rating is whole stars (1-5); averages keep one decimal.
 export function formatRating(rating: number | null | undefined): string {
   if (!rating) return "—";
@@ -7,11 +18,6 @@ export function formatRating(rating: number | null | undefined): string {
 // Date-only: for when something was reviewed/seen, where the exact time isn't meaningful.
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString();
-}
-
-// Date+time: for an event's actual scheduled start.
-export function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString();
 }
 
 // A calendar day as "YYYY-MM-DD" in the device's local time zone (what date
@@ -31,10 +37,10 @@ export function parseDateInputValue(value: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-/** When a party ran, from its event's day/night flags. */
-export function formatEventTiming(event: { isDay: boolean; isNight: boolean }): string {
-  if (event.isDay && event.isNight) return "Day into night";
-  return event.isDay ? "Day" : "Night";
+/** When someone went, from their log's day/night flags. */
+export function formatLogTiming(log: { isDay: boolean; isNight: boolean }): string {
+  if (log.isDay && log.isNight) return "Day into night";
+  return log.isDay ? "Day" : "Night";
 }
 
 /** Short day label for the zine cards: "Sat 14 Sep" (uppercased by the
@@ -44,4 +50,17 @@ export function formatCardDate(iso: string): string {
   const weekday = date.toLocaleDateString(undefined, { weekday: "short" });
   const month = date.toLocaleDateString(undefined, { month: "short" });
   return `${weekday} ${date.getDate()} ${month}`;
+}
+
+// How long ago, compactly ("now", "5m", "3h", "2d", "4w"), then the date.
+export function formatTimeAgo(iso: string): string {
+  const minutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  if (days < 35) return `${Math.floor(days / 7)}w`;
+  return formatDate(iso);
 }

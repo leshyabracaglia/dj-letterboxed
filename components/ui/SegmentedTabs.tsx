@@ -23,10 +23,6 @@ export function SegmentedTabs<T extends string>({
             onPress={() => onChange(t.value)}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
-            // The shadow classes stay on both states (transparent when
-            // unselected): adding a shadow color after the first render makes
-            // NativeWind remount the Pressable, and its warning for that
-            // throws inside the router ("Couldn't find a navigation context").
             className={`flex-1 items-center rounded-lg border-b-2 py-2.5 shadow-md active:opacity-80 ${
               selected
                 ? "border-paper bg-[#1E0F14] shadow-white/30"
@@ -34,9 +30,7 @@ export function SegmentedTabs<T extends string>({
             }`}
           >
             <Text
-              className={`font-display text-lg uppercase tracking-wide ${
-                selected ? "text-paper" : "text-paper/45"
-              }`}
+              className={`font-display text-lg uppercase tracking-wide ${selected ? "text-paper" : "text-paper/45"}`}
             >
               {t.label}
             </Text>

@@ -17,6 +17,10 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+# app binaries from local builds (eas build --local, downloaded builds)
+*.ipa
+*.apk
+*.aab
 
 # Metro
 .metro-health-check*
@@ -49,6 +53,9 @@ yarn-error.*
 # existing) - these were previously silently excluded by .env* above.
 !.env.example
 !**/.env.example
+
+# Claude design scratch files (mockups, concepts)
+/Claude outputs/
 
 # vendored Claude Code skill content (reproducible from skills-lock.json)
 .agents/

@@ -3,8 +3,6 @@ package httpapi
 import (
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-
 	"beatboxd/server/internal/db/queries"
 )
 
@@ -16,6 +14,7 @@ import (
 //	@Param		userId	path		string	true	"user id"
 //	@Success	200		{object}	FollowingStatusResponse
 //	@Failure	401		{object}	errorEnvelope
+//	@Failure	404	{object}	errorEnvelope
 //	@Security	BearerAuth
 //	@Router		/api/follows/is-following/{userId} [get]
 func (h *Handlers) IsFollowing(w http.ResponseWriter, r *http.Request) {
@@ -23,7 +22,10 @@ func (h *Handlers) IsFollowing(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	targetID := chi.URLParam(r, "userId")
+	targetID, ok := uuidParam(w, r, "userId")
+	if !ok {
+		return
+	}
 
 	following, err := queries.IsFollowing(r.Context(), h.Pool, user.ID, targetID)
 	if err != nil {

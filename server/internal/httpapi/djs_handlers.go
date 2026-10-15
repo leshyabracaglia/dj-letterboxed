@@ -65,9 +65,8 @@ func (h *Handlers) GetDjBySlug(w http.ResponseWriter, r *http.Request) {
 		InternalError(w, err)
 		return
 	}
-	recentDTOs, err := h.hydrateReviews(r.Context(), recent, hydrateOpts{IncludeUser: true, IncludeLog: true})
-	if err != nil {
-		InternalError(w, err)
+	recentDTOs, ok := h.visibleReviews(w, r, recent)
+	if !ok {
 		return
 	}
 
@@ -163,8 +162,8 @@ func (h *Handlers) SearchSpotify(w http.ResponseWriter, r *http.Request) {
 	}
 	artists, err := h.Spotify.SearchArtists(q)
 	if err != nil {
-		// Fail-open: mirrors djs.searchSpotify's behavior of swallowing
-		// Spotify errors and returning an empty result instead of a 5xx.
+		// Fail open: Spotify being down shouldn't block adding a DJ by
+		// name, so return no results instead of a 5xx.
 		WriteJSON(w, http.StatusOK, []domain.SpotifyArtist{})
 		return
 	}
@@ -173,16 +172,20 @@ func (h *Handlers) SearchSpotify(w http.ResponseWriter, r *http.Request) {
 
 // ListReviewsByDj godoc
 //
-//	@Summary	List reviews for a DJ, cursor-paginated by seenAt desc
+//	@Summary	List the nights out a DJ was on the lineup of (with any rating of them in the lineup), cursor-paginated by seenAt desc
 //	@Tags		djs
 //	@Produce	json
 //	@Param		id		path		string	true	"DJ id"
 //	@Param		cursor	query		string	false	"pagination cursor (RFC3339 seenAt of the last item)"
 //	@Param		limit	query		int		false	"page size, 1-50, default 20"
 //	@Success	200		{object}	PaginatedReviews
+//	@Failure	404	{object}	errorEnvelope
 //	@Router		/api/djs/{id}/reviews [get]
 func (h *Handlers) ListReviewsByDj(w http.ResponseWriter, r *http.Request) {
-	djID := chi.URLParam(r, "id")
+	djID, ok := uuidParam(w, r, "id")
+	if !ok {
+		return
+	}
 	limit := queryLimit(r, 20, 50)
 	cursor := queryTimeCursor(r, "cursor")
 
@@ -191,14 +194,5 @@ func (h *Handlers) ListReviewsByDj(w http.ResponseWriter, r *http.Request) {
 		InternalError(w, err)
 		return
 	}
-
-	dtos, err := h.hydrateReviews(r.Context(), reviews, hydrateOpts{
-		IncludeUser: true, IncludeLog: true, IncludeEngagement: true, CurrentUserID: optionalUserID(r),
-	})
-	if err != nil {
-		InternalError(w, err)
-		return
-	}
-
-	WriteJSON(w, http.StatusOK, PaginatedReviews{Items: dtos, NextCursor: nextSeenAtCursor(reviews, limit)})
+	h.writeReviewPage(w, r, reviews, nextSeenAtCursor(reviews, limit))
 }

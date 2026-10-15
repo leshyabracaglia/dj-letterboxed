@@ -2,11 +2,28 @@ package httpapi
 
 import (
 	"net/http"
+	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/go-chi/chi/v5"
 )
 
 const rfc3339 = time.RFC3339
+
+var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
+// uuidParam reads a uuid path param, writing a 404 and returning ok=false
+// if it isn't one: a malformed id can't name anything, and would otherwise
+// reach Postgres as a type error and come back as a 500.
+func uuidParam(w http.ResponseWriter, r *http.Request, name string) (string, bool) {
+	id := chi.URLParam(r, name)
+	if !uuidPattern.MatchString(id) {
+		NotFound(w)
+		return "", false
+	}
+	return id, true
+}
 
 func queryLimit(r *http.Request, def, max int) int {
 	v := r.URL.Query().Get("limit")
@@ -24,8 +41,8 @@ func queryLimit(r *http.Request, def, max int) int {
 }
 
 // queryTimeCursor parses an ISO-8601/RFC3339 cursor query param. Returns
-// nil (no cursor) if absent or unparseable — mirrors the defensive cursor
-// handling used throughout the ported TS routers.
+// nil (no cursor) if absent or unparseable, so a bad cursor just starts
+// from the first page.
 func queryTimeCursor(r *http.Request, param string) *time.Time {
 	v := r.URL.Query().Get(param)
 	if v == "" {

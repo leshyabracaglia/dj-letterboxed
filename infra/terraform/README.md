@@ -111,7 +111,8 @@ so they can't change data. See `scripts/prod-db.sh`.
 `user_data` only writes `/opt/beatboxd/.env` on first boot, and changing a
 secret's *value* doesn't change `user_data`, so `terraform apply` alone never
 reaches the running container. After updating a secret (Clerk secret key,
-webhook signing secret, Spotify creds, Google Places key, `DATABASE_URL`) via `terraform apply`,
+webhook signing secret, Spotify creds, Google Places key, Resend key / reports
+email, `DATABASE_URL`) via `terraform apply`,
 re-run the `server-deploy` workflow (Actions → server-deploy → re-run, or push
 to `main`) — its refresh step pulls the new values into `.env` and
 `docker compose up -d` recreates the API container with them. The manual SSM

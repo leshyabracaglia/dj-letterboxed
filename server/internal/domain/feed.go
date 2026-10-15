@@ -5,15 +5,12 @@ import (
 	"time"
 )
 
-const PopularInterleaveEvery = 4
-
-// Cursor mirrors feed.ts's cursor shape: a JSON string encoding both the
-// followed-items pagination cursor and a running offset into the
-// separately-ranked popular pool. Decoding is defensive by design — an
-// unparseable cursor falls back to the zero value rather than erroring.
+// Cursor is the following feed's pagination cursor: the createdAt of the
+// last item seen, as an opaque JSON string. Decoding is defensive by design -
+// an unparseable cursor falls back to the zero value (the first page) rather
+// than erroring.
 type Cursor struct {
-	CreatedAt     *time.Time `json:"createdAt"`
-	PopularOffset int        `json:"popularOffset"`
+	CreatedAt *time.Time `json:"createdAt"`
 }
 
 func EncodeCursor(c Cursor) string {

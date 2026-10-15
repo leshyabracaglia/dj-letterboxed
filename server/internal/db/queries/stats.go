@@ -2,28 +2,48 @@ package queries
 
 import (
 	"context"
+	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"beatboxd/server/internal/db"
 )
 
-// CountReviewsByUser counts userID's nights out: a night and the DJs
-// reviewed on it are one post.
-func CountReviewsByUser(ctx context.Context, q DBTX, userID string) (int64, error) {
-	var n int64
-	err := q.QueryRow(ctx, "SELECT COUNT(DISTINCT log_id) FROM reviews WHERE user_id = $1", userID).Scan(&n)
-	return n, err
+// ProfileCounts are the numbers on a user's profile header.
+type ProfileCounts struct {
+	// Nights is how many nights out (reviews) they've logged.
+	Nights    int64
+	Followers int64
+	Following int64
+}
+
+func GetProfileCounts(ctx context.Context, q DBTX, userID string) (*ProfileCounts, error) {
+	var c ProfileCounts
+	err := q.QueryRow(ctx, `
+		SELECT
+			(SELECT COUNT(*) FROM reviews WHERE user_id = $1),
+			(SELECT COUNT(*) FROM follows WHERE following_id = $1),
+			(SELECT COUNT(*) FROM follows WHERE follower_id = $1)`, userID).
+		Scan(&c.Nights, &c.Followers, &c.Following)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
 }
 
 type UserTotals struct {
-	TotalReviews int64 `json:"totalReviews"`
-	UniqueDjs    int64 `json:"uniqueDjs"`
+	Nights    int64
+	UniqueDjs int64
 }
 
 func GetUserTotals(ctx context.Context, q DBTX, userID string) (*UserTotals, error) {
 	var t UserTotals
-	// A night logged with several reviews (the night + its DJs) is one show:
-	// one log.
-	err := q.QueryRow(ctx, "SELECT COUNT(DISTINCT log_id), COUNT(DISTINCT dj_id) FROM reviews WHERE user_id = $1", userID).Scan(&t.TotalReviews, &t.UniqueDjs)
+	// DJs seen are everyone on their nights' lineups, rated or not.
+	err := q.QueryRow(ctx, `
+		SELECT
+			(SELECT COUNT(*) FROM reviews WHERE user_id = $1),
+			(SELECT COUNT(DISTINCT rl.dj_id) FROM reviews r JOIN review_lineup rl ON rl.review_id = r.id WHERE r.user_id = $1)`,
+		userID).Scan(&t.Nights, &t.UniqueDjs)
 	if err != nil {
 		return nil, err
 	}
@@ -31,33 +51,51 @@ func GetUserTotals(ctx context.Context, q DBTX, userID string) (*UserTotals, err
 }
 
 type TopDj struct {
-	Dj          db.Dj `json:"dj"`
-	ReviewCount int64 `json:"reviewCount"`
+	Dj        db.Dj `json:"dj"`
+	TimesSeen int64 `json:"timesSeen"`
 }
 
+// GetTopDjsForUser returns the 3 DJs userID has seen the most (on the lineup
+// of their nights, rated or not), like GetRecentDjsForUser.
 func GetTopDjsForUser(ctx context.Context, q DBTX, userID string) ([]TopDj, error) {
 	rows, err := q.Query(ctx, `
-		SELECT d.id, d.name, d.slug, d.bio, d.genres, d.image_url, d.spotify_id, d.created_by_user_id, d.created_at, d.updated_at, COUNT(r.id) AS review_count
+		SELECT d.id, d.name, d.slug, d.bio, d.genres, d.image_url, d.spotify_id, d.created_by_user_id, d.created_at, d.updated_at, COUNT(*) AS times_seen
 		FROM reviews r
-		JOIN djs d ON d.id = r.dj_id
+		JOIN review_lineup rl ON rl.review_id = r.id
+		JOIN djs d ON d.id = rl.dj_id
 		WHERE r.user_id = $1
 		GROUP BY d.id
-		ORDER BY review_count DESC, MAX(r.seen_at) DESC, d.name
+		ORDER BY times_seen DESC, MAX(r.seen_at) DESC, d.name
 		LIMIT 3`, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []TopDj
-	for rows.Next() {
+	return collect(rows, err, func(row pgx.CollectableRow) (TopDj, error) {
 		var t TopDj
-		if err := rows.Scan(&t.Dj.ID, &t.Dj.Name, &t.Dj.Slug, &t.Dj.Bio, &t.Dj.Genres, &t.Dj.ImageURL, &t.Dj.SpotifyID, &t.Dj.CreatedByUserID, &t.Dj.CreatedAt, &t.Dj.UpdatedAt, &t.ReviewCount); err != nil {
-			return nil, err
-		}
-		out = append(out, t)
-	}
-	return out, rows.Err()
+		err := row.Scan(&t.Dj.ID, &t.Dj.Name, &t.Dj.Slug, &t.Dj.Bio, &t.Dj.Genres, &t.Dj.ImageURL, &t.Dj.SpotifyID, &t.Dj.CreatedByUserID, &t.Dj.CreatedAt, &t.Dj.UpdatedAt, &t.TimesSeen)
+		return t, err
+	})
+}
+
+type RecentDj struct {
+	Dj         db.Dj     `json:"dj"`
+	LastSeenAt time.Time `json:"lastSeenAt"`
+}
+
+// GetRecentDjsForUser returns the last 3 DJs userID saw (on the lineup of
+// any of their nights, rated or not), most recent night first.
+func GetRecentDjsForUser(ctx context.Context, q DBTX, userID string) ([]RecentDj, error) {
+	rows, err := q.Query(ctx, `
+		SELECT d.id, d.name, d.slug, d.bio, d.genres, d.image_url, d.spotify_id, d.created_by_user_id, d.created_at, d.updated_at, MAX(r.seen_at) AS last_seen_at
+		FROM reviews r
+		JOIN review_lineup rl ON rl.review_id = r.id
+		JOIN djs d ON d.id = rl.dj_id
+		WHERE r.user_id = $1
+		GROUP BY d.id
+		ORDER BY last_seen_at DESC, MAX(r.created_at) DESC, d.name
+		LIMIT 3`, userID)
+	return collect(rows, err, func(row pgx.CollectableRow) (RecentDj, error) {
+		var t RecentDj
+		err := row.Scan(&t.Dj.ID, &t.Dj.Name, &t.Dj.Slug, &t.Dj.Bio, &t.Dj.Genres, &t.Dj.ImageURL, &t.Dj.SpotifyID, &t.Dj.CreatedByUserID, &t.Dj.CreatedAt, &t.Dj.UpdatedAt, &t.LastSeenAt)
+		return t, err
+	})
 }
 
 type TopVenue struct {
@@ -67,25 +105,11 @@ type TopVenue struct {
 
 func GetTopVenuesForUser(ctx context.Context, q DBTX, userID string) ([]TopVenue, error) {
 	rows, err := q.Query(ctx, `
-		SELECT l.venue, COUNT(DISTINCT r.log_id) AS review_count
-		FROM reviews r
-		JOIN logs l ON l.id = r.log_id
-		WHERE r.user_id = $1 AND l.venue IS NOT NULL
-		GROUP BY l.venue
+		SELECT venue, COUNT(*) AS review_count
+		FROM reviews
+		WHERE user_id = $1 AND venue IS NOT NULL
+		GROUP BY venue
 		ORDER BY review_count DESC
 		LIMIT 5`, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []TopVenue
-	for rows.Next() {
-		var t TopVenue
-		if err := rows.Scan(&t.Venue, &t.ReviewCount); err != nil {
-			return nil, err
-		}
-		out = append(out, t)
-	}
-	return out, rows.Err()
+	return collect(rows, err, pgx.RowToStructByPos[TopVenue])
 }

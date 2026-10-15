@@ -91,3 +91,16 @@ test("an event page collects every night of it, and its venue lists it", async (
   await expect(eventRows).toContainText("Innervisions New York");
   await expect(eventRows).toContainText("3 nights logged here");
 });
+
+test("a log is verified only when its reviewer checked in at the venue", async ({ page }) => {
+  await page.goto("/event/rush-kettama");
+
+  // carla checked in at Good Room that night; dev went too but didn't.
+  const card = (body: string) => shown(page.getByRole("link").filter({ hasText: body }));
+  const checkedIn = card("Two hours of breaks and big piano house. Good Room's back room was a sauna.");
+  const notCheckedIn = card("Too many edits of the same three tracks.");
+  await expect(checkedIn).toBeVisible();
+  await expect(notCheckedIn).toBeVisible();
+  await expect(checkedIn.getByTestId("verified-mark")).toBeVisible();
+  await expect(notCheckedIn.getByTestId("verified-mark")).toHaveCount(0);
+});

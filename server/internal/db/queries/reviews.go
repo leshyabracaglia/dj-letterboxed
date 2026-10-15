@@ -11,11 +11,31 @@ import (
 	"beatboxd/server/internal/db"
 )
 
-const reviewCols = "id, user_id, log_id, dj_id, rating, review_text, seen_at, created_at, updated_at"
+// A review is one person's night out, and the post; the DJs they saw (each
+// optionally rated) are its lineup in review_lineup.
+
+// reviewVerifiedExpr is whether the review's person checked in at its venue
+// during its night: from the start of the day logged until 8am the next
+// morning, for a night that runs late. seen_at is noon local time on that
+// day (the log form sends it so), so that's 12 hours before it to 20 after.
+const reviewVerifiedExpr = `EXISTS (
+	SELECT 1 FROM check_ins c
+	WHERE c.user_id = reviews.user_id AND c.venue_id = reviews.venue_id
+		AND c.created_at >= reviews.seen_at - interval '12 hours'
+		AND c.created_at < reviews.seen_at + interval '20 hours'
+)`
+
+// reviewCols is qualified, so it can be selected FROM reviews joined to
+// tables with columns of the same name (favorite_reviews' user_id).
+const reviewCols = `reviews.id, reviews.user_id, reviews.event_id, reviews.venue, reviews.venue_id, reviews.city,
+	reviews.seen_at, reviews.is_day, reviews.is_night, reviews.rating, reviews.review_text,
+	reviews.created_at, reviews.updated_at, ` + reviewVerifiedExpr
 
 func scanReview(row pgx.Row) (*db.Review, error) {
 	var r db.Review
-	err := row.Scan(&r.ID, &r.UserID, &r.LogID, &r.DjID, &r.Rating, &r.ReviewText, &r.SeenAt, &r.CreatedAt, &r.UpdatedAt)
+	err := row.Scan(&r.ID, &r.UserID, &r.EventID, &r.Venue, &r.VenueID, &r.City,
+		&r.SeenAt, &r.IsDay, &r.IsNight, &r.Rating, &r.ReviewText,
+		&r.CreatedAt, &r.UpdatedAt, &r.Verified)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
@@ -25,129 +45,121 @@ func scanReview(row pgx.Row) (*db.Review, error) {
 	return &r, nil
 }
 
-func scanReviewRow(rows pgx.Rows) (db.Review, error) {
-	var r db.Review
-	err := rows.Scan(&r.ID, &r.UserID, &r.LogID, &r.DjID, &r.Rating, &r.ReviewText, &r.SeenAt, &r.CreatedAt, &r.UpdatedAt)
-	return r, err
+func collectReviews(rows pgx.Rows, err error) ([]db.Review, error) {
+	return collect(rows, err, rowsOf(scanReview))
 }
 
-// CreateReview adds a review to a log; it takes the log's user and date.
 type CreateReviewParams struct {
-	Log        *db.Log
-	DjID       *string
+	UserID  string
+	EventID *string
+	Venue   *db.Venue
+	City    *string
+	SeenAt  time.Time
+	IsDay   bool
+	IsNight bool
+	// Rating is required of new nights (the handler enforces it); only
+	// seeded stand-ins for nights from before nights were rated leave it nil.
 	Rating     *int16
 	ReviewText *string
 }
 
+// CreateReview stores venue.Name as the review's denormalized venue name.
 func CreateReview(ctx context.Context, q DBTX, p CreateReviewParams) (*db.Review, error) {
-	review, err := scanReview(q.QueryRow(ctx, `
-		INSERT INTO reviews (user_id, log_id, dj_id, rating, review_text, seen_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+	return scanReview(q.QueryRow(ctx, `
+		INSERT INTO reviews (user_id, event_id, venue, venue_id, city, seen_at, is_day, is_night, rating, review_text)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING `+reviewCols,
-		p.Log.UserID, p.Log.ID, p.DjID, p.Rating, p.ReviewText, p.Log.SeenAt))
-	if err != nil {
-		return nil, err
-	}
-	// The night review leads its log; a DJ review only leads a log that
-	// doesn't have a lead yet.
-	if _, err := q.Exec(ctx, `
-		UPDATE logs SET lead_review_id = $2
-		WHERE id = $1 AND (lead_review_id IS NULL OR $3)`, p.Log.ID, review.ID, p.DjID == nil); err != nil {
-		return nil, err
-	}
-	return review, nil
+		p.UserID, p.EventID, p.Venue.Name, p.Venue.ID, p.City, p.SeenAt, p.IsDay, p.IsNight, p.Rating, p.ReviewText))
 }
 
-// leadReviewCond is a WHERE condition (alias names the reviews table in the
-// query) keeping only each log's lead review (logs.lead_review_id): the
-// review a night out shows as one post through, which carries the rest of
-// the log's reviews and holds its likes and comments.
-func leadReviewCond(alias string) string {
-	return alias + `.id = (SELECT ll.lead_review_id FROM logs ll WHERE ll.id = ` + alias + `.log_id)`
+// LineupInput is a DJ seen on a night, rated or not.
+type LineupInput struct {
+	DjID       string
+	Rating     *int16
+	ReviewText *string
 }
 
-// GetLeadReview returns the lead review of a log (see leadReviewCond).
-func GetLeadReview(ctx context.Context, q DBTX, logID string) (*db.Review, error) {
-	return scanReview(q.QueryRow(ctx, "SELECT "+reviewCols+" FROM reviews WHERE id = (SELECT lead_review_id FROM logs WHERE id = $1)", logID))
-}
-
-// GetLeadReviewID returns the lead review id of the log reviewID belongs to,
-// or ErrNotFound if there's no such review.
-func GetLeadReviewID(ctx context.Context, q DBTX, reviewID string) (string, error) {
-	var id *string
-	err := q.QueryRow(ctx, `
-		SELECT l.lead_review_id FROM reviews r
-		JOIN logs l ON l.id = r.log_id
-		WHERE r.id = $1`, reviewID).Scan(&id)
-	if errors.Is(err, pgx.ErrNoRows) || (err == nil && id == nil) {
-		return "", ErrNotFound
+// AddReviewLineup records the DJs someone saw on their night out and what
+// they thought of any they rated.
+func AddReviewLineup(ctx context.Context, q DBTX, reviewID string, lineup []LineupInput) error {
+	if len(lineup) == 0 {
+		return nil
 	}
-	if err != nil {
-		return "", err
+	djIDs := make([]string, len(lineup))
+	ratings := make([]*int16, len(lineup))
+	texts := make([]*string, len(lineup))
+	for i, e := range lineup {
+		djIDs[i], ratings[i], texts[i] = e.DjID, e.Rating, e.ReviewText
 	}
-	return *id, nil
+	_, err := q.Exec(ctx, `
+		INSERT INTO review_lineup (review_id, dj_id, rating, review_text)
+		SELECT $1, * FROM unnest($2::uuid[], $3::smallint[], $4::text[])`, reviewID, djIDs, ratings, texts)
+	return err
 }
 
-// GetLeadReviewIDs returns each given log's lead review id, keyed by log id.
-func GetLeadReviewIDs(ctx context.Context, q DBTX, logIDs []string) (map[string]string, error) {
-	out := make(map[string]string, len(logIDs))
-	if len(logIDs) == 0 {
-		return out, nil
+// GetLineupsByReviewIDs returns each given review's lineup, alphabetically,
+// keyed by review id. Reviews with an empty lineup are left out.
+func GetLineupsByReviewIDs(ctx context.Context, q DBTX, reviewIDs []string) (map[string][]db.LineupEntry, error) {
+	if len(reviewIDs) == 0 {
+		return map[string][]db.LineupEntry{}, nil
 	}
 	rows, err := q.Query(ctx, `
-		SELECT id, lead_review_id FROM logs
-		WHERE id = ANY($1) AND lead_review_id IS NOT NULL`, logIDs)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var logID, id string
-		if err := rows.Scan(&logID, &id); err != nil {
-			return nil, err
-		}
-		out[logID] = id
-	}
-	return out, rows.Err()
-}
-
-// ListDjReviewsByLogIDs returns the DJ reviews of each given log, by DJ name,
-// keyed by log id.
-func ListDjReviewsByLogIDs(ctx context.Context, q DBTX, logIDs []string) (map[string][]db.Review, error) {
-	out := make(map[string][]db.Review)
-	if len(logIDs) == 0 {
-		return out, nil
-	}
-	rows, err := q.Query(ctx, `
-		SELECT r.id, r.user_id, r.log_id, r.dj_id, r.rating, r.review_text, r.seen_at, r.created_at, r.updated_at
-		FROM reviews r
-		JOIN djs d ON d.id = r.dj_id
-		WHERE r.log_id = ANY($1)
-		ORDER BY lower(d.name)`, logIDs)
-	reviews, err := collectReviews(rows, err)
-	if err != nil {
-		return nil, err
-	}
-	for _, r := range reviews {
-		out[r.LogID] = append(out[r.LogID], r)
-	}
-	return out, nil
+		SELECT rl.review_id, d.id, d.name, d.slug, d.bio, d.genres, d.image_url, d.spotify_id, d.created_by_user_id, d.created_at, d.updated_at,
+			rl.rating, rl.review_text
+		FROM review_lineup rl
+		JOIN djs d ON d.id = rl.dj_id
+		WHERE rl.review_id = ANY($1)
+		ORDER BY rl.review_id, lower(d.name)`, reviewIDs)
+	return collectGrouped(rows, err, func(row pgx.CollectableRow) (keyed[db.LineupEntry], error) {
+		var k keyed[db.LineupEntry]
+		d := &k.Value.Dj
+		err := row.Scan(&k.Key, &d.ID, &d.Name, &d.Slug, &d.Bio, &d.Genres, &d.ImageURL, &d.SpotifyID, &d.CreatedByUserID, &d.CreatedAt, &d.UpdatedAt,
+			&k.Value.Rating, &k.Value.ReviewText)
+		return k, err
+	})
 }
 
 func GetReviewByID(ctx context.Context, q DBTX, id string) (*db.Review, error) {
 	return scanReview(q.QueryRow(ctx, "SELECT "+reviewCols+" FROM reviews WHERE id = $1", id))
 }
 
-func DeleteReview(ctx context.Context, q DBTX, id string) error {
-	_, err := q.Exec(ctx, "DELETE FROM reviews WHERE id = $1", id)
-	return err
+// GetReviewsByIDsOrdered fetches the given reviews in the same order as ids
+// (SQL's ANY() gives no ordering guarantee, so re-ordering happens here).
+func GetReviewsByIDsOrdered(ctx context.Context, q DBTX, ids []string) ([]db.Review, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	rows, err := q.Query(ctx, "SELECT "+reviewCols+" FROM reviews WHERE id = ANY($1)", ids)
+	byID, err := collectMap(rows, err, rowsOf(scanReview), func(r db.Review) string { return r.ID })
+	if err != nil {
+		return nil, err
+	}
+	out := make([]db.Review, 0, len(ids))
+	for _, id := range ids {
+		if r, ok := byID[id]; ok {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+// DeleteReview removes a user's night out; its lineup, likes, comments and
+// tags go with it via ON DELETE CASCADE. Returns ErrNotFound if there's no
+// such review owned by userID.
+func DeleteReview(ctx context.Context, q DBTX, id, userID string) error {
+	tag, err := q.Exec(ctx, "DELETE FROM reviews WHERE id = $1 AND user_id = $2", id, userID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // listReviewsPage runs a cursor-paginated reviews query: WHERE baseWhere
 // (already parameterized against args) AND, if cursor is set, cursorCol <
-// the next placeholder - ordered and limited by that same column. Powers
-// ListReviewsByUser, ListReviewsByDj, and ListReviewsByUserIDs, which only
-// differ in their WHERE clause and cursor column.
+// the next placeholder - ordered and limited by that same column.
 func listReviewsPage(ctx context.Context, q DBTX, baseWhere, cursorCol string, args []any, cursor *time.Time, limit int) ([]db.Review, error) {
 	sql := "SELECT " + reviewCols + " FROM reviews WHERE " + baseWhere
 	queryArgs := append([]any{}, args...)
@@ -156,7 +168,7 @@ func listReviewsPage(ctx context.Context, q DBTX, baseWhere, cursorCol string, a
 		sql += " AND " + cursorCol + " < $" + strconv.Itoa(len(queryArgs))
 	}
 	queryArgs = append(queryArgs, limit)
-	// created_at breaks ties between reviews of the same day (seen_at is a
+	// created_at breaks ties between nights of the same day (seen_at is a
 	// calendar day in practice), newest logged first.
 	sql += " ORDER BY " + cursorCol + " DESC, created_at DESC LIMIT $" + strconv.Itoa(len(queryArgs))
 
@@ -164,50 +176,90 @@ func listReviewsPage(ctx context.Context, q DBTX, baseWhere, cursorCol string, a
 	return collectReviews(rows, err)
 }
 
-// ListReviewsByUser returns userID's nights out (their lead reviews)
-// ordered seen_at desc, optionally paginated by a seen_at cursor (strictly
-// less than).
+// ListReviewsByUser returns userID's nights out ordered seen_at desc,
+// optionally paginated by a seen_at cursor (strictly less than).
 func ListReviewsByUser(ctx context.Context, q DBTX, userID string, cursor *time.Time, limit int) ([]db.Review, error) {
-	return listReviewsPage(ctx, q, "user_id = $1 AND "+leadReviewCond("reviews"), "seen_at", []any{userID}, cursor, limit)
+	return listReviewsPage(ctx, q, "user_id = $1", "seen_at", []any{userID}, cursor, limit)
 }
 
-// ListReviewsByVenue returns the most recent nights at a venue (their lead
-// reviews).
-func ListReviewsByVenue(ctx context.Context, q DBTX, venueID string, limit int) ([]db.Review, error) {
-	rows, err := q.Query(ctx, "SELECT "+reviewCols+` FROM reviews
-		WHERE id IN (SELECT lead_review_id FROM logs WHERE venue_id = $1)
-		ORDER BY seen_at DESC, created_at DESC
-		LIMIT $2`, venueID, limit)
-	return collectReviews(rows, err)
-}
-
-// ListReviewsByDj returns one review per night djID was logged at: the
-// reviewer's rating of djID, or - when they only rated the night as a whole -
-// the night review of a log with djID on its lineup. Only night reviews of
-// solo nights (djID alone on the lineup) count toward the DJ's own ratings
-// (see GetDjAggregate).
+// ListReviewsByDj returns the nights out djID was on the lineup of, rated or
+// not, ordered seen_at desc.
 func ListReviewsByDj(ctx context.Context, q DBTX, djID string, cursor *time.Time, limit int) ([]db.Review, error) {
-	return listReviewsPage(ctx, q, `(dj_id = $1 OR (dj_id IS NULL
-		AND log_id IN (SELECT log_id FROM log_lineup WHERE dj_id = $1)
-		AND NOT EXISTS (SELECT 1 FROM reviews dr WHERE dr.log_id = reviews.log_id AND dr.dj_id = $1)))`,
-		"seen_at", []any{djID}, cursor, limit)
+	return listReviewsPage(ctx, q, "id IN (SELECT review_id FROM review_lineup WHERE dj_id = $1)", "seen_at", []any{djID}, cursor, limit)
 }
 
-func collectReviews(rows pgx.Rows, err error) ([]db.Review, error) {
+// ListReviewsByUserIDs returns nights out by any of userIDs, newest logged
+// first (created_at desc), optionally paginated by a created_at cursor. The
+// following feed; unlike ListReviewsByUser/ByDj it orders by when a night
+// was logged, not the night's date (seen_at).
+func ListReviewsByUserIDs(ctx context.Context, q DBTX, userIDs []string, cursor *time.Time, limit int) ([]db.Review, error) {
+	if len(userIDs) == 0 {
+		return nil, nil
+	}
+	return listReviewsPage(ctx, q, "user_id = ANY($1)", "created_at", []any{userIDs}, cursor, limit)
+}
+
+// ListReviewsByVenue returns the most recent nights at a venue.
+func ListReviewsByVenue(ctx context.Context, q DBTX, venueID string, limit int) ([]db.Review, error) {
+	return listReviewsPage(ctx, q, "venue_id = $1", "seen_at", []any{venueID}, nil, limit)
+}
+
+// ListReviewsByEvent returns the most recent nights out of an event.
+func ListReviewsByEvent(ctx context.Context, q DBTX, eventID string, limit int) ([]db.Review, error) {
+	return listReviewsPage(ctx, q, "event_id = $1", "seen_at", []any{eventID}, nil, limit)
+}
+
+// RankPopularReviewIDs ranks nights out by like_count + comment_count desc,
+// then created_at desc.
+func RankPopularReviewIDs(ctx context.Context, q DBTX, limit int) ([]string, error) {
+	rows, err := q.Query(ctx, `
+		SELECT r.id
+		FROM reviews r
+		LEFT JOIN (SELECT review_id, COUNT(*) AS n FROM review_likes GROUP BY review_id) lk ON lk.review_id = r.id
+		LEFT JOIN (SELECT review_id, COUNT(*) AS n FROM review_comments GROUP BY review_id) c ON c.review_id = r.id
+		ORDER BY COALESCE(lk.n, 0) + COALESCE(c.n, 0) DESC, r.created_at DESC
+		LIMIT $1`, limit)
+	return collect(rows, err, pgx.RowTo[string])
+}
+
+// LatestReviewCity is the city of the user's most recent night out with
+// one, or nil if they haven't logged one.
+func LatestReviewCity(ctx context.Context, q DBTX, userID string) (*string, error) {
+	var city string
+	err := q.QueryRow(ctx, `
+		SELECT COALESCE(NULLIF(r.city, ''), v.city) FROM reviews r
+		LEFT JOIN venues v ON v.id = r.venue_id
+		WHERE r.user_id = $1 AND COALESCE(NULLIF(r.city, ''), v.city) IS NOT NULL
+		ORDER BY r.seen_at DESC
+		LIMIT 1`, userID).Scan(&city)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	return &city, nil
+}
 
-	var out []db.Review
-	for rows.Next() {
-		r, err := scanReviewRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, r)
-	}
-	return out, rows.Err()
+// nightTitleDjs is how many DJs a night's title names before "+N".
+const nightTitleDjs = "3"
+
+// nightTitleSQL is a SQL expression for what the night out reviewAlias is
+// called, as lib/review.ts's getNightTitle puts it: the event's name
+// (eventAlias, LEFT JOINed on the review's event_id), else the DJs seen in
+// lineup order ("Dixon, Âme +2"). Never the venue. NULL when the night has
+// neither, so callers can leave the subject out of a message.
+func nightTitleSQL(reviewAlias, eventAlias string) string {
+	return `COALESCE(` + eventAlias + `.name, (
+		SELECT string_agg(t.name, ', ' ORDER BY lower(t.name))
+			|| CASE WHEN max(t.total) > ` + nightTitleDjs + ` THEN ' +' || (max(t.total) - ` + nightTitleDjs + `) ELSE '' END
+		FROM (
+			SELECT d.name, count(*) OVER () AS total
+			FROM review_lineup rl JOIN djs d ON d.id = rl.dj_id
+			WHERE rl.review_id = ` + reviewAlias + `.id
+			ORDER BY lower(d.name)
+			LIMIT ` + nightTitleDjs + `
+		) t))`
 }
 
 // LikeReview reports whether this was a new like (false if already liked).
@@ -228,23 +280,14 @@ func ListComments(ctx context.Context, q DBTX, reviewID string) ([]db.ReviewComm
 		JOIN users u ON u.id = c.user_id
 		WHERE c.review_id = $1
 		ORDER BY c.created_at ASC`, reviewID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []db.ReviewComment
-	for rows.Next() {
+	return collect(rows, err, func(row pgx.CollectableRow) (db.ReviewComment, error) {
 		var c db.ReviewComment
 		var u db.User
-		if err := rows.Scan(&c.ID, &c.ReviewID, &c.UserID, &c.Body, &c.CreatedAt,
-			&u.ID, &u.ClerkID, &u.Username, &u.DisplayName, &u.Bio, &u.AvatarURL, &u.CreatedAt, &u.UpdatedAt); err != nil {
-			return nil, err
-		}
+		err := row.Scan(&c.ID, &c.ReviewID, &c.UserID, &c.Body, &c.CreatedAt,
+			&u.ID, &u.ClerkID, &u.Username, &u.DisplayName, &u.Bio, &u.AvatarURL, &u.CreatedAt, &u.UpdatedAt)
 		c.User = &u
-		out = append(out, c)
-	}
-	return out, rows.Err()
+		return c, err
+	})
 }
 
 func AddComment(ctx context.Context, q DBTX, reviewID, userID, body string) (*db.ReviewComment, error) {
@@ -278,41 +321,38 @@ func DeleteComment(ctx context.Context, q DBTX, id string) error {
 	return err
 }
 
-// SetReviewTags replaces the tagged-user set for a review. Callers must
-// only invoke this when taggedUserIDs is non-nil: nil means "leave tags
-// untouched" and is handled by not calling this function at all (see the
-// undefined-vs-empty-array contract on the reviews.create/update handlers).
+// SetReviewTags replaces who's tagged as being at a night out.
 func SetReviewTags(ctx context.Context, q DBTX, reviewID string, taggedUserIDs []string) error {
 	if _, err := q.Exec(ctx, "DELETE FROM review_tags WHERE review_id = $1", reviewID); err != nil {
 		return err
 	}
-
 	deduped := DedupeStrings(taggedUserIDs)
 	if len(deduped) == 0 {
 		return nil
 	}
-
-	batch := &pgx.Batch{}
-	for _, uid := range deduped {
-		batch.Queue("INSERT INTO review_tags (review_id, tagged_user_id) VALUES ($1, $2)", reviewID, uid)
-	}
-	br := q.SendBatch(ctx, batch)
-	defer br.Close()
-
-	for range deduped {
-		if _, err := br.Exec(); err != nil {
-			return err
-		}
-	}
-	return nil
+	_, err := q.Exec(ctx, `
+		INSERT INTO review_tags (review_id, tagged_user_id)
+		SELECT $1, unnest($2::uuid[])`, reviewID, deduped)
+	return err
 }
 
-func GetTaggedUsers(ctx context.Context, q DBTX, reviewID string) ([]db.User, error) {
+// GetTaggedUsersByReviewIDs returns who's tagged on each given review, keyed
+// by review id. Reviews with nobody tagged are left out.
+func GetTaggedUsersByReviewIDs(ctx context.Context, q DBTX, reviewIDs []string) (map[string][]db.User, error) {
+	if len(reviewIDs) == 0 {
+		return map[string][]db.User{}, nil
+	}
 	rows, err := q.Query(ctx, `
-		SELECT `+qualifiedUserCols+` FROM review_tags t
+		SELECT t.review_id, `+qualifiedUserCols+` FROM review_tags t
 		JOIN users u ON u.id = t.tagged_user_id
-		WHERE t.review_id = $1`, reviewID)
-	return scanUserRows(rows, err)
+		WHERE t.review_id = ANY($1)
+		ORDER BY t.review_id, t.created_at`, reviewIDs)
+	return collectGrouped(rows, err, func(row pgx.CollectableRow) (keyed[db.User], error) {
+		var k keyed[db.User]
+		u := &k.Value
+		err := row.Scan(&k.Key, &u.ID, &u.ClerkID, &u.Username, &u.DisplayName, &u.Bio, &u.AvatarURL, &u.CreatedAt, &u.UpdatedAt)
+		return k, err
+	})
 }
 
 // DedupeStrings returns in with duplicate values removed, preserving order

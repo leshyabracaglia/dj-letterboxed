@@ -1,5 +1,5 @@
-// Command seed inserts fixed dev fixture data, ported from lib/db/seed.ts.
-// Purely additive (no truncation beforehand) — matches the original script.
+// Command seed inserts fixed dev fixture data. Purely additive (no
+// truncation beforehand), so run it against a freshly migrated database.
 package main
 
 import (
@@ -111,116 +111,115 @@ func run() error {
 		return err
 	}
 
-	// logNight saves one person's night out and the DJs they saw.
-	logNight := func(user *db.User, event *db.Event, venue *db.Venue, seenAt string, isDay, isNight bool, lineup ...*db.Dj) (*db.Log, error) {
-		var eventID *string
-		if event != nil {
-			eventID = &event.ID
+	// logNight saves one person's night out: its rating (0 only for a night
+	// logged before nights were rated, which only rated its DJs), text and
+	// tags, and the DJs they saw, rated or not.
+	logNight := func(n night) (*db.Review, error) {
+		var eventID, text *string
+		if n.event != nil {
+			eventID = &n.event.ID
 		}
-		l, err := queries.CreateLog(ctx, pool, queries.CreateLogParams{
-			UserID: user.ID, EventID: eventID, Venue: venue, City: venue.City,
-			SeenAt: mustParse(seenAt), IsDay: isDay, IsNight: isNight,
+		if n.text != "" {
+			text = &n.text
+		}
+		var rating *int16
+		if n.rating != 0 {
+			rating = &n.rating
+		}
+		r, err := queries.CreateReview(ctx, pool, queries.CreateReviewParams{
+			UserID: n.user.ID, EventID: eventID, Venue: n.venue, City: n.venue.City,
+			SeenAt: mustParse(n.seenAt), IsDay: n.isDay, IsNight: n.isNight || !n.isDay,
+			Rating: rating, ReviewText: text,
 		})
 		if err != nil {
 			return nil, err
 		}
-		ids := make([]string, len(lineup))
-		for i, d := range lineup {
-			ids[i] = d.ID
+		lineup := make([]queries.LineupInput, len(n.lineup))
+		for i, s := range n.lineup {
+			lineup[i] = queries.LineupInput{DjID: s.dj.ID}
+			if s.rating != 0 {
+				lineup[i].Rating = &s.rating
+			}
+			if s.text != "" {
+				lineup[i].ReviewText = &s.text
+			}
 		}
-		return l, queries.AddLogLineup(ctx, pool, l.ID, ids)
-	}
-	// review adds a review to a log: of a DJ, or of the night (dj nil).
-	review := func(l *db.Log, dj *db.Dj, rating int16, text string, tags ...string) (*db.Review, error) {
-		var djID, reviewText *string
-		if dj != nil {
-			djID = &dj.ID
+		if err := queries.AddReviewLineup(ctx, pool, r.ID, lineup); err != nil {
+			return nil, err
 		}
-		if text != "" {
-			reviewText = &text
+		if len(n.tags) == 0 {
+			return r, nil
 		}
-		r, err := queries.CreateReview(ctx, pool, queries.CreateReviewParams{
-			Log: l, DjID: djID, Rating: int16Ptr(rating), ReviewText: reviewText,
-		})
-		if err != nil || len(tags) == 0 {
-			return r, err
-		}
-		return r, queries.SetReviewTagLinks(ctx, pool, r.ID, l.UserID, tags)
+		return r, queries.SetReviewTagLinks(ctx, pool, r.ID, n.user.ID, n.tags)
 	}
 
 	// Innervisions New York 2026 at Knockdown Center (Sat Jul 18): alice and
-	// bob both went at night (separate logs of the same event), and bob also
-	// logged the day party in The Ruins - same event, same day, day instead
-	// of night. DESIREE has no reviews, to exercise a lineup DJ nobody has
-	// rated yet; the day log's four-DJ lineup overflows a feed card's three
+	// bob both went at night (separate reviews of the same event), and bob
+	// also logged the day party in The Ruins - same event, same day, day
+	// instead of night. DESIREE isn't rated, to exercise a lineup DJ nobody
+	// has rated yet; the day's four-DJ lineup overflows a feed card's three
 	// photo tiles ("+1 more"), two of them without images.
-	aliceNight, err := logNight(alice, innervisions, knockdown, "2026-07-18T18:00:00Z", false, true, dj1, dj4, dj5)
-	if err != nil {
-		return err
-	}
-	if _, err := review(aliceNight, dj1, 5, "Absolutely electric set, the buildup into the last hour in the Main Hall was insane.", "groovy", "packed"); err != nil {
-		return err
-	}
-	if _, err := review(aliceNight, dj4, 5, "The live set was the highlight of the night, that room was made for it.", "emotional"); err != nil {
-		return err
-	}
-	// A review of the night as a whole (no DJ).
-	review8, err := review(aliceNight, nil, 5, "Day into night at Knockdown is the best format in the city. Sound in the Main Hall was dialed.", "packed", "great sound")
+	aliceNight, err := logNight(night{
+		user: alice, event: innervisions, venue: knockdown, seenAt: "2026-07-18T18:00:00Z", isNight: true,
+		rating: 5, text: "Day into night at Knockdown is the best format in the city. Sound in the Main Hall was dialed.",
+		tags: []string{"packed", "great sound"},
+		lineup: []set{
+			rated(dj1, 5, "Absolutely electric set, the buildup into the last hour in the Main Hall was insane."),
+			rated(dj4, 5, "The live set was the highlight of the night, that room was made for it."),
+			seen(dj5),
+		},
+	})
 	if err != nil {
 		return err
 	}
 
-	// The e2e suite (e2e/) asserts on Dixon's three reviews (this one, alice's
-	// above and bob's at Nowadays below) - keep them in sync if you change
-	// them.
-	bobNight, err := logNight(bob, innervisions, knockdown, "2026-07-18T18:00:00Z", false, true, dj1, dj4, dj5)
-	if err != nil {
-		return err
-	}
-	if _, err := review(bobNight, dj1, 4, "Dixon closing the Main Hall was pure tension and release, if a bit long.", "packed"); err != nil {
+	// The e2e suite (e2e/) asserts on Dixon's three ratings (this one,
+	// alice's above and bob's at Nowadays below) - keep them in sync if you
+	// change them.
+	if _, err := logNight(night{
+		user: bob, event: innervisions, venue: knockdown, seenAt: "2026-07-18T18:00:00Z", isNight: true,
+		rating: 4, tags: []string{"packed"},
+		lineup: []set{rated(dj1, 4, "Dixon closing the Main Hall was pure tension and release, if a bit long."), seen(dj4), seen(dj5)},
+	}); err != nil {
 		return err
 	}
 
-	bobDay, err := logNight(bob, innervisions, knockdown, "2026-07-18T18:00:00Z", true, false, dj5, dj6, dj7, dj8)
-	if err != nil {
-		return err
-	}
-	if _, err := review(bobDay, dj5, 4, "Caught him in The Ruins at golden hour, perfect vibe for the open air.", "sunset"); err != nil {
-		return err
-	}
-	if _, err := review(bobDay, dj7, 3, "Nice hypnotic stuff but the early slot meant half the crowd was still in line."); err != nil {
-		return err
-	}
-	if _, err := review(bobDay, dj8, 4, ""); err != nil {
-		return err
-	}
-	bobDayNight, err := review(bobDay, nil, 4, "The Ruins in the sun with this lineup back to back. Lines were long but worth it.", "sunny", "friendly")
+	bobDay, err := logNight(night{
+		user: bob, event: innervisions, venue: knockdown, seenAt: "2026-07-18T18:00:00Z", isDay: true,
+		rating: 4, text: "The Ruins in the sun with this lineup back to back. Lines were long but worth it.",
+		tags: []string{"sunny", "friendly", "sunset"},
+		lineup: []set{
+			rated(dj5, 4, "Caught him in The Ruins at golden hour, perfect vibe for the open air."),
+			seen(dj6),
+			rated(dj7, 3, "Nice hypnotic stuff but the early slot meant half the crowd was still in line."),
+			rated(dj8, 4, ""),
+		},
+	})
 	if err != nil {
 		return err
 	}
 
 	// A one-off Dixon night at a second venue.
-	bobNowadays, err := logNight(bob, dixonAllNight, nowadays, "2026-08-22T18:00:00Z", false, true, dj1)
-	if err != nil {
-		return err
-	}
-	if _, err := review(bobNowadays, dj1, 5, "Seven hours of Dixon at Nowadays, never once lost the room."); err != nil {
+	if _, err := logNight(night{
+		user: bob, event: dixonAllNight, venue: nowadays, seenAt: "2026-08-22T18:00:00Z", isNight: true,
+		rating: 5, lineup: []set{rated(dj1, 5, "Seven hours of Dixon at Nowadays, never once lost the room.")},
+	}); err != nil {
 		return err
 	}
 
 	// Nights with no event name, just a venue.
-	bobPublicRecords, err := logNight(bob, nil, publicRecords, "2026-05-01T22:00:00Z", false, true, dj2)
-	if err != nil {
+	if _, err := logNight(night{
+		user: bob, venue: publicRecords, seenAt: "2026-05-01T22:00:00Z", isNight: true,
+		rating: 4, tags: []string{"chill", "older crowd"},
+		lineup: []set{rated(dj2, 4, "Solid deep house groove, warmed up the room well.")},
+	}); err != nil {
 		return err
 	}
-	if _, err := review(bobPublicRecords, dj2, 4, "Solid deep house groove, warmed up the room well.", "chill", "older crowd"); err != nil {
-		return err
-	}
-	bobElsewhere, err := logNight(bob, nil, elsewhere, "2026-04-10T22:00:00Z", false, true, dj3)
-	if err != nil {
-		return err
-	}
-	review3, err := review(bobElsewhere, dj3, 4, "Yamagucci's low end was unreal, floor was shaking all night.", "sweaty", "bass in your chest")
+	bobElsewhere, err := logNight(night{
+		user: bob, venue: elsewhere, seenAt: "2026-04-10T22:00:00Z", isNight: true,
+		rating: 4, tags: []string{"sweaty", "bass in your chest"},
+		lineup: []set{rated(dj3, 4, "Yamagucci's low end was unreal, floor was shaking all night.")},
+	})
 	if err != nil {
 		return err
 	}
@@ -229,45 +228,65 @@ func run() error {
 		return err
 	}
 
-	// Likes and comments go on a night out's post: its night review when it
-	// has one (logs.lead_review_id).
-	if _, err := queries.LikeReview(ctx, pool, review8.ID, bob.ID); err != nil {
+	if _, err := queries.LikeReview(ctx, pool, aliceNight.ID, bob.ID); err != nil {
 		return err
 	}
-	if _, err := queries.LikeReview(ctx, pool, review3.ID, alice.ID); err != nil {
+	if _, err := queries.LikeReview(ctx, pool, bobElsewhere.ID, alice.ID); err != nil {
 		return err
 	}
-	if _, err := queries.LikeReview(ctx, pool, bobDayNight.ID, alice.ID); err != nil {
+	if _, err := queries.LikeReview(ctx, pool, bobDay.ID, alice.ID); err != nil {
 		return err
 	}
-	if _, err := queries.AddComment(ctx, pool, review8.ID, bob.ID, "Wish I was there for this one!"); err != nil {
+	if _, err := queries.AddComment(ctx, pool, aliceNight.ID, bob.ID, "Wish I was there for this one!"); err != nil {
 		return err
 	}
-	if _, err := queries.AddComment(ctx, pool, review8.ID, bob.ID, "Missed Âme live, was stuck at the bar. Never again."); err != nil {
+	if _, err := queries.AddComment(ctx, pool, aliceNight.ID, bob.ID, "Missed Âme live, was stuck at the bar. Never again."); err != nil {
 		return err
 	}
-	if _, err := queries.AddComment(ctx, pool, review3.ID, alice.ID, "Adding this to my list."); err != nil {
+	if _, err := queries.AddComment(ctx, pool, bobElsewhere.ID, alice.ID, "Adding this to my list."); err != nil {
 		return err
 	}
-	if _, err := queries.AddComment(ctx, pool, bobDayNight.ID, alice.ID, "The Ruins at sunset is unbeatable."); err != nil {
+	if _, err := queries.AddComment(ctx, pool, bobDay.ID, alice.ID, "The Ruins at sunset is unbeatable."); err != nil {
 		return err
 	}
 
-	return seedVariations(ctx, pool, alice, bob, logNight, review)
+	return seedVariations(ctx, pool, alice, bob, logNight)
 }
 
+// night is one person's night out to seed; set is a DJ on its lineup, rated
+// (a DJ review) or just seen.
 type (
-	logNightFunc func(user *db.User, event *db.Event, venue *db.Venue, seenAt string, isDay, isNight bool, lineup ...*db.Dj) (*db.Log, error)
-	reviewFunc   func(l *db.Log, dj *db.Dj, rating int16, text string, tags ...string) (*db.Review, error)
+	night struct {
+		user    *db.User
+		event   *db.Event
+		venue   *db.Venue
+		seenAt  string
+		isDay   bool
+		isNight bool
+		rating  int16
+		text    string
+		tags    []string
+		lineup  []set
+	}
+	set struct {
+		dj     *db.Dj
+		rating int16
+		text   string
+	}
+	logNightFunc func(n night) (*db.Review, error)
 )
+
+func seen(dj *db.Dj) set                             { return set{dj: dj} }
+func rated(dj *db.Dj, rating int16, text string) set { return set{dj: dj, rating: rating, text: text} }
 
 // seedVariations adds nights covering each shape a card, DJ, event or venue
 // page has to handle: with and without an event name, no/one/several DJs,
-// night-only, DJ-only and mixed reviews, day/night/day-into-night, long and
-// empty text, tagged friends, a popular post, another city. It deliberately
-// stays clear of what e2e/ asserts on (Dixon, Knockdown Center, Innervisions
-// New York, Dixon All Night Long), so those counts don't move.
-func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User, logNight logNightFunc, review reviewFunc) (err error) {
+// no/some/every DJ rated, an unrated night (from before nights were rated),
+// day/night/day-into-night, long and empty text, tagged friends, a popular
+// post, another city. It deliberately stays clear of what e2e/ asserts on
+// (Dixon, Knockdown Center, Innervisions New York, Dixon All Night Long), so
+// those counts don't move.
+func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User, logNight logNightFunc) (err error) {
 	// Fixture inserts can't fail on a fresh DB short of a schema bug, so
 	// panic through them (like mustParse) and report the first error here.
 	defer func() {
@@ -329,73 +348,111 @@ func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User,
 	marathon := event("Floating Points All Night Long - Twelve Hour Marathon Edition", "floating-points-all-night-long-twelve-hour-marathon-edition", bob)
 	fabricLive := event("FABRICLIVE", "fabriclive", dev)
 
-	night := func(user *db.User, e *db.Event, v *db.Venue, seenAt string, isDay, isNight bool, lineup ...*db.Dj) *db.Log {
-		return must(logNight(user, e, v, seenAt, isDay, isNight, lineup...))
-	}
-	rate := func(l *db.Log, d *db.Dj, rating int16, text string, tags ...string) *db.Review {
-		return must(review(l, d, rating, text, tags...))
-	}
+	log := func(n night) *db.Review { return must(logNight(n)) }
 
-	// Event, one DJ, rated only as a whole night by two people: a solo night
-	// counts toward KETTAMA's own rating (Avg of 2 on his page).
-	rush1 := night(carla, rush, goodRoom, "2026-10-03T22:00:00Z", false, true, kettama)
-	rushNight := rate(rush1, nil, 4, "Two hours of breaks and big piano house. Good Room's back room was a sauna.", "sweaty", "packed")
-	rush2 := night(dev, rush, goodRoom, "2026-10-03T22:00:00Z", false, true, kettama)
-	rate(rush2, nil, 2, "Too many edits of the same three tracks.")
+	// Event, one DJ, not rated on their own, by two people: a solo night's
+	// rating counts toward KETTAMA's own (Avg of 2 on his page).
+	rushNight := log(night{
+		user: carla, event: rush, venue: goodRoom, seenAt: "2026-10-03T22:00:00Z", isNight: true,
+		rating: 4, text: "Two hours of breaks and big piano house. Good Room's back room was a sauna.",
+		tags: []string{"sweaty", "packed"}, lineup: []set{seen(kettama)},
+	})
+	log(night{
+		user: dev, event: rush, venue: goodRoom, seenAt: "2026-10-03T22:00:00Z", isNight: true,
+		rating: 2, text: "Too many edits of the same three tracks.", lineup: []set{seen(kettama)},
+	})
+	// Good Room has a location and carla checked in there that night, so her
+	// review is verified; dev's, the same night without a check-in, isn't.
+	must(pool.Exec(ctx, "UPDATE venues SET latitude = 40.7268, longitude = -73.9526 WHERE id = $1", goodRoom.ID))
+	must(pool.Exec(ctx, `
+		INSERT INTO check_ins (user_id, venue_id, distance_m, accuracy_m, created_at)
+		VALUES ($1, $2, 40, 12, '2026-10-04T02:30:00Z')`, carla.ID, goodRoom.ID))
 
-	// Event, one DJ, rated only as the DJ: the DJ card.
-	honeyNight := night(alice, misterSat, nowadays, "2026-09-20T16:00:00Z", true, true, honey)
-	honeyReview := rate(honeyNight, honey, 5, "House music church. The garden at golden hour.", "sunset", "friendly")
+	// Event, one DJ, rated, and the night rated with no words.
+	honeyNight := log(night{
+		user: alice, event: misterSat, venue: nowadays, seenAt: "2026-09-20T16:00:00Z", isDay: true, isNight: true,
+		rating: 5, tags: []string{"sunset", "friendly"},
+		lineup: []set{rated(honey, 5, "House music church. The garden at golden hour.")},
+	})
 
-	// Event, several DJs, night review only: lineup photo tiles, no sets.
-	// Two DJs leaves the row of three short; six overflows it ("+3 more").
-	misterDay := night(carla, misterSat, nowadays, "2026-08-30T16:00:00Z", true, false, joy, peggy)
-	rate(misterDay, nil, 5, "Sunday afternoon in the garden, couldn't have asked for more.", "sunny")
-	basementBig := night(bob, basementEvent, basement, "2026-09-12T23:00:00Z", false, true, benUFO, joy, mallGrab, peggy, shygirl, djPython)
-	rate(basementBig, nil, 4, "", "dark", "great sound")
+	// Event, several DJs, none rated: lineup photo tiles, no sets. Two DJs
+	// leaves the row of three short; six overflows it ("+3 more").
+	log(night{
+		user: carla, event: misterSat, venue: nowadays, seenAt: "2026-08-30T16:00:00Z", isDay: true,
+		rating: 5, text: "Sunday afternoon in the garden, couldn't have asked for more.", tags: []string{"sunny"},
+		lineup: []set{seen(joy), seen(peggy)},
+	})
+	log(night{
+		user: bob, event: basementEvent, venue: basement, seenAt: "2026-09-12T23:00:00Z", isNight: true,
+		rating: 4, tags: []string{"dark", "great sound"},
+		lineup: []set{seen(benUFO), seen(joy), seen(mallGrab), seen(peggy), seen(shygirl), seen(djPython)},
+	})
 
-	// Event, several DJs, DJ reviews only (no night review): the night card
-	// without its own stamp, each set listed, and "Also saw" for the rest.
-	basementSets := night(carla, basementEvent, basement, "2026-09-12T23:00:00Z", false, true, benUFO, joy, mallGrab, shygirl)
-	rate(basementSets, benUFO, 5, "Three-hour masterclass in the Ford room, never played an obvious record.")
-	rate(basementSets, joy, 4, "")
+	// Event, several DJs, the night itself unrated (logged before nights
+	// were rated): the night card without its own stamp, each set listed,
+	// and "Also saw" for the rest.
+	log(night{
+		user: carla, event: basementEvent, venue: basement, seenAt: "2026-09-12T23:00:00Z", isNight: true,
+		lineup: []set{
+			rated(benUFO, 5, "Three-hour masterclass in the Ford room, never played an obvious record."),
+			rated(joy, 4, ""),
+			seen(mallGrab), seen(shygirl),
+		},
+	})
 
-	// Event, several DJs, night review plus every set rated, more sets than
-	// a list card shows ("+N more sets"), day into night, a long review.
-	marathonNight := night(bob, marathon, mirage, "2026-07-04T14:00:00Z", true, true, floating, djPython, honey, peggy)
-	marathonLead := rate(marathonNight, nil, 5, "Got there at two in the afternoon and left after sunrise. Floating Points opened with an hour of jazz records "+
-		"nobody recognised and somehow ended on acid techno, and the whole room went with him the entire way. The sound in the Mirage was the "+
-		"best I've heard it, the crowd was kind, the water was free. If they do this again I'm taking the next day off work too.", "emotional", "great sound", "packed")
-	rate(marathonNight, floating, 5, "Best set of the year, no contest.")
-	rate(marathonNight, djPython, 4, "Perfect warm-up while it was still light out.")
-	rate(marathonNight, honey, 4, "")
-	rate(marathonNight, peggy, 3, "Fun but felt short after the marathon before it.")
+	// Event, several DJs, every set rated, more sets than a list card shows
+	// ("+N more sets"), day into night, a long review.
+	marathonNight := log(night{
+		user: bob, event: marathon, venue: mirage, seenAt: "2026-07-04T14:00:00Z", isDay: true, isNight: true,
+		rating: 5, text: "Got there at two in the afternoon and left after sunrise. Floating Points opened with an hour of jazz records " +
+			"nobody recognised and somehow ended on acid techno, and the whole room went with him the entire way. The sound in the Mirage was the " +
+			"best I've heard it, the crowd was kind, the water was free. If they do this again I'm taking the next day off work too.",
+		tags: []string{"emotional", "great sound", "packed"},
+		lineup: []set{
+			rated(floating, 5, "Best set of the year, no contest."),
+			rated(djPython, 4, "Perfect warm-up while it was still light out."),
+			rated(honey, 4, ""),
+			rated(peggy, 3, "Fun but felt short after the marathon before it."),
+		},
+	})
 
-	// No event, one DJ, night review: titled after the DJ, venue under it.
-	pythonSolo := night(alice, nil, leBain, "2026-09-27T23:00:00Z", false, true, djPython)
-	rate(pythonSolo, nil, 4, "Rooftop, slow and hazy, exactly right for the last warm weekend.", "chill")
+	// No event, one DJ: titled after the DJ, venue under it.
+	log(night{
+		user: alice, venue: leBain, seenAt: "2026-09-27T23:00:00Z", isNight: true,
+		rating: 4, text: "Rooftop, slow and hazy, exactly right for the last warm weekend.", tags: []string{"chill"},
+		lineup: []set{seen(djPython)},
+	})
 
-	// No event, two DJs, night review plus one set: titled "A · B".
-	b2b := night(carla, nil, mirage, "2026-08-15T21:00:00Z", false, true, peggy, shygirl)
-	b2bNight := rate(b2b, nil, 3, "Big room, big sound, too many phones.", "packed")
-	rate(b2b, shygirl, 4, "Way harder than I expected, loved it.")
+	// No event, two DJs, one set rated: titled "A · B".
+	b2bNight := log(night{
+		user: carla, venue: mirage, seenAt: "2026-08-15T21:00:00Z", isNight: true,
+		rating: 3, text: "Big room, big sound, too many phones.", tags: []string{"packed"},
+		lineup: []set{seen(peggy), rated(shygirl, 4, "Way harder than I expected, loved it.")},
+	})
 
 	// No event, no lineup: titled after the venue (a city-less one).
-	unknown := night(dev, nil, warehouse, "2026-06-20T23:00:00Z", false, true)
-	rate(unknown, nil, 3, "No idea who was playing, didn't matter. Lost my jacket.")
+	log(night{
+		user: dev, venue: warehouse, seenAt: "2026-06-20T23:00:00Z", isNight: true,
+		rating: 3, text: "No idea who was playing, didn't matter. Lost my jacket.",
+	})
 
-	// No event, several DJs, one set rated (the DJ card), day only.
-	mallGrabDay := night(dev, nil, goodRoom, "2026-09-06T15:00:00Z", true, false, mallGrab, joy)
-	rate(mallGrabDay, mallGrab, 2, "Lo-fi house on a sunny afternoon, it was fine.", "older crowd")
+	// No event, several DJs, one set rated, day only.
+	log(night{
+		user: dev, venue: goodRoom, seenAt: "2026-09-06T15:00:00Z", isDay: true,
+		rating: 2, tags: []string{"older crowd"},
+		lineup: []set{rated(mallGrab, 2, "Lo-fi house on a sunny afternoon, it was fine."), seen(joy)},
+	})
 
 	// Another city, for the location-based search and city picker.
-	fabricNight := night(dev, fabricLive, fabric, "2026-05-16T23:00:00Z", false, true, benUFO, joy)
-	fabricLead := rate(fabricNight, nil, 5, "Room One at 4am. Nothing like it.", "bass in your chest")
-	rate(fabricNight, benUFO, 5, "")
+	fabricNight := log(night{
+		user: dev, event: fabricLive, venue: fabric, seenAt: "2026-05-16T23:00:00Z", isNight: true,
+		rating: 5, text: "Room One at 4am. Nothing like it.", tags: []string{"bass in your chest"},
+		lineup: []set{rated(benUFO, 5, ""), seen(joy)},
+	})
 
 	// Friends tagged on posts ("With @…" on the review page).
 	must(0, queries.SetReviewTags(ctx, pool, rushNight.ID, []string{dev.ID}))
-	must(0, queries.SetReviewTags(ctx, pool, marathonLead.ID, []string{alice.ID, carla.ID}))
+	must(0, queries.SetReviewTags(ctx, pool, marathonNight.ID, []string{alice.ID, carla.ID}))
 
 	// carla follows both; alice follows carla back; dev follows nobody.
 	for _, f := range [][2]*db.User{{carla, alice}, {carla, bob}, {alice, carla}, {bob, carla}} {
@@ -408,11 +465,11 @@ func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User,
 		review *db.Review
 		users  []*db.User
 	}{
-		{marathonLead, []*db.User{alice, carla, dev}},
+		{marathonNight, []*db.User{alice, carla, dev}},
 		{rushNight, []*db.User{alice, bob}},
-		{honeyReview, []*db.User{carla}},
+		{honeyNight, []*db.User{carla}},
 		{b2bNight, []*db.User{bob}},
-		{fabricLead, []*db.User{bob, carla}},
+		{fabricNight, []*db.User{bob, carla}},
 	} {
 		for _, u := range like.users {
 			must(queries.LikeReview(ctx, pool, like.review.ID, u.ID))
@@ -423,17 +480,17 @@ func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User,
 		user   *db.User
 		body   string
 	}{
-		{marathonLead, alice, "Jealous. Was it really twelve hours?"},
-		{marathonLead, bob, "Thirteen with the encore."},
-		{marathonLead, carla, "I was by the left speaker the whole time!"},
-		{marathonLead, dev, "Next year I'm coming."},
+		{marathonNight, alice, "Jealous. Was it really twelve hours?"},
+		{marathonNight, bob, "Thirteen with the encore."},
+		{marathonNight, carla, "I was by the left speaker the whole time!"},
+		{marathonNight, dev, "Next year I'm coming."},
 		{rushNight, dev, "Fair, but it was way too hot in there."},
 	} {
 		must(queries.AddComment(ctx, pool, c.review.ID, c.user.ID, c.body))
 	}
 
 	// Profile favorites, in order.
-	must(0, queries.SetFavoriteReviews(ctx, pool, bob.ID, []string{marathonLead.ID}))
+	must(0, queries.SetFavoriteReviews(ctx, pool, bob.ID, []string{marathonNight.ID}))
 	must(0, queries.SetFavoriteReviews(ctx, pool, carla.ID, []string{rushNight.ID, b2bNight.ID}))
 	return nil
 }
@@ -446,7 +503,6 @@ func must[T any](v T, err error) T {
 }
 
 func strPtr(s string) *string { return &s }
-func int16Ptr(n int16) *int16 { return &n }
 
 func mustParse(s string) time.Time {
 	t, err := time.Parse(time.RFC3339, s)

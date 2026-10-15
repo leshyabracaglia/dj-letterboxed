@@ -1,6 +1,9 @@
 package queries
 
-import "context"
+import (
+	"context"
+	"github.com/jackc/pgx/v5"
+)
 
 // TagSummary is a library tag plus how many reviews use it.
 type TagSummary struct {
@@ -22,20 +25,7 @@ func SearchTags(ctx context.Context, q DBTX, query string, limit int) ([]TagSumm
 		GROUP BY t.id
 		ORDER BY use_count DESC, t.is_default DESC, t.name
 		LIMIT $2`, query, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []TagSummary
-	for rows.Next() {
-		var t TagSummary
-		if err := rows.Scan(&t.ID, &t.Name, &t.IsDefault, &t.UseCount); err != nil {
-			return nil, err
-		}
-		out = append(out, t)
-	}
-	return out, rows.Err()
+	return collect(rows, err, pgx.RowToStructByPos[TagSummary])
 }
 
 // SetReviewTagLinks replaces a review's tags with names (already
@@ -70,18 +60,5 @@ func ListTagNamesByReviewIDs(ctx context.Context, q DBTX, reviewIDs []string) (m
 		JOIN tags t ON t.id = l.tag_id
 		WHERE l.review_id = ANY($1::uuid[])
 		ORDER BY t.name`, reviewIDs)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	out := make(map[string][]string)
-	for rows.Next() {
-		var reviewID, name string
-		if err := rows.Scan(&reviewID, &name); err != nil {
-			return nil, err
-		}
-		out[reviewID] = append(out[reviewID], name)
-	}
-	return out, rows.Err()
+	return collectGrouped(rows, err, pgx.RowToStructByPos[keyed[string]])
 }

@@ -23,27 +23,14 @@ func scanDj(row pgx.Row) (*db.Dj, error) {
 	return &d, nil
 }
 
-// SearchDjs matches DJs by name, most-reviewed first; an empty query returns
-// the most-reviewed DJs overall.
+// SearchDjs matches DJs by name, most-seen first; an empty query returns
+// the most-seen DJs overall.
 func SearchDjs(ctx context.Context, q DBTX, query string, limit int) ([]db.Dj, error) {
 	rows, err := q.Query(ctx, "SELECT "+djCols+` FROM djs
 		WHERE $1 = '' OR name ILIKE '%' || $1 || '%'
-		ORDER BY (SELECT COUNT(*) FROM reviews r WHERE r.dj_id = djs.id) DESC, lower(name)
+		ORDER BY (SELECT COUNT(*) FROM review_lineup rl WHERE rl.dj_id = djs.id) DESC, lower(name)
 		LIMIT $2`, query, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []db.Dj
-	for rows.Next() {
-		d, err := scanDj(rows)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, *d)
-	}
-	return out, rows.Err()
+	return collect(rows, err, rowsOf(scanDj))
 }
 
 func GetDjBySlug(ctx context.Context, q DBTX, slug string) (*db.Dj, error) {
@@ -67,35 +54,23 @@ func CreateDj(ctx context.Context, q DBTX, name, slug string, bio *string, genre
 
 // GetDjsByIDs batch-fetches djs for hydrating relations, keyed by id.
 func GetDjsByIDs(ctx context.Context, q DBTX, ids []string) (map[string]db.Dj, error) {
-	out := make(map[string]db.Dj, len(ids))
 	if len(ids) == 0 {
-		return out, nil
+		return map[string]db.Dj{}, nil
 	}
 	rows, err := q.Query(ctx, "SELECT "+djCols+" FROM djs WHERE id = ANY($1)", ids)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		d, err := scanDj(rows)
-		if err != nil {
-			return nil, err
-		}
-		out[d.ID] = *d
-	}
-	return out, rows.Err()
+	return collectMap(rows, err, rowsOf(scanDj), func(d db.Dj) string { return d.ID })
 }
 
 type DjAggregate struct {
-	AvgRating   *float64 `json:"avgRating"`
+	AvgRating   *float64 `json:"avgRating" extensions:"x-nullable"`
 	ReviewCount int64    `json:"reviewCount"`
 	// RatingCounts[i] is how many reviews gave i+1 stars.
 	RatingCounts []int64 `json:"ratingCounts"`
 }
 
-// GetDjAggregate rates djID from reviews of them, plus night reviews of
-// nights they were the only DJ on the lineup of (a solo night's rating is
-// theirs), unless that log also rated them directly.
+// GetDjAggregate rates djID from their ratings on nights' lineups, plus the
+// rating of nights they were the only DJ on the lineup of and weren't rated
+// on themselves (a solo night's rating is theirs).
 func GetDjAggregate(ctx context.Context, q DBTX, djID string) (*DjAggregate, error) {
 	var agg DjAggregate
 	err := q.QueryRow(ctx, `
@@ -107,10 +82,14 @@ func GetDjAggregate(ctx context.Context, q DBTX, djID string) (*DjAggregate, err
 				COUNT(*) FILTER (WHERE rating = 4),
 				COUNT(*) FILTER (WHERE rating = 5)
 			]
-		FROM reviews
-		WHERE dj_id = $1 OR (dj_id IS NULL
-			AND log_id IN (SELECT log_id FROM log_lineup GROUP BY log_id HAVING bool_and(dj_id = $1))
-			AND NOT EXISTS (SELECT 1 FROM reviews dr WHERE dr.log_id = reviews.log_id AND dr.dj_id = $1))`, djID).Scan(&agg.AvgRating, &agg.ReviewCount, &agg.RatingCounts)
+		FROM (
+			SELECT rating FROM review_lineup WHERE dj_id = $1 AND rating IS NOT NULL
+			UNION ALL
+			SELECT r.rating FROM reviews r
+			JOIN review_lineup rl ON rl.review_id = r.id AND rl.dj_id = $1 AND rl.rating IS NULL
+			WHERE r.rating IS NOT NULL
+				AND NOT EXISTS (SELECT 1 FROM review_lineup o WHERE o.review_id = r.id AND o.dj_id <> $1)
+		) ratings`, djID).Scan(&agg.AvgRating, &agg.ReviewCount, &agg.RatingCounts)
 	if err != nil {
 		return nil, err
 	}
@@ -118,10 +97,10 @@ func GetDjAggregate(ctx context.Context, q DBTX, djID string) (*DjAggregate, err
 }
 
 // GetDjByName finds a DJ by exact (case-insensitive) name, preferring a
-// Spotify-linked one, then the most reviewed.
+// Spotify-linked one, then the most seen.
 func GetDjByName(ctx context.Context, q DBTX, name string) (*db.Dj, error) {
 	return scanDj(q.QueryRow(ctx, "SELECT "+djCols+` FROM djs
 		WHERE lower(name) = lower($1)
-		ORDER BY spotify_id IS NULL, (SELECT COUNT(*) FROM reviews r WHERE r.dj_id = djs.id) DESC
+		ORDER BY spotify_id IS NULL, (SELECT COUNT(*) FROM review_lineup rl WHERE rl.dj_id = djs.id) DESC
 		LIMIT 1`, name))
 }

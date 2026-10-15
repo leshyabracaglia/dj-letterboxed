@@ -17,7 +17,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { Button, Page, Text, useIsDesktopWeb } from "../components/ui";
 import { WebNav } from "../components/WebNav";
-import { useApi } from "../lib/api/client";
+import { ApiError, useApi } from "../lib/api/client";
 import { queryKeys } from "../lib/api/queryKeys";
 import type { AppVersion } from "../lib/api/types";
 import { AuthProvider } from "../lib/auth";
@@ -29,14 +29,21 @@ SplashScreen.preventAutoHideAsync();
 const publishableKey: string = (() => {
   const key = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
   if (!key) {
-    throw new Error(
-      "Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY. Set it in your .env file.",
-    );
+    throw new Error("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY. Set it in your .env file.");
   }
   return key;
 })();
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // A 4xx (a deleted review, a mistyped link) won't change on retry, so
+      // fail at once and let the screen say so; retry network and 5xx errors.
+      retry: (failureCount, error) =>
+        !(error instanceof ApiError && error.status >= 400 && error.status < 500) && failureCount < 3,
+    },
+  },
+});
 
 // Navigators paint this behind every screen and header (and in any gap a
 // screen doesn't cover, like over-scroll on web); without it they fall back
@@ -80,10 +87,7 @@ function ForceUpdateGate({ children }: { children: ReactNode }) {
         <Text className="text-center text-muted">
           A new version of BeatBox&apos;d is available. Update in TestFlight to keep using the app.
         </Text>
-        <Button
-          onPress={() => Linking.openURL(data.iosUpdateUrl)}
-          className="mt-4 w-full max-w-sm py-3"
-        >
+        <Button onPress={() => Linking.openURL(data.iosUpdateUrl)} className="mt-4 w-full max-w-sm py-3">
           <Text className="text-center font-semibold text-paper">Open TestFlight</Text>
         </Button>
       </View>
@@ -109,7 +113,7 @@ export default function RootLayout() {
   const isDesktopWeb = useIsDesktopWeb();
 
   // The zine design (dark concrete wall, colored paper cards) only comes in
-  // dark, so the dark: variants are always on.
+  // dark. Style for it directly - don't add light/dark class pairs.
   useEffect(() => {
     setColorScheme("dark");
   }, [setColorScheme]);
@@ -132,30 +136,30 @@ export default function RootLayout() {
             <PushNotifications />
             <StatusBar style="light" />
             <ThemeProvider value={NAV_THEME}>
-            <ForceUpdateGate>
-            <Stack
-              screenOptions={{
-                // Desktop web gets the same persistent top nav as the tabs group
-                // instead of a per-page title bar; phone-width web and native keep
-                // the standard themed header with a back chevron.
-                header: isDesktopWeb ? () => <WebNav /> : undefined,
-                headerStyle: { backgroundColor: "#0B0809" },
-                headerTintColor: "#F6F6F9",
-                headerTitleStyle: { fontFamily: "Jersey10_400Regular", fontSize: 24 },
-                // Chevron only: the default back title is the previous route's
-                // name, which for anything pushed from the tabs reads "(tabs)".
-                // (A custom headerBackTitleStyle font forces a static title, so
-                // none is set.)
-                headerBackButtonDisplayMode: "minimal",
-                headerShadowVisible: false,
-                contentStyle: { backgroundColor: "#000000" },
-              }}
-            >
-              <Stack.Screen name="index" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            </Stack>
-            </ForceUpdateGate>
+              <ForceUpdateGate>
+                <Stack
+                  screenOptions={{
+                    // Desktop web gets the same persistent top nav as the tabs group
+                    // instead of a per-page title bar; phone-width web and native keep
+                    // the standard themed header with a back chevron.
+                    header: isDesktopWeb ? () => <WebNav /> : undefined,
+                    headerStyle: { backgroundColor: "#0B0809" },
+                    headerTintColor: "#F6F6F9",
+                    headerTitleStyle: { fontFamily: "Jersey10_400Regular", fontSize: 24 },
+                    // Chevron only: the default back title is the previous route's
+                    // name, which for anything pushed from the tabs reads "(tabs)".
+                    // (A custom headerBackTitleStyle font forces a static title, so
+                    // none is set.)
+                    headerBackButtonDisplayMode: "minimal",
+                    headerShadowVisible: false,
+                    contentStyle: { backgroundColor: "#000000" },
+                  }}
+                >
+                  <Stack.Screen name="index" options={{ headerShown: false }} />
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                </Stack>
+              </ForceUpdateGate>
             </ThemeProvider>
           </AuthProvider>
         </QueryClientProvider>

@@ -87,6 +87,8 @@ module "secrets" {
   spotify_client_id            = var.spotify_client_id
   spotify_client_secret        = var.spotify_client_secret
   google_places_api_key        = var.google_places_api_key
+  resend_api_key               = var.resend_api_key
+  reports_email                = var.reports_email
 }
 
 module "ec2" {
@@ -107,6 +109,8 @@ module "ec2" {
   spotify_client_id_secret_arn            = module.secrets.spotify_client_id_secret_arn
   spotify_client_secret_secret_arn        = module.secrets.spotify_client_secret_secret_arn
   google_places_api_key_secret_arn        = module.secrets.google_places_api_key_secret_arn
+  resend_api_key_secret_arn               = module.secrets.resend_api_key_secret_arn
+  reports_email_secret_arn                = module.secrets.reports_email_secret_arn
   database_url_readonly_secret_arn        = module.secrets.database_url_readonly_secret_arn
   clerk_jwks_url                          = var.clerk_jwks_url
   clerk_issuer                            = var.clerk_issuer

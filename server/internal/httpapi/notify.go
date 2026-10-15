@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -10,10 +11,13 @@ import (
 	"beatboxd/server/internal/domain"
 )
 
-// Push notifications for social activity on a user's account. They're sent
-// after the request's own work has succeeded, in the background on a fresh
-// context (the request's is cancelled once the response goes out), and any
-// failure is only logged: a missed notification shouldn't fail a like.
+// Notifications of social activity on a user's account: each is recorded
+// for the in-app list (GET /api/notifications) and pushed to the user's
+// devices. That happens after the request's own work has succeeded, in the
+// background on a fresh context (the request's is cancelled once the
+// response goes out), and any failure is only logged: a missed notification
+// shouldn't fail a like. Only a newly recorded notification pushes, so a
+// repeat follow, like or tag (see queries.CreateNotification) stays quiet.
 //
 // The data payload says what happened, not where to go; the app maps it
 // to a route (lib/push.ts), so in-app paths stay defined in one place.
@@ -22,7 +26,9 @@ const notifyTimeout = 15 * time.Second
 
 func (h *Handlers) notifyFollow(actor *db.User, targetID string) {
 	h.notifyAsync(func(ctx context.Context) error {
-		return h.sendToUser(ctx, targetID, displayName(actor)+" started following you", map[string]string{
+		return h.recordAndPush(ctx, queries.CreateNotificationParams{
+			UserID: targetID, ActorID: actor.ID, Type: "follow",
+		}, displayName(actor)+" started following you", map[string]string{
 			"type": "follow", "username": actor.Username,
 		})
 	})
@@ -31,44 +37,85 @@ func (h *Handlers) notifyFollow(actor *db.User, targetID string) {
 func (h *Handlers) notifyLike(actor *db.User, reviewID string) {
 	h.notifyAsync(func(ctx context.Context) error {
 		info, err := queries.GetReviewNotifyInfo(ctx, h.Pool, reviewID)
-		if err != nil || info.OwnerID == actor.ID {
+		if err != nil {
 			return err
 		}
-		return h.sendToUser(ctx, info.OwnerID, displayName(actor)+" liked your review"+ofSubject(info.Subject), map[string]string{
+		return h.recordAndPush(ctx, queries.CreateNotificationParams{
+			UserID: info.OwnerID, ActorID: actor.ID, Type: "like", ReviewID: &reviewID,
+		}, displayName(actor)+" liked your review"+ofSubject(info.Subject), map[string]string{
 			"type": "like", "reviewId": reviewID,
 		})
 	})
 }
 
-func (h *Handlers) notifyComment(actor *db.User, reviewID, body string) {
+func (h *Handlers) notifyComment(actor *db.User, comment *db.ReviewComment) {
 	h.notifyAsync(func(ctx context.Context) error {
-		info, err := queries.GetReviewNotifyInfo(ctx, h.Pool, reviewID)
-		if err != nil || info.OwnerID == actor.ID {
+		info, err := queries.GetReviewNotifyInfo(ctx, h.Pool, comment.ReviewID)
+		if err != nil {
 			return err
 		}
-		text := displayName(actor) + " commented on your review" + ofSubject(info.Subject) + ": " + truncate(body, 120)
-		return h.sendToUser(ctx, info.OwnerID, text, map[string]string{
-			"type": "comment", "reviewId": reviewID,
+		text := displayName(actor) + " commented on your review" + ofSubject(info.Subject) + ": " + truncate(comment.Body, 120)
+		return h.recordAndPush(ctx, queries.CreateNotificationParams{
+			UserID: info.OwnerID, ActorID: actor.ID, Type: "comment", ReviewID: &comment.ReviewID, CommentID: &comment.ID,
+		}, text, map[string]string{
+			"type": "comment", "reviewId": comment.ReviewID,
 		})
 	})
 }
 
-func (h *Handlers) notifyAsync(send func(ctx context.Context) error) {
-	if h.Push == nil {
+// notifyTagged tells each of userIDs that actor tagged them as being at the
+// night out reviewID belongs to. Anyone already notified of it is skipped,
+// so re-saving who was there only reaches the newly tagged.
+func (h *Handlers) notifyTagged(actor *db.User, reviewID string, userIDs []string) {
+	if len(userIDs) == 0 {
 		return
 	}
+	h.notifyAsync(func(ctx context.Context) error {
+		info, err := queries.GetReviewNotifyInfo(ctx, h.Pool, reviewID)
+		if err != nil {
+			return err
+		}
+		text := displayName(actor) + " tagged you in their night out"
+		if info.Subject != "" {
+			text = displayName(actor) + " tagged you at " + info.Subject
+		}
+		var errs []error
+		for _, uid := range userIDs {
+			errs = append(errs, h.recordAndPush(ctx, queries.CreateNotificationParams{
+				UserID: uid, ActorID: actor.ID, Type: "tag", ReviewID: &reviewID,
+			}, text, map[string]string{
+				"type": "tag", "reviewId": reviewID,
+			}))
+		}
+		return errors.Join(errs...)
+	})
+}
+
+func (h *Handlers) notifyAsync(send func(ctx context.Context) error) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), notifyTimeout)
 		defer cancel()
 		if err := send(ctx); err != nil {
-			slog.Warn("push notification failed", "error", err)
+			slog.Warn("notification failed", "error", err)
 		}
 	}()
 }
 
+// recordAndPush records p and, if it's new, pushes body to the recipient.
+func (h *Handlers) recordAndPush(ctx context.Context, p queries.CreateNotificationParams, body string, data map[string]string) error {
+	isNew, err := queries.CreateNotification(ctx, h.Pool, p)
+	if err != nil || !isNew {
+		return err
+	}
+	return h.sendToUser(ctx, p.UserID, body, data)
+}
+
 // sendToUser pushes body to every device userID is signed in on, and
-// forgets any token Expo says is dead.
+// forgets any token Expo says is dead. A no-op when push isn't configured.
 func (h *Handlers) sendToUser(ctx context.Context, userID, body string, data map[string]string) error {
+	if h.Push == nil {
+		return nil
+	}
 	tokens, err := queries.ListPushTokens(ctx, h.Pool, userID)
 	if err != nil || len(tokens) == 0 {
 		return err

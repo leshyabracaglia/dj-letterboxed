@@ -1,6 +1,10 @@
 package queries
 
-import "context"
+import (
+	"context"
+
+	"github.com/jackc/pgx/v5"
+)
 
 type Engagement struct {
 	LikeCount    int64 `json:"likeCount"`
@@ -10,12 +14,10 @@ type Engagement struct {
 
 // AttachEngagement computes like/comment counts (and, when currentUserID is
 // non-nil, whether the caller has liked each review) for a set of review
-// ids. Ported from lib/server/reviewEngagement.ts's attachEngagement: ad hoc
-// join-and-count, not denormalized columns.
+// ids: ad hoc join-and-count, not denormalized columns.
 func AttachEngagement(ctx context.Context, q DBTX, reviewIDs []string, currentUserID *string) (map[string]Engagement, error) {
-	out := make(map[string]Engagement, len(reviewIDs))
 	if len(reviewIDs) == 0 {
-		return out, nil
+		return map[string]Engagement{}, nil
 	}
 
 	rows, err := q.Query(ctx, `
@@ -25,43 +27,34 @@ func AttachEngagement(ctx context.Context, q DBTX, reviewIDs []string, currentUs
 		LEFT JOIN review_comments rc ON rc.review_id = r.id
 		WHERE r.id = ANY($1)
 		GROUP BY r.id`, reviewIDs)
+	counts, err := collect(rows, err, func(row pgx.CollectableRow) (keyed[Engagement], error) {
+		var k keyed[Engagement]
+		err := row.Scan(&k.Key, &k.Value.LikeCount, &k.Value.CommentCount)
+		return k, err
+	})
 	if err != nil {
 		return nil, err
 	}
-	for rows.Next() {
-		var id string
-		var e Engagement
-		if err := rows.Scan(&id, &e.LikeCount, &e.CommentCount); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		out[id] = e
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return nil, err
+	out := make(map[string]Engagement, len(counts))
+	for _, c := range counts {
+		out[c.Key] = c.Value
 	}
 
 	if currentUserID == nil {
 		return out, nil
 	}
 
-	likedRows, err := q.Query(ctx, `
+	rows, err = q.Query(ctx, `
 		SELECT review_id FROM review_likes
 		WHERE review_id = ANY($1) AND user_id = $2`, reviewIDs, *currentUserID)
+	liked, err := collect(rows, err, pgx.RowTo[string])
 	if err != nil {
 		return nil, err
 	}
-	defer likedRows.Close()
-
-	for likedRows.Next() {
-		var id string
-		if err := likedRows.Scan(&id); err != nil {
-			return nil, err
-		}
+	for _, id := range liked {
 		e := out[id]
 		e.IsLikedByMe = true
 		out[id] = e
 	}
-	return out, likedRows.Err()
+	return out, nil
 }

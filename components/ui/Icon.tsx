@@ -4,9 +4,8 @@ import type { ComponentProps } from "react";
 
 export type IconName = keyof typeof Ionicons.glyphMap;
 
-// Lets an icon take its color from a text-color className
-// (`text-accent-text dark:text-accent-dark`) like the Text beside it,
-// instead of a hard-coded hex that ignores dark mode.
+// Lets an icon take its color from a text-color className (`text-paper`)
+// like the Text beside it, instead of a hard-coded hex.
 cssInterop(Ionicons, {
   className: { target: "style", nativeStyleToProp: { color: true } },
 });

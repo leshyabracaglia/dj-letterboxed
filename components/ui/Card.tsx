@@ -97,33 +97,34 @@ export function Card({
   children: ReactNode;
 }) {
   const { className: tintClass, color } = (blank ? BLANK_TINTS : TINTS)[tint];
+  
   const paper = (
     <View className={`p-4 ${tintClass} ${className}`}>
-      {/* First, so anything the card positions over its bottom edge (the
-          rating stamp) paints above the torn strip. */}
       {torn && <TornEdge color={color} />}
       {children}
     </View>
   );
-  const frame = `${torn ? "mb-10" : "mb-4"} ${blank ? "" : "shadow-lg shadow-black/60"}`;
+
   const transform = tilt ? [{ rotate: `${tilt}deg` }] : undefined;
   if (blank) {
     return (
-      <LoadingFade className={frame}>
+      <LoadingFade>
         <View style={{ transform }}>{paper}</View>
       </LoadingFade>
     );
   }
+  
   if (!href) {
     return (
-      <View className={frame} style={{ transform }}>
+      <View className="shadow-lg shadow-black/60" style={{ transform }}>
         {paper}
       </View>
     );
   }
+
   return (
     <Link href={href} asChild>
-      <Pressable className={`${frame} active:opacity-90`} style={{ transform }}>
+      <Pressable className="shadow-lg shadow-black/60 active:opacity-90" style={{ transform }}>
         {paper}
       </Pressable>
     </Link>

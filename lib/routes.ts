@@ -17,8 +17,14 @@ export const ROUTES = {
   FEED: "/(tabs)/feed" as Href,
   BROWSE: "/(tabs)/browse" as Href,
   REVIEW: "/(tabs)/review" as Href,
+  // The log tab, filled in from the night out a review belongs to (when
+  // you were tagged in someone else's): its event, venue, date and lineup.
+  REVIEW_FROM: (reviewId: string): Href => `/(tabs)/review?fromReview=${reviewId}` as Href,
   PROFILE: "/(tabs)/profile" as Href,
   SETTINGS: "/settings" as Href,
+  PRIVACY: "/privacy" as Href,
+  SUPPORT: "/support" as Href,
+  NOTIFICATIONS: "/notifications" as Href,
   DJ: (slug: string): Href => `/dj/${slug}` as Href,
   // A named event ("Innervisions NY"), by slug.
   EVENT: (slug: string): Href => `/event/${slug}` as Href,

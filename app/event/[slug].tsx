@@ -1,28 +1,52 @@
-import { Link, Stack, useLocalSearchParams } from "expo-router";
+import { Link, router, useLocalSearchParams } from "expo-router";
 import { FlatList, Pressable, View } from "react-native";
 
-import { DjAvatarRow } from "../../components/DjAvatarRow";
+import { DetailPage } from "../../components/DetailPage";
 import { Poster, POSTER_RECORD_STYLE } from "../../components/Poster";
 import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
-import { EmptyState, FadeInView, FitText, Page, Skeleton, Text, usePageContentStyle } from "../../components/ui";
+import {
+  Avatar,
+  EmptyState,
+  FadeInView,
+  FitText,
+  SectionTitle,
+  Skeleton,
+  Text,
+  TornCardSeparator,
+  usePageContentStyle,
+} from "../../components/ui";
 import { useEventDetail } from "../../lib/api/hooks";
-import type { EventDetail } from "../../lib/api/types";
+import type { Dj, EventDetail } from "../../lib/api/types";
+import { plural } from "../../lib/format";
 import { ROUTES } from "../../lib/routes";
+import { ReactNode } from "react";
 
 // How many of the most-logged DJs the poster lists as its lineup.
 const POSTER_LINEUP = 6;
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
-
 function EventSkeleton() {
-  const contentStyle = usePageContentStyle();
+  const contentStyle = usePageContentStyle("roomy");
   return (
-    <Page underHeader>
-      <View style={[contentStyle, { paddingTop: 0 }]}>
-        <Skeleton className="mb-4 h-80 w-full rounded-none" />
-        <ReviewCardSkeleton count={3} />
-      </View>
-    </Page>
+    <View style={contentStyle} className="gap-4">
+      <Skeleton className="h-80 w-full rounded-none" />
+      <ReviewCardSkeleton count={3} />
+    </View>
+  );
+}
+
+export function DjAvatarRow({ items }: { items: { dj: Dj; caption?: ReactNode }[] }) {
+  return (
+    <View className="flex-row flex-wrap gap-3">
+      {items.map(({ dj, caption }) => (
+        <Pressable key={dj.id} onPress={() => router.push(ROUTES.DJ(dj.slug))} className="w-20 items-center">
+          <Avatar uri={dj.imageUrl} name={dj.name} size={56} />
+          <Text className="mt-1 text-center font-display text-base uppercase leading-5 text-paper" numberOfLines={1}>
+            {dj.name}
+          </Text>
+          {caption}
+        </Pressable>
+      ))}
+    </View>
   );
 }
 
@@ -95,81 +119,93 @@ function EventPoster({ data }: { data: EventDetail }) {
         <View className="p-3">
           <Text className="font-display text-sm uppercase leading-4 text-paper/60">Logged</Text>
           <Text className="mt-1 font-display text-xl uppercase leading-5 text-paper">
-            {plural(event.logCount, "night")}
+            {plural(event.reviewCount, "night")}
           </Text>
-          <Text className="text-xs text-paper/60">{plural(event.reviewCount, "review")}</Text>
         </View>
       </View>
     </Poster>
   );
 }
 
-function SectionTitle({ children }: { children: string }) {
-  return <Text className="mb-2 mt-6 font-display text-2xl uppercase text-paper/85">{children}</Text>;
-}
-
 // Everything logged about an event ("Innervisions NY") across every date,
 // venue and day/night people went: how it rates, the DJs people saw and how
 // often, where it's been, and recent reviews.
-export default function EventScreen() {
+export default function EventDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const contentStyle = usePageContentStyle();
-  const { data } = useEventDetail(slug);
-
-  if (!data) {
-    return <EventSkeleton />;
-  }
+  const query = useEventDetail(slug);
 
   return (
-    <Page underHeader>
-      <Stack.Screen options={{ title: data.event.name }} />
-      <FlatList
-        contentContainerStyle={[contentStyle, { paddingTop: 0 }]}
-        data={data.recentReviews}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item, index }) => <ReviewCard review={item} index={index} />}
-        ListHeaderComponent={
-          <View className="mb-2">
-            <FadeInView>
-              <EventPoster data={data} />
-            </FadeInView>
-            {!!data.djs.length && (
-              <>
-                <SectionTitle>Who people saw</SectionTitle>
-                <DjAvatarRow
-                  items={data.djs.map(({ dj, logCount }) => ({
-                    dj,
-                    caption: (
-                      <Text className="font-display text-sm uppercase text-paper/60">{plural(logCount, "log")}</Text>
-                    ),
-                  }))}
-                />
-              </>
-            )}
+    <DetailPage
+      underHeader
+      query={query}
+      title={(data) => data.event.name}
+      skeleton={<EventSkeleton />}
+      missing="This event isn't on Beatboxd."
+    >
+      {(data) => <EventDetailList data={data} />}
+    </DetailPage>
+  );
+}
 
-            {!!data.venues.length && (
-              <>
-                <SectionTitle>Where it&apos;s been</SectionTitle>
+function EventDetailList({ data }: { data: EventDetail }) {
+  const contentStyle = usePageContentStyle("roomy");
+
+  return (
+    <FlatList
+      contentContainerStyle={contentStyle}
+      data={data.recentReviews}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item, index }) => <ReviewCard review={item} index={index} />}
+      ItemSeparatorComponent={TornCardSeparator}
+      ListHeaderComponent={
+        <View>
+          <FadeInView>
+            <EventPoster data={data} />
+          </FadeInView>
+          {!!data.djs.length && (
+            <View className="mt-6 gap-2">
+              <SectionTitle>Who people saw</SectionTitle>
+              <DjAvatarRow
+                items={data.djs.map(({ dj, reviewCount }) => ({
+                  dj,
+                  caption: (
+                    <Text className="font-display text-sm uppercase text-paper/60">{plural(reviewCount, "night")}</Text>
+                  ),
+                }))}
+              />
+            </View>
+          )}
+
+          {!!data.venues.length && (
+            <View className="mt-6 gap-2">
+              <SectionTitle>Where it&apos;s been</SectionTitle>
+              <View>
                 {data.venues.map((venue) => (
                   <Link key={venue.id} href={ROUTES.VENUE(venue.id)} asChild>
                     <Pressable className="py-1 active:opacity-70">
                       <Text className="font-display text-xl uppercase text-paper">
                         {venue.name}
                         <Text className="text-paper/60">
-                          {venue.city ? ` · ${venue.city}` : ""} · {plural(venue.logCount, "log")}
+                          {venue.city ? ` · ${venue.city}` : ""} · {plural(venue.reviewCount, "night")}
                         </Text>
                       </Text>
                     </Pressable>
                   </Link>
                 ))}
-              </>
-            )}
+              </View>
+            </View>
+          )}
 
-            <SectionTitle>Recent reviews</SectionTitle>
-          </View>
-        }
-        ListEmptyComponent={<EmptyState message="No reviews yet for this event." />}
-      />
-    </Page>
+          <View className="mt-6" />
+          <SectionTitle>Recent reviews</SectionTitle>
+          <View className="h-4" />
+        </View>
+      }
+      ListEmptyComponent={
+        <View className="mt-10">
+          <EmptyState message="No reviews yet for this event." />
+        </View>
+      }
+    />
   );
 }

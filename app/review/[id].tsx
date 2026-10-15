@@ -1,16 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { Link, router, Stack, useLocalSearchParams } from "expo-router";
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  Platform,
-  Pressable,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { Link, router, useLocalSearchParams } from "expo-router";
+import { ActivityIndicator, Alert, Image, Modal, Platform, Pressable, useWindowDimensions, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@clerk/expo";
 import { useEffect, useRef, useState, type RefObject } from "react";
@@ -21,33 +11,28 @@ import {
   CARD_COLORS,
   Icon,
   KeyboardScrollView,
-  Page,
   paperFor,
   type Paper,
   RatingStamp,
+  SectionTitle,
   Sheet,
   Skeleton,
   Tape,
   Text,
+  TextField,
   TornEdge,
   usePageContentStyle,
   WallBackground,
 } from "../../components/ui";
+import { DetailPage } from "../../components/DetailPage";
+import { ModerationButton } from "../../components/ModerationSheet";
 import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
 import { TagFriendsPicker } from "../../components/TagFriendsPicker";
 import { useCurrentUser } from "../../lib/auth";
-import { useApi } from "../../lib/api/client";
+import { errorMessage, useApi } from "../../lib/api/client";
 import { queryKeys } from "../../lib/api/queryKeys";
-import type {
-  Dj,
-  Review,
-  ReviewComment,
-  UpdateNightLogInput,
-  UpdateNightLogResponse,
-  User,
-} from "../../lib/api/types";
-import { formatCardDate, formatEventTiming } from "../../lib/format";
-import { reviewSubject } from "../../lib/review";
+import type { Dj, Review, ReviewComment, UpdateReviewInput, UpdateReviewResponse, User } from "../../lib/api/types";
+import { nightDateParts, reviewSubject, soloSet } from "../../lib/review";
 import { ROUTES } from "../../lib/routes";
 import { captureStory, shareStory, WEB_URL, type CapturedStory } from "../../lib/shareStory";
 import { isIos, isWeb } from "@/lib/utils";
@@ -101,8 +86,7 @@ function CommentSection({ reviewId }: { reviewId: string }) {
     }));
 
   const addComment = useMutation({
-    mutationFn: (input: { body: string }) =>
-      api.post<ReviewComment>(`/reviews/${reviewId}/comments`, input),
+    mutationFn: (input: { body: string }) => api.post<ReviewComment>(`/reviews/${reviewId}/comments`, input),
     onMutate: async (input) => {
       await queryClient.cancelQueries({ queryKey: commentsKey });
       const previous = queryClient.getQueryData<ReviewComment[]>(commentsKey);
@@ -114,10 +98,7 @@ function CommentSection({ reviewId }: { reviewId: string }) {
         body: input.body,
         createdAt: new Date().toISOString(),
       };
-      queryClient.setQueryData<ReviewComment[]>(commentsKey, (old) => [
-        ...(old ?? []),
-        optimisticComment,
-      ]);
+      queryClient.setQueryData<ReviewComment[]>(commentsKey, (old) => [...(old ?? []), optimisticComment]);
       setBody("");
       bumpCommentCount(1);
       return { previous, submittedBody: input.body };
@@ -134,9 +115,7 @@ function CommentSection({ reviewId }: { reviewId: string }) {
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: commentsKey });
       const previous = queryClient.getQueryData<ReviewComment[]>(commentsKey);
-      queryClient.setQueryData<ReviewComment[]>(commentsKey, (old) =>
-        (old ?? []).filter((c) => c.id !== id),
-      );
+      queryClient.setQueryData<ReviewComment[]>(commentsKey, (old) => (old ?? []).filter((c) => c.id !== id));
       bumpCommentCount(-1);
       return { previous };
     },
@@ -148,63 +127,60 @@ function CommentSection({ reviewId }: { reviewId: string }) {
   });
 
   return (
-    <View className="mt-4">
-      <Text className="mb-3 mt-2 font-display text-2xl uppercase text-paper/85">Comments</Text>
-      {(comments ?? []).map((comment) => (
-        <View key={comment.id} className="mb-3 flex-row items-start justify-between">
-          <View className="flex-1 flex-row items-start gap-2 pr-2">
-            <Avatar
-              uri={comment.user?.avatarUrl}
-              name={comment.user?.username ?? "?"}
-              size={24}
-            />
-            <View className="flex-1">
-              <Text className="font-display text-base uppercase text-paper/80">@{comment.user?.username}</Text>
-              <Text className="text-sm text-ink dark:text-paper">{comment.body}</Text>
+    <View className="gap-2">
+      <SectionTitle>Comments</SectionTitle>
+      <View className="gap-3">
+        {(comments ?? []).map((comment) => (
+          <View key={comment.id} className="flex-row items-start justify-between">
+            <View className="flex-1 flex-row items-start gap-2 pr-2">
+              <Avatar uri={comment.user?.avatarUrl} name={comment.user?.username ?? "?"} size={24} />
+              <View className="flex-1">
+                <Text className="font-display text-base uppercase text-paper/80">@{comment.user?.username}</Text>
+                <Text className="text-sm text-paper">{comment.body}</Text>
+              </View>
             </View>
+            {me?.id === comment.userId ? (
+              <Pressable onPress={() => deleteComment.mutate(comment.id)}>
+                <Text className="text-xs text-muted">Delete</Text>
+              </Pressable>
+            ) : (
+              !!comment.user &&
+              !comment.id.startsWith("temp-") && (
+                <ModerationButton user={comment.user} target={{ commentId: comment.id }} />
+              )
+            )}
           </View>
-          {me?.id === comment.userId && (
-            <Pressable onPress={() => deleteComment.mutate(comment.id)}>
-              <Text className="text-xs text-muted">Delete</Text>
-            </Pressable>
-          )}
-        </View>
-      ))}
-      {!comments ? (
-        Array.from({ length: 2 }).map((_, i) => (
-          <View key={i} className="mb-3 flex-row items-start gap-2">
-            <Skeleton className="h-6 w-6 rounded-full" />
-            <View className="flex-1">
-              <Skeleton className="h-3.5 w-24" />
-              <Skeleton className="mt-1.5 h-3.5 w-3/4" />
+        ))}
+        {!comments ? (
+          Array.from({ length: 2 }).map((_, i) => (
+            <View key={i} className="flex-row items-start gap-2">
+              <Skeleton className="h-6 w-6 rounded-full" />
+              <View className="flex-1">
+                <Skeleton className="h-3.5 w-24" />
+                <Skeleton className="mt-1.5 h-3.5 w-3/4" />
+              </View>
             </View>
+          ))
+        ) : !comments.length ? (
+          <Text className="text-sm text-paper/60">No comments yet.</Text>
+        ) : null}
+        {isSignedIn ? (
+          <View className="flex-row items-center gap-2">
+            <TextField placeholder="Add a comment..." value={body} onChangeText={setBody} className="flex-1" />
+            <Button
+              disabled={!body.trim() || addComment.isPending}
+              onPress={() => addComment.mutate({ body: body.trim() })}
+              className="px-4 py-2"
+            >
+              <Text className="text-paper">Post</Text>
+            </Button>
           </View>
-        ))
-      ) : !comments.length ? (
-        <Text className="mb-3 text-sm text-paper/60">No comments yet.</Text>
-      ) : null}
-      {isSignedIn ? (
-        <View className="flex-row items-center gap-2">
-          <TextInput
-            placeholder="Add a comment..."
-            value={body}
-            onChangeText={setBody}
-            className="flex-1 rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-2 text-paper"
-            placeholderTextColor="rgba(246,246,249,0.4)"
-          />
-          <Button
-            disabled={!body.trim() || addComment.isPending}
-            onPress={() => addComment.mutate({ body: body.trim() })}
-            className="px-4 py-2"
-          >
-            <Text className="text-paper">Post</Text>
-          </Button>
-        </View>
-      ) : (
-        <Link href={ROUTES.SIGN_IN}>
-          <Text className="text-primary dark:text-primary-dark">Sign in to comment</Text>
-        </Link>
-      )}
+        ) : (
+          <Link href={ROUTES.SIGN_IN}>
+            <Text className="text-primary-dark">Sign in to comment</Text>
+          </Link>
+        )}
+      </View>
     </View>
   );
 }
@@ -265,9 +241,7 @@ function LikeButton({
   return (
     <Pressable
       disabled={pending || disabled}
-      onPress={() =>
-        isSignedIn ? (isLiked ? unlike.mutate() : like.mutate()) : router.push(ROUTES.SIGN_IN)
-      }
+      onPress={() => (isSignedIn ? (isLiked ? unlike.mutate() : like.mutate()) : router.push(ROUTES.SIGN_IN))}
       className={`flex-row items-center gap-1.5 rounded-lg px-3 py-1.5 active:opacity-80 ${
         isLiked ? "bg-black/60" : "bg-black/25"
       }`}
@@ -294,15 +268,8 @@ function CommentCount({ reviewId, fallback }: { reviewId: string; fallback: numb
   );
 }
 
-// getById always hydrates these relations, so narrow them to required here.
-// dj stays nullable: a review of the night as a whole has none.
-type ReviewDetail = Review & {
-  dj: Dj | null;
-  taggedUsers: User[];
-  user: User;
-  likeCount: number;
-  isLikedByMe: boolean;
-};
+// getById always includes who posted it, so narrow it to required here.
+type ReviewDetail = Review & { user: User };
 
 // A review some list already loaded (feed, popular, a profile's or a DJ's/
 // night's/series' reviews), so tapping its card opens the detail at once
@@ -332,14 +299,7 @@ function findCachedReview(queryClient: QueryClient, id: string): ReviewDetail | 
   if (!found) return undefined;
   const user = found.user ?? users.get(found.userId);
   if (!user) return undefined;
-  // dj/event stay as the list had them; the screen guards both already.
-  return {
-    ...found,
-    user,
-    taggedUsers: found.taggedUsers ?? [],
-    likeCount: found.likeCount ?? 0,
-    isLikedByMe: found.isLikedByMe ?? false,
-  } as ReviewDetail;
+  return { ...found, user };
 }
 
 // Word-boundary truncation for the story card. Done in JS rather than with
@@ -350,6 +310,16 @@ function snippet(text: string, max = 150) {
   const cut = flat.slice(0, max);
   const lastSpace = cut.lastIndexOf(" ");
   return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+}
+
+// The story card's photo: the subject's own, or for a night with several DJs
+// (whose subject has none), the first one on the lineup with a photo.
+function storyPhoto(review: ReviewDetail) {
+  return (
+    reviewSubject(review, soloSet(review)).imageUrl ??
+    review.lineup.find((entry) => entry.dj.imageUrl)?.dj.imageUrl ??
+    null
+  );
 }
 
 // The 9:16 Instagram story image, in the app's zine look: a torn, taped
@@ -375,27 +345,22 @@ function StoryCard({
 }) {
   const u = (n: number) => (n * width) / 360;
   const height = (width * 16) / 9;
-  const subject = reviewSubject(review);
+  // A post that's just one DJ's review (see soloSet) shares as that DJ's.
+  const set = soloSet(review);
+  const subject = reviewSubject(review, set);
+  const photo = storyPhoto(review);
+  const rating = set ? set.rating : review.rating;
+  const reviewText = set ? set.reviewText : review.reviewText;
   const paperColor = CARD_COLORS[paper.tint];
-  const label = [
-    `${formatCardDate(review.seenAt)} ${new Date(review.seenAt).getFullYear()}`,
-    review.log && formatEventTiming(review.log),
-    subject.isNight && "Whole night",
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  const where = review.log?.venue
-    ? `${!subject.isNight && review.log.event ? `${review.log.event.name} ` : ""}@ ${review.log.venue}`
+  const label = nightDateParts(review, { wholeNight: subject.isNight, withYear: true }).join(" · ");
+  const where = review.venue
+    ? `${!subject.isNight && review.event ? `${review.event.name} ` : ""}@ ${review.venue}`
     : null;
   const nameSize = subject.name.length > 22 ? 34 : subject.name.length > 12 ? 42 : 54;
   const tags = review.tags?.slice(0, 3) ?? [];
 
   return (
-    <View
-      ref={cardRef}
-      collapsable={false}
-      style={{ width, height, overflow: "hidden", backgroundColor: "#000000" }}
-    >
+    <View ref={cardRef} collapsable={false} style={{ width, height, overflow: "hidden", backgroundColor: "#000000" }}>
       <WallBackground />
 
       <View
@@ -438,7 +403,6 @@ function StoryCard({
             shadowOpacity: 0.6,
             shadowRadius: u(10),
             shadowOffset: { width: 0, height: u(6) },
-            marginBottom: u(10),
           }}
         >
           <View style={{ backgroundColor: paperColor, padding: u(16), paddingBottom: u(20) }}>
@@ -456,9 +420,9 @@ function StoryCard({
                   transform: [{ rotate: "-3deg" }],
                 }}
               >
-                {subject.imageUrl ? (
+                {photo ? (
                   <Image
-                    source={{ uri: subject.imageUrl }}
+                    source={{ uri: photo }}
                     onLoad={onImageSettled}
                     onError={onImageSettled}
                     resizeMode="cover"
@@ -472,9 +436,9 @@ function StoryCard({
                   </View>
                 )}
               </View>
-              {!!review.rating && (
+              {!!rating && (
                 <View style={{ marginTop: u(4), marginRight: u(2) }}>
-                  <RatingStamp value={review.rating} size={u(104)} rotate={-10} />
+                  <RatingStamp value={rating} size={u(104)} rotate={-10} />
                 </View>
               )}
             </View>
@@ -500,9 +464,9 @@ function StoryCard({
               </Text>
             )}
 
-            {!!review.reviewText && (
+            {!!reviewText && (
               <Text className="text-paper" style={{ fontSize: u(14), lineHeight: u(20), marginTop: u(12) }}>
-                “{snippet(review.reviewText, 140)}”
+                “{snippet(reviewText, 140)}”
               </Text>
             )}
 
@@ -518,10 +482,7 @@ function StoryCard({
                       paddingVertical: u(1),
                     }}
                   >
-                    <Text
-                      className="font-display uppercase text-paper"
-                      style={{ fontSize: u(14), lineHeight: u(16) }}
-                    >
+                    <Text className="font-display uppercase text-paper" style={{ fontSize: u(14), lineHeight: u(16) }}>
                       {tag}
                     </Text>
                   </View>
@@ -536,6 +497,7 @@ function StoryCard({
           style={{
             alignSelf: "center",
             alignItems: "center",
+            marginTop: u(28),
             transform: [{ rotate: "1.5deg" }],
             backgroundColor: CARD_COLORS.neutral,
             borderWidth: 1,
@@ -559,26 +521,18 @@ function StoryCard({
   );
 }
 
-function ShareStorySheet({
-  review,
-  paper,
-  onClose,
-}: {
-  review: ReviewDetail;
-  paper: Paper;
-  onClose: () => void;
-}) {
+function ShareStorySheet({ review, paper, onClose }: { review: ReviewDetail; paper: Paper; onClose: () => void }) {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   // A multiple of 9 keeps the 9:16 height a whole number of pixels.
-  const previewWidth =
-    Math.floor(Math.min(297, windowWidth - 64, ((windowHeight - 280) * 9) / 16) / 9) * 9;
+  const previewWidth = Math.floor(Math.min(297, windowWidth - 64, ((windowHeight - 280) * 9) / 16) / 9) * 9;
   const cardRef = useRef<View>(null);
   const prepared = useRef<CapturedStory | null>(null);
-  const [imageSettled, setImageSettled] = useState(!reviewSubject(review).imageUrl);
+  const set = soloSet(review);
+  const [imageSettled, setImageSettled] = useState(!storyPhoto(review));
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const filename = `beatboxd-${review.dj?.slug ?? "night"}.png`;
+  const filename = `beatboxd-${set?.dj.slug ?? "night"}.png`;
   const link = `${WEB_URL}${ROUTES.REVIEW_DETAIL(review.id) as string}`;
 
   // On web, render the PNG as soon as the preview has settled: html2canvas is
@@ -611,8 +565,8 @@ function ShareStorySheet({
       } else if (result === "shared") {
         setNotice("Review link copied — add a Link sticker in Instagram and paste it.");
       }
-    } catch (err: any) {
-      setNotice(err?.message ?? "Couldn't create the image");
+    } catch (err) {
+      setNotice(errorMessage(err, "Couldn't create the image"));
     } finally {
       setBusy(false);
     }
@@ -620,12 +574,9 @@ function ShareStorySheet({
 
   return (
     <Pressable onPress={onClose} className="flex-1 items-center justify-center bg-ink/70 px-4">
-      <Pressable
-        onPress={(e) => e.stopPropagation()}
-        className="items-center rounded-2xl bg-paper p-5 dark:bg-surface-dark"
-      >
-        <Text className="mb-3 text-lg font-display text-ink dark:text-paper">Share to your story</Text>
-        <View className="overflow-hidden rounded-xl">
+      <Pressable onPress={(e) => e.stopPropagation()} className="items-center rounded-2xl p-5 bg-surface-dark">
+        <Text className="text-lg font-display text-paper">Share to your story</Text>
+        <View className="mt-3 overflow-hidden rounded-xl">
           <StoryCard
             review={review}
             paper={paper}
@@ -635,8 +586,7 @@ function ShareStorySheet({
           />
         </View>
         <Text className="mt-3 text-center text-xs text-muted" style={{ maxWidth: previewWidth + 40 }}>
-          {notice ??
-            "We'll copy a link to this review too — paste it into a Link sticker so friends can tap through."}
+          {notice ?? "We'll copy a link to this review too — paste it into a Link sticker so friends can tap through."}
         </Text>
         <View className="mt-4 flex-row gap-3" style={{ width: previewWidth + 40 }}>
           <Button onPress={onShare} disabled={busy} className="flex-1 flex-row gap-2 py-3">
@@ -651,7 +601,7 @@ function ShareStorySheet({
             onPress={onClose}
             className="flex-1 items-center justify-center rounded-full border border-primary/30 py-3"
           >
-            <Text className="font-semibold text-ink dark:text-paper">Done</Text>
+            <Text className="font-semibold text-paper">Done</Text>
           </Pressable>
         </View>
       </Pressable>
@@ -659,26 +609,16 @@ function ShareStorySheet({
   );
 }
 
-function ShareStoryButton({
-  review,
-  paper,
-  justLogged,
-}: {
-  review: ReviewDetail;
-  paper: Paper;
-  justLogged: boolean;
-}) {
+function ShareStoryButton({ review, paper, justLogged }: { review: ReviewDetail; paper: Paper; justLogged: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <View
-      className={`mt-4 w-full max-w-xl items-center rounded-2xl p-4 ${
+      className={`w-full max-w-xl items-center gap-3 rounded-2xl p-4 ${
         justLogged ? "border border-accent/40 bg-accent/10" : ""
       }`}
     >
       {justLogged && (
-        <Text className="mb-3 text-center text-base text-ink dark:text-paper">
-          Set logged! Let your followers know who you saw.
-        </Text>
+        <Text className="text-center text-base text-paper">Set logged! Let your followers know who you saw.</Text>
       )}
       <Button onPress={() => setOpen(true)} className="w-full flex-row gap-2 py-3">
         <Ionicons name="logo-instagram" size={18} color="#F6F6F9" />
@@ -691,16 +631,30 @@ function ShareStoryButton({
   );
 }
 
-// A log is fixed once it's logged, except for who you tagged as being there
+// Shown to someone tagged in this night who hasn't logged it themselves:
+// one tap opens the log tab filled in with the night.
+function LogItTooPrompt({ review }: { review: ReviewDetail }) {
+  return (
+    <View className="w-full max-w-xl items-center gap-3 rounded-2xl border border-accent/40 bg-accent/10 p-4">
+      <Text className="text-center text-base text-paper">
+        @{review.user.username} tagged you here. Log the night and rate the sets you caught.
+      </Text>
+      <Button onPress={() => router.push(ROUTES.REVIEW_FROM(review.id))} className="w-full py-3">
+        <Text className="font-semibold text-paper">Log this night</Text>
+      </Button>
+    </View>
+  );
+}
+
+// A review is fixed once it's logged, except for who you tagged as being there
 // with you: this opens a sheet to change that.
 function WhoWasThereButton({ review }: { review: ReviewDetail }) {
   const api = useApi();
   const queryClient = useQueryClient();
-  const { me } = useCurrentUser();
   const [open, setOpen] = useState(false);
   const [tagged, setTagged] = useState<User[]>(review.taggedUsers);
   const save = useMutation({
-    mutationFn: (input: UpdateNightLogInput) => api.patch<UpdateNightLogResponse>(`/logs/${review.logId}`, input),
+    mutationFn: (input: UpdateReviewInput) => api.patch<UpdateReviewResponse>(`/reviews/${review.id}`, input),
     onSuccess: ({ taggedUsers }) => {
       patchCachedReview(queryClient, review.id, (r) => ({ ...r, taggedUsers }));
       setOpen(false);
@@ -718,7 +672,7 @@ function WhoWasThereButton({ review }: { review: ReviewDetail }) {
     <>
       <Pressable
         onPress={openSheet}
-        className="mt-4 flex-row items-center justify-center gap-2 self-center border border-dashed border-paper/60 px-4 py-2 active:opacity-70"
+        className="flex-row items-center justify-center gap-2 self-center border border-dashed border-paper/60 px-4 py-2 active:opacity-70"
       >
         <Icon name="people-outline" size={16} className="text-paper" />
         <Text className="font-display text-lg uppercase leading-5 text-paper">
@@ -733,10 +687,9 @@ function WhoWasThereButton({ review }: { review: ReviewDetail }) {
             </Text>
             <TagFriendsPicker
               taggedUsers={tagged}
-              excludeUserId={me?.id}
               startTyping={!tagged.length}
               onAdd={(user) => setTagged((prev) => [...prev, user])}
-              onRemove={(userId) => setTagged((prev) => prev.filter((u) => u.id !== userId))}
+              onRemoveTaggedUser={(userId) => setTagged((prev) => prev.filter((u) => u.id !== userId))}
             />
             {save.isError && (
               <Text className="text-danger-dark">{(save.error as Error)?.message ?? "Could not save. Try again."}</Text>
@@ -755,20 +708,19 @@ function WhoWasThereButton({ review }: { review: ReviewDetail }) {
   );
 }
 
-// Deletes the whole night out this post stands for (the night review and
-// every DJ review in it), since the page shows them as one post.
-function DeleteReviewButton({ logId }: { logId: string }) {
+// Deletes the whole night out, with every DJ review in it.
+function DeleteReviewButton({ reviewId }: { reviewId: string }) {
   const api = useApi();
   const queryClient = useQueryClient();
   const remove = useMutation({
-    mutationFn: () => api.del(`/logs/${logId}`),
+    mutationFn: () => api.del(`/reviews/${reviewId}`),
     onSuccess: () => {
       for (const prefix of LIST_PREFIXES) queryClient.invalidateQueries({ queryKey: [prefix] });
       if (router.canGoBack()) router.back();
       else router.replace(ROUTES.FEED);
     },
-    onError: (err: any) => {
-      const message = err?.message ?? "Please try again.";
+    onError: (err) => {
+      const message = errorMessage(err, "Please try again.");
       if (isWeb) window.alert(`Could not delete review. ${message}`);
       else Alert.alert("Could not delete review", message);
     },
@@ -789,7 +741,7 @@ function DeleteReviewButton({ logId }: { logId: string }) {
     <Pressable
       onPress={onPress}
       disabled={remove.isPending}
-      className="mt-4 flex-row items-center gap-1.5 self-center px-3 py-2 active:opacity-70"
+      className="flex-row items-center gap-1.5 self-center px-3 py-2 active:opacity-70"
     >
       {remove.isPending ? (
         <ActivityIndicator size="small" color="#F6F6F9" />
@@ -801,77 +753,115 @@ function DeleteReviewButton({ logId }: { logId: string }) {
   );
 }
 
+// Space above the review card: more than a plain page's, since the card's
+// tape pokes up above it.
+const REVIEW_TOP = 36;
+
 function ReviewDetailSkeleton({ tint }: { tint: string | undefined }) {
-  const contentStyle = usePageContentStyle();
+  const contentStyle = usePageContentStyle("roomy");
   return (
-    <Page>
-      <View style={[contentStyle, { paddingTop: 24, alignItems: "center" }]}>
-        <View className="w-full max-w-xl">
-          <ReviewCardSkeleton paper={paperFor(tint)} />
-        </View>
+    <View style={[contentStyle, { paddingTop: REVIEW_TOP, alignItems: "center" }]}>
+      <View className="w-full max-w-xl">
+        <ReviewCardSkeleton paper={paperFor(tint)} />
       </View>
-    </Page>
+    </View>
   );
+}
+
+// Titled after the night, or the DJ when it's just their review.
+function reviewTitle(review: ReviewDetail): string {
+  return reviewSubject(review, soloSet(review)).name;
 }
 
 export default function ReviewDetailScreen() {
   const { id, justLogged, tint } = useLocalSearchParams<{ id: string; justLogged?: string; tint?: string }>();
   const api = useApi();
-  const contentStyle = usePageContentStyle();
-  const { me } = useCurrentUser();
   const queryClient = useQueryClient();
-  const { data: review, isPlaceholderData } = useQuery({
-    queryKey: queryKeys.reviews.byId(id!),
+  const query = useQuery({
+    queryKey: queryKeys.reviews.byId(id ?? ""),
     queryFn: () => api.get<ReviewDetail>(`/reviews/${id}`),
-    placeholderData: () => findCachedReview(queryClient, id!),
+    placeholderData: () => findCachedReview(queryClient, id ?? ""),
+    enabled: !!id,
   });
 
-  if (!review) {
-    return <ReviewDetailSkeleton tint={tint} />;
-  }
-  // A night out with several DJ reviews is titled after the night.
-  const subject = reviewSubject(review.djReviews?.length ? { log: review.log } : review);
-  // The color of the card it was opened from (purple when opened from
-  // anywhere else, like a notification or a shared link).
-  const paper = paperFor(tint);
+  return (
+    <DetailPage
+      underHeader
+      query={query}
+      title={reviewTitle}
+      skeleton={<ReviewDetailSkeleton tint={tint} />}
+      missing="This review has been deleted."
+    >
+      {(review) => (
+        <ReviewDetailBody
+          review={review}
+          isPlaceholderData={query.isPlaceholderData}
+          // The color of the card it was opened from (purple when opened
+          // from anywhere else, like a notification or a shared link).
+          paper={paperFor(tint)}
+          justLogged={justLogged === "1"}
+        />
+      )}
+    </DetailPage>
+  );
+}
+
+function ReviewDetailBody({
+  review,
+  isPlaceholderData,
+  paper,
+  justLogged,
+}: {
+  review: ReviewDetail;
+  isPlaceholderData: boolean;
+  paper: Paper;
+  justLogged: boolean;
+}) {
+  const contentStyle = usePageContentStyle("roomy");
+  const { me } = useCurrentUser();
 
   return (
-    <Page>
-      <Stack.Screen options={{ title: subject.name }} />
-      <KeyboardScrollView contentContainerStyle={[contentStyle, { paddingTop: 24, alignItems: "center" }]}>
-        <View className="w-full max-w-xl">
-          <ReviewCard
-            review={review}
-            index={0}
-            paper={paper}
-            expanded
-            actions={
-              <View className="flex-row items-center gap-2">
-                <LikeButton
-                  reviewId={review.id}
-                  likeCount={review.likeCount}
-                  isLiked={review.isLikedByMe}
-                  disabled={isPlaceholderData}
-                />
-                <CommentCount reviewId={review.id} fallback={review.commentCount ?? 0} />
-              </View>
-            }
-          />
-        </View>
+    <KeyboardScrollView contentContainerStyle={[contentStyle, { paddingTop: REVIEW_TOP, alignItems: "center" }]}>
+      <View className="w-full max-w-xl">
+        <ReviewCard
+          review={review}
+          index={0}
+          paper={paper}
+          expanded
+          actions={
+            <View className="flex-row items-center gap-2">
+              <LikeButton
+                reviewId={review.id}
+                likeCount={review.likeCount}
+                isLiked={review.isLikedByMe}
+                disabled={isPlaceholderData}
+              />
+              <CommentCount reviewId={review.id} fallback={review.commentCount} />
+            </View>
+          }
+        />
+      </View>
 
+      {/* Clear of the torn edge and rating stamp hanging off the card. */}
+      <View className="mt-14 w-full items-center gap-4">
         {!isPlaceholderData && me?.id === review.userId && <WhoWasThereButton review={review} />}
+
+        {!isPlaceholderData && review.viewerLoggedNight === false && <LogItTooPrompt review={review} />}
 
         {/* Story sharing hands the image to Instagram via the OS share sheet,
             which only works well from the native iOS app. */}
         {isIos && !isPlaceholderData && me?.id === review.userId && (
-          <ShareStoryButton review={review} paper={paper} justLogged={justLogged === "1"} />
+          <ShareStoryButton review={review} paper={paper} justLogged={justLogged} />
         )}
 
-        <View className="w-full max-w-xl">
+        <View className="mt-4 w-full max-w-xl gap-4">
           <CommentSection reviewId={review.id} />
-          {!isPlaceholderData && me?.id === review.userId && <DeleteReviewButton logId={review.logId} />}
+          {!isPlaceholderData && me?.id === review.userId && <DeleteReviewButton reviewId={review.id} />}
+          {!isPlaceholderData && me?.id !== review.userId && !!review.user && (
+            <ModerationButton user={review.user} target={{ reviewId: review.id }} label="Report or block" />
+          )}
         </View>
-      </KeyboardScrollView>
-    </Page>
+      </View>
+    </KeyboardScrollView>
   );
 }

@@ -7,7 +7,7 @@ import "net/http"
 // gets a blocking "update required" screen. To force an update: once the new
 // build is live in TestFlight, set this to its build number and push - the
 // server deploy picks it up. 0 disables the check.
-const minIOSBuild = 0
+const minIOSBuild = 27
 
 // iosUpdateURL opens the app's page in the TestFlight app (ascAppId from
 // eas.json). Swap for the App Store URL once the app is publicly released.

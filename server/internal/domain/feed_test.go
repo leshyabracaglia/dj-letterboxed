@@ -1,25 +1,28 @@
 package domain
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestDecodeCursor_Empty(t *testing.T) {
 	c := DecodeCursor("")
-	if c.CreatedAt != nil || c.PopularOffset != 0 {
+	if c.CreatedAt != nil {
 		t.Fatalf("expected zero cursor, got %+v", c)
 	}
 }
 
 func TestDecodeCursor_Malformed(t *testing.T) {
 	c := DecodeCursor("{not json")
-	if c.CreatedAt != nil || c.PopularOffset != 0 {
+	if c.CreatedAt != nil {
 		t.Fatalf("expected defensive fallback to zero cursor, got %+v", c)
 	}
 }
 
 func TestEncodeDecodeCursor_RoundTrip(t *testing.T) {
-	enc := EncodeCursor(Cursor{PopularOffset: 7})
-	dec := DecodeCursor(enc)
-	if dec.PopularOffset != 7 {
-		t.Fatalf("round-trip mismatch: got popularOffset=%d", dec.PopularOffset)
+	at := time.Date(2026, 10, 14, 22, 30, 0, 0, time.UTC)
+	dec := DecodeCursor(EncodeCursor(Cursor{CreatedAt: &at}))
+	if dec.CreatedAt == nil || !dec.CreatedAt.Equal(at) {
+		t.Fatalf("round-trip mismatch: got createdAt=%v", dec.CreatedAt)
 	}
 }

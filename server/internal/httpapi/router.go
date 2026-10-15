@@ -20,11 +20,13 @@ type RouterConfig struct {
 	Places                    *domain.PlacesClient
 	Push                      *domain.PushClient
 	RA                        *domain.RAClient
+	Email                     *domain.EmailClient
+	WebURL                    string
 	ClerkWebhookSigningSecret string
 }
 
 func NewRouter(cfg RouterConfig) http.Handler {
-	h := NewHandlers(cfg.Pool, cfg.Spotify, cfg.Places, cfg.Push, cfg.RA)
+	h := NewHandlers(cfg.Pool, cfg.Spotify, cfg.Places, cfg.Push, cfg.RA, cfg.Email, cfg.WebURL)
 	a := &Auth{Verifier: cfg.Verifier, Pool: cfg.Pool}
 
 	r := chi.NewRouter()
@@ -61,17 +63,17 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/users/{username}/stats", h.GetUserStats)
 			r.Get("/users/{userId}/followers", h.GetFollowers)
 			r.Get("/users/{userId}/following", h.GetFollowing)
-			r.Get("/reviews/{id}/comments", h.ListComments)
 		})
 
 		// Optional auth (public, but personalizes when a valid token is
-		// present) — mirrors resolveOptionalUserId's use in the tRPC routers.
+		// present).
 		r.Group(func(r chi.Router) {
 			r.Use(a.OptionalAuth)
 			r.Get("/djs/{slug}", h.GetDjBySlug)
 			r.Get("/djs/{id}/reviews", h.ListReviewsByDj)
 			r.Get("/events/{slug}", h.GetEventBySlug)
 			r.Get("/reviews/{id}", h.GetReviewByID)
+			r.Get("/reviews/{id}/comments", h.ListComments)
 			r.Get("/users/{username}/reviews", h.ListReviewsByUser)
 			r.Get("/users/{username}/favorites", h.GetFavoriteReviews)
 			r.Get("/feed/popular", h.GetPopular)
@@ -82,9 +84,8 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Use(a.RequireAuth)
 
 			r.Post("/djs", h.CreateDj)
-			r.Post("/logs", h.CreateNightLog)
-			r.Delete("/logs/{id}", h.DeleteNightLog)
-			r.Patch("/logs/{id}", h.UpdateNightLog)
+			r.Get("/check-ins/nearby", h.NearbyVenues)
+			r.Post("/check-ins", h.CheckIn)
 			r.Get("/ra/areas", h.SearchRAAreas)
 			r.Get("/ra/events", h.ListRAEvents)
 			r.Get("/ra/events/{id}/match", h.MatchRAEvent)
@@ -95,6 +96,8 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Post("/follows/{userId}", h.Follow)
 			r.Delete("/follows/{userId}", h.Unfollow)
 
+			r.Post("/reviews", h.CreateReview)
+			r.Patch("/reviews/{id}", h.UpdateReview)
 			r.Delete("/reviews/{id}", h.DeleteReview)
 			r.Post("/reviews/{id}/like", h.LikeReview)
 			r.Delete("/reviews/{id}/like", h.UnlikeReview)
@@ -102,22 +105,28 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Delete("/comments/{id}", h.DeleteComment)
 
 			r.Get("/users/me", h.Me)
+			r.Get("/users/me/blocks", h.ListBlockedUsers)
+			r.Post("/users/{userId}/block", h.BlockUser)
+			r.Delete("/users/{userId}/block", h.UnblockUser)
+			r.Post("/reports", h.CreateReport)
 			r.Patch("/users/me", h.UpdateProfile)
 			r.Patch("/users/me/favorites", h.SetFavoriteReviews)
 			r.Post("/users/me/push-tokens", h.RegisterPushToken)
 			r.Delete("/users/me/push-tokens", h.UnregisterPushToken)
-			r.Get("/leaderboard", h.GetLeaderboard)
 
 			r.Get("/feed", h.GetActivity)
+
+			r.Get("/notifications", h.ListNotifications)
+			r.Get("/notifications/unread-count", h.CountUnreadNotifications)
+			r.Post("/notifications/seen", h.MarkNotificationsSeen)
 		})
 	})
 
 	return r
 }
 
-// corsMiddleware reflects the request origin, matching the hand-rolled
-// CORS headers in api/trpc/[trpc].ts (Bearer-token auth, not cookies, so
-// reflecting the origin carries no session-fixation risk).
+// corsMiddleware reflects the request origin (Bearer-token auth, not
+// cookies, so reflecting the origin carries no session-fixation risk).
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")

@@ -57,12 +57,15 @@ print(p.hostname, u.urlunsplit((p.scheme, userinfo + "@localhost:" + os.environ[
     die "port $PROD_DB_PORT is already in use (set PROD_DB_PORT to pick another)"
   fi
 
-  echo "Opening a tunnel to $host via $iid…"
+  echo "Opening a tunnel to ${host} via ${iid}..."
   aws ssm start-session --target "$iid" \
     --document-name AWS-StartPortForwardingSessionToRemoteHost \
     --parameters "host=$host,portNumber=5432,localPortNumber=$PROD_DB_PORT" >/dev/null &
   local pid=$!
-  trap 'kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null; echo; echo "Tunnel closed."' EXIT
+  # The CLI runs the tunnel in a session-manager-plugin child that outlives
+  # it if only the CLI is killed, so take the child down first.
+  trap 'pkill -P "$pid" 2>/dev/null; kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null; echo; echo "Tunnel closed."' EXIT
+  trap 'exit 130' INT TERM
 
   for _ in $(seq 1 60); do
     nc -z localhost "$PROD_DB_PORT" 2>/dev/null && break
@@ -94,7 +97,7 @@ query() {
   # and PGOPTIONS is a second read-only guard on top of the role's own.
   local b64 cmd params
   b64=$(printf '%s' "$sql" | base64 | tr -d '\n')
-  cmd="set -e; URL=\$(aws secretsmanager get-secret-value --region $AWS_REGION --secret-id $SECRET_ID --query SecretString --output text); echo $b64 | base64 -d | docker run --rm -i -e URL -e PGOPTIONS='-c default_transaction_read_only=on' postgres:16-alpine sh -c 'psql \"\$URL\" -v ON_ERROR_STOP=1 -x -f -'"
+  cmd="set -e; URL=\$(aws secretsmanager get-secret-value --region $AWS_REGION --secret-id $SECRET_ID --query SecretString --output text); export URL; echo $b64 | base64 -d | docker run --rm -i -e URL -e PGOPTIONS='-c default_transaction_read_only=on' postgres:16-alpine sh -c 'psql \"\$URL\" -v ON_ERROR_STOP=1 -x -f -'"
   params=$(CMD="$cmd" python3 -c 'import json, os; print(json.dumps({"commands": [os.environ["CMD"]]}))')
 
   local cid status

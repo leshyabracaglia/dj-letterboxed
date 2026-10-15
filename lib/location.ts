@@ -30,3 +30,15 @@ export async function getCurrentPlace(): Promise<CurrentPlace | null> {
     region: address?.region ?? undefined,
   };
 }
+
+/** Where the device is, as precisely as it can tell right now: a fresh,
+ * high-accuracy fix (never a cached one) for checking in at a venue.
+ * accuracy is in meters. Null if they say no. */
+export type PreciseFix = { latitude: number; longitude: number; accuracy?: number };
+
+export async function getPreciseFix(): Promise<PreciseFix | null> {
+  const { granted } = await Location.requestForegroundPermissionsAsync();
+  if (!granted) return null;
+  const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+  return { latitude: coords.latitude, longitude: coords.longitude, accuracy: coords.accuracy ?? undefined };
+}

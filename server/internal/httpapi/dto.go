@@ -5,50 +5,24 @@ import (
 	"beatboxd/server/internal/db/queries"
 )
 
-// ReviewDTO flattens a review with its relations and engagement counts
-// onto one JSON object, matching the shape the tRPC routers used to
-// produce (review fields + user/dj/event + likeCount/commentCount/
-// isLikedByMe, spread onto one object rather than nested).
+// ReviewDTO is a night out as the app shows it: the review, who posted it,
+// its event (nil for a night with no event name), its lineup - the DJs seen,
+// alphabetically, with any DJ reviews - its tags and tagged friends, and its
+// likes and comments.
 type ReviewDTO struct {
 	db.Review
-	User *db.User `json:"user,omitempty"`
-	Dj   *db.Dj   `json:"dj,omitempty"`
-	// Log is the night out this review is part of: event, venue, date,
-	// day/night and lineup.
-	Log *LogDTO `json:"log,omitempty"`
-	// DjReviews are the log's other DJ reviews, by DJ name, on a review
-	// that stands for its whole night out (see queries.leadReviewCond) - the
-	// feed, profiles, event and venue pages, and a review's own page.
-	DjReviews    []DjReviewDTO `json:"djReviews,omitempty"`
-	TaggedUsers  []db.User     `json:"taggedUsers"`
-	Tags         []string      `json:"tags"`
-	LikeCount    *int64        `json:"likeCount,omitempty"`
-	CommentCount *int64        `json:"commentCount,omitempty"`
-	IsLikedByMe  *bool         `json:"isLikedByMe,omitempty"`
-	IsPopular    *bool         `json:"isPopular,omitempty"`
-}
-
-// DjReviewDTO is one DJ's review inside a night-out post.
-type DjReviewDTO struct {
-	db.Review
-	Dj *db.Dj `json:"dj,omitempty"`
-}
-
-func newReviewDTO(r db.Review) ReviewDTO {
-	return ReviewDTO{Review: r, TaggedUsers: []db.User{}, Tags: []string{}}
-}
-
-func (d ReviewDTO) withEngagement(e queries.Engagement) ReviewDTO {
-	lc, cc, lm := e.LikeCount, e.CommentCount, e.IsLikedByMe
-	d.LikeCount = &lc
-	d.CommentCount = &cc
-	d.IsLikedByMe = &lm
-	return d
-}
-
-func (d ReviewDTO) withPopular(isPopular bool) ReviewDTO {
-	d.IsPopular = &isPopular
-	return d
+	User         *db.User         `json:"user,omitempty"`
+	Event        *db.Event        `json:"event" extensions:"x-nullable"`
+	Lineup       []db.LineupEntry `json:"lineup"`
+	TaggedUsers  []db.User        `json:"taggedUsers"`
+	Tags         []string         `json:"tags"`
+	LikeCount    int64            `json:"likeCount"`
+	CommentCount int64            `json:"commentCount"`
+	IsLikedByMe  bool             `json:"isLikedByMe"`
+	IsPopular    *bool            `json:"isPopular,omitempty"`
+	// On a review's own page, when the caller is tagged in it: whether
+	// they've logged the night themselves (the page prompts them to if not).
+	ViewerLoggedNight *bool `json:"viewerLoggedNight,omitempty"`
 }
 
 // nextSeenAtCursor builds the opaque cursor for a seenAt-ordered,
@@ -62,32 +36,23 @@ func nextSeenAtCursor(reviews []db.Review, limit int) *string {
 	return &s
 }
 
-// Named response types for every handler that used to return an ad-hoc
-// map[string]any literal. Named structs (not maps) are what let swag/
-// openapi-typescript actually introspect field names and types instead of
-// emitting an opaque {} — this is also just better Go.
+// Named response types: every handler returns a named struct, never a
+// map[string]any, so swag/openapi-typescript can introspect field names and
+// types instead of emitting an opaque {}.
 
 type PaginatedReviews struct {
 	Items      []ReviewDTO `json:"items"`
-	NextCursor *string     `json:"nextCursor"`
+	NextCursor *string     `json:"nextCursor" extensions:"x-nullable"`
 }
 
 type DjDetailResponse struct {
 	Dj          db.Dj    `json:"dj"`
-	AvgRating   *float64 `json:"avgRating"`
+	AvgRating   *float64 `json:"avgRating" extensions:"x-nullable"`
 	ReviewCount int64    `json:"reviewCount"`
-	// RatingCounts is how many reviews gave each star rating: index 0 is
-	// 1 star, index 4 is 5 stars.
+	// RatingCounts is how many ratings of them gave each star rating: index
+	// 0 is 1 star, index 4 is 5 stars.
 	RatingCounts  []int64     `json:"ratingCounts"`
 	RecentReviews []ReviewDTO `json:"recentReviews"`
-}
-
-// LogDTO is a log with its event (nil for a night with no event name) and
-// the DJs this person saw, alphabetically.
-type LogDTO struct {
-	db.Log
-	Event  *db.Event `json:"event"`
-	Lineup []db.Dj   `json:"lineup"`
 }
 
 type EventDetailResponse struct {
@@ -97,13 +62,6 @@ type EventDetailResponse struct {
 	RecentReviews []ReviewDTO          `json:"recentReviews"`
 }
 
-type NightLogResponse struct {
-	Log db.Log `json:"log"`
-	// Event is nil for a night with no event name.
-	Event   *db.Event   `json:"event"`
-	Reviews []db.Review `json:"reviews"`
-}
-
 type VenueDetailResponse struct {
 	Venue         queries.VenueSummary `json:"venue"`
 	Events        []queries.VenueEvent `json:"events"`
@@ -111,22 +69,25 @@ type VenueDetailResponse struct {
 }
 
 type UserProfileResponse struct {
-	User           db.User `json:"user"`
-	ReviewCount    int64   `json:"reviewCount"`
-	FollowerCount  int64   `json:"followerCount"`
-	FollowingCount int64   `json:"followingCount"`
+	User db.User `json:"user"`
+	// ReviewCount is how many nights out they've logged.
+	ReviewCount    int64 `json:"reviewCount"`
+	FollowerCount  int64 `json:"followerCount"`
+	FollowingCount int64 `json:"followingCount"`
 }
 
 type UserStatsResponse struct {
+	// TotalReviews is how many nights out they've logged.
 	TotalReviews int64              `json:"totalReviews"`
 	UniqueDjs    int64              `json:"uniqueDjs"`
 	TopDjs       []queries.TopDj    `json:"topDjs"`
+	RecentDjs    []queries.RecentDj `json:"recentDjs"`
 	TopVenues    []queries.TopVenue `json:"topVenues"`
 }
 
 type FeedResponse struct {
 	Items          []ReviewDTO `json:"items"`
-	NextCursor     *string     `json:"nextCursor"`
+	NextCursor     *string     `json:"nextCursor" extensions:"x-nullable"`
 	FollowingCount int         `json:"followingCount"`
 }
 

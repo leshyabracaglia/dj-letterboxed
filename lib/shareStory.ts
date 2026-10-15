@@ -9,8 +9,8 @@ import { captureRef } from "react-native-view-shot";
 export const WEB_URL = (process.env.EXPO_PUBLIC_WEB_URL ?? "https://beatboxd.com").replace(/\/$/, "");
 
 // Instagram story canvas (9:16).
-export const STORY_WIDTH = 1080;
-export const STORY_HEIGHT = 1920;
+const STORY_WIDTH = 1080;
+const STORY_HEIGHT = 1920;
 
 export type CapturedStory =
   | { platform: "native"; uri: string }
@@ -72,8 +72,8 @@ export async function shareStory(
     try {
       await navigator.share({ files: [story.file] });
       return "shared";
-    } catch (err: any) {
-      if (err?.name === "AbortError") return "cancelled";
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return "cancelled";
       // NotAllowedError etc. (e.g. lost user activation) — fall back to a download.
     }
   }

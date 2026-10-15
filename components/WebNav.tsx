@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Pressable, type PressableProps, View } from "react-native";
 
 import { ROUTES } from "../lib/routes";
+import { NotificationsBell } from "./NotificationsBell";
 import { BrandWordmark } from "./BrandWordmark";
 import { SignInPromptModal } from "./SignInPromptModal";
 import { GlowBar, Text } from "./ui";
@@ -21,7 +22,7 @@ function HomeLink() {
 // `path` is what usePathname() reports for the route (groups like (tabs)
 // are stripped), used to highlight the active link. Same order and labels
 // as the phone tab bar (app/(tabs)/_layout.tsx); `isLog` is its white key.
-const LINKS = [
+const NAV_ITEMS = [
   { href: ROUTES.FEED, path: "/feed", label: "Feed", gated: false, isLog: false },
   { href: ROUTES.BROWSE, path: "/browse", label: "Browse", gated: false, isLog: false },
   { href: ROUTES.REVIEW, path: "/review", label: "Log +", gated: true, isLog: true },
@@ -44,7 +45,7 @@ function NavItem({
   isActive = false,
   ...pressableProps
 }: {
-  link: (typeof LINKS)[number];
+  link: (typeof NAV_ITEMS)[number];
   isActive?: boolean;
 } & PressableProps) {
   return (
@@ -58,9 +59,9 @@ function NavItem({
         <KeyLabel label={link.label} />
       ) : (
         <>
-          <GlowBar active={isActive} className="mb-1.5" />
+          <GlowBar isActive={isActive} />
           <Text
-            className={`font-display text-xl uppercase leading-6 ${isActive ? "text-paper" : "text-paper/55"}`}
+            className={`mt-1.5 font-display text-xl uppercase leading-6 ${isActive ? "text-paper" : "text-paper/55"}`}
           >
             {link.label}
           </Text>
@@ -79,13 +80,11 @@ export function WebNav() {
   const pathname = usePathname();
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
 
-  // Own background, not inherited: as the Stack header, React Navigation
-  // wraps this in a container painted with its theme's card color.
   return (
     <View className="flex-row items-center justify-between border-b border-white/5 bg-black/95 px-8 py-3">
       <HomeLink />
       <View className="flex-row items-center gap-2">
-        {LINKS.map((link) =>
+        {NAV_ITEMS.map((link) =>
           // Signed out, Log + and Profile pop a sign-in/sign-up prompt
           // instead of navigating to a screen that would just redirect.
           !isSignedIn && link.gated ? (
@@ -95,6 +94,11 @@ export function WebNav() {
               <NavItem link={link} isActive={pathname === link.path} />
             </Link>
           ),
+        )}
+        {isSignedIn && (
+          <View className="ml-2">
+            <NotificationsBell />
+          </View>
         )}
         {!isSignedIn && (
           <View className="ml-4 flex-row items-center gap-3">

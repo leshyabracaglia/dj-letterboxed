@@ -62,6 +62,15 @@ variable "google_places_api_key_secret_arn" {
   type = string
 }
 
+# Report emails; read by server/deploy/refresh-env.sh, like the Places key.
+variable "resend_api_key_secret_arn" {
+  type = string
+}
+
+variable "reports_email_secret_arn" {
+  type = string
+}
+
 # Read by server/deploy/migrate.sh on the instance to sync the read-only role.
 variable "database_url_readonly_secret_arn" {
   type = string

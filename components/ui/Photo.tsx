@@ -36,7 +36,11 @@ export function Photo({
         <Image source={{ uri }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
       ) : (
         <View className={`flex-1 items-center justify-end overflow-hidden ${placeholderClassName}`}>
-          <Icon name="person" size={width && height ? Math.min(width, height) * 0.95 : 88} className={silhouetteClassName} />
+          <Icon
+            name="person"
+            size={width && height ? Math.min(width, height) * 0.95 : 88}
+            className={silhouetteClassName}
+          />
         </View>
       )}
     </View>

@@ -46,7 +46,7 @@ type RAEvent struct {
 	// (RA doesn't give one).
 	StartTime string     `json:"startTime"`
 	EndTime   string     `json:"endTime"`
-	FlyerURL  *string    `json:"flyerUrl"`
+	FlyerURL  *string    `json:"flyerUrl" extensions:"x-nullable"`
 	Attending int        `json:"attending"`
 	URL       string     `json:"url"`
 	Venue     RAVenue    `json:"venue"`

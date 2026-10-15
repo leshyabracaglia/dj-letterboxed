@@ -9,7 +9,6 @@ export const queryKeys = {
     search: (q: string) => ["djs", "search", q] as const,
     bySlug: (slug: string) => ["djs", "slug", slug] as const,
     spotifySearch: (q: string) => ["djs", "spotify-search", q] as const,
-    reviews: (djId: string) => ["djs", djId, "reviews"] as const,
   },
   events: {
     list: (q: string) => ["events", "list", q] as const,
@@ -33,6 +32,7 @@ export const queryKeys = {
   },
   users: {
     me: () => ["users", "me"] as const,
+    blocks: () => ["users", "me", "blocks"] as const,
     search: (q: string) => ["users", "search", q] as const,
     byUsername: (username: string) => ["users", username] as const,
     stats: (username: string) => ["users", username, "stats"] as const,
@@ -51,5 +51,10 @@ export const queryKeys = {
   feed: {
     activity: () => ["feed"] as const,
     popular: () => ["feed", "popular"] as const,
+  },
+  notifications: {
+    all: () => ["notifications"] as const,
+    list: () => ["notifications", "list"] as const,
+    unreadCount: () => ["notifications", "unread-count"] as const,
   },
 };

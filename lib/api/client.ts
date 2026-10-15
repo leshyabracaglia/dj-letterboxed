@@ -33,6 +33,12 @@ export class ApiError extends Error {
   }
 }
 
+/** A caught error's message to show the user, or fallback when it has none
+ * (something thrown that isn't an Error, or an empty message). */
+export function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error && err.message ? err.message : fallback;
+}
+
 type Params = Record<string, string | number | undefined>;
 
 function buildUrl(path: string, params?: Params) {

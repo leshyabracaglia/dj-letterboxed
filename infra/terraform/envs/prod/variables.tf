@@ -54,3 +54,16 @@ variable "google_places_api_key" {
   sensitive = true
   default   = ""
 }
+
+# Content report emails via Resend (optional): the API key, and the address
+# reports go to - the Resend account's own address unless a domain is verified.
+variable "resend_api_key" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "reports_email" {
+  type    = string
+  default = ""
+}

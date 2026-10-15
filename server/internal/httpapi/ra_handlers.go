@@ -20,10 +20,7 @@ import (
 	"beatboxd/server/internal/domain"
 )
 
-var (
-	raIDPattern   = regexp.MustCompile(`^[0-9]{1,12}$`)
-	isoDayPattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
-)
+var raIDPattern = regexp.MustCompile(`^[0-9]{1,12}$`)
 
 // The log screen looks back at most this far for RA nights to pick from.
 const raMaxLookbackDays = 14
@@ -60,7 +57,7 @@ func (h *Handlers) SearchRAAreas(w http.ResponseWriter, r *http.Request) {
 type RAEventsResponse struct {
 	// Area is the one listed: the one asked for, or the area of the
 	// caller's latest night out; null when neither is known.
-	Area   *domain.RAArea   `json:"area"`
+	Area   *domain.RAArea   `json:"area" extensions:"x-nullable"`
 	Events []domain.RAEvent `json:"events"`
 }
 
@@ -92,7 +89,7 @@ func (h *Handlers) ListRAEvents(w http.ResponseWriter, r *http.Request) {
 	from, to := r.URL.Query().Get("from"), r.URL.Query().Get("to")
 	fromDay, err1 := time.Parse(time.DateOnly, from)
 	toDay, err2 := time.Parse(time.DateOnly, to)
-	if !isoDayPattern.MatchString(from) || !isoDayPattern.MatchString(to) || err1 != nil || err2 != nil ||
+	if err1 != nil || err2 != nil ||
 		toDay.Before(fromDay) {
 		BadRequest(w, "from and to must be days (YYYY-MM-DD)")
 		return
@@ -190,7 +187,7 @@ func (h *Handlers) findRAArea(ctx context.Context, r *http.Request, userID strin
 		return area, nil
 	}
 
-	city, err := queries.LatestLogCity(ctx, h.Pool, userID)
+	city, err := queries.LatestReviewCity(ctx, h.Pool, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -207,16 +204,16 @@ func (h *Handlers) findRAArea(ctx context.Context, r *http.Request, userID strin
 // night is saved), else neither (created by name).
 type RAArtistMatch struct {
 	Name    string                `json:"name"`
-	Dj      *db.Dj                `json:"dj"`
-	Spotify *domain.SpotifyArtist `json:"spotify"`
+	Dj      *db.Dj                `json:"dj" extensions:"x-nullable"`
+	Spotify *domain.SpotifyArtist `json:"spotify" extensions:"x-nullable"`
 }
 
 // RAVenueMatch is an RA venue as a saved venue, else a Google place (send
 // placeId with placeSessionToken when logging), else a name and city to
 // add by hand.
 type RAVenueMatch struct {
-	Venue             *queries.VenueSummary   `json:"venue"`
-	Place             *domain.PlaceSuggestion `json:"place"`
+	Venue             *queries.VenueSummary   `json:"venue" extensions:"x-nullable"`
+	Place             *domain.PlaceSuggestion `json:"place" extensions:"x-nullable"`
 	PlaceSessionToken string                  `json:"placeSessionToken"`
 	Name              string                  `json:"name"`
 	City              string                  `json:"city"`
@@ -226,7 +223,7 @@ type RAEventMatchResponse struct {
 	Event domain.RAEvent `json:"event"`
 	// EventName is the party's name, or null when the night has none (an
 	// RA title that's just the lineup) and is headed by the venue.
-	EventName *string         `json:"eventName"`
+	EventName *string         `json:"eventName" extensions:"x-nullable"`
 	SeenAt    string          `json:"seenAt"`
 	IsDay     bool            `json:"isDay"`
 	IsNight   bool            `json:"isNight"`

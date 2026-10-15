@@ -1,4 +1,5 @@
-import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useAuth } from "@clerk/expo";
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useApi } from "./client";
 import { queryKeys } from "./queryKeys";
@@ -14,6 +15,7 @@ import type {
   Review,
   User,
   UserProfile,
+  UnreadNotificationsResponse,
   UserStats,
   VenueDetail,
   VenueSummary,
@@ -27,6 +29,29 @@ export function useUserReviews(username: string | undefined) {
     queryKey: queryKeys.reviews.byUser(username ?? ""),
     queryFn: () => api.get<Paginated<Review>>(`/users/${username}/reviews`, { limit: 20 }),
     enabled: !!username,
+  });
+}
+
+// Who the signed-in user has blocked (for the block/unblock toggles).
+export function useBlockedUsers() {
+  const { isSignedIn } = useAuth();
+  const api = useApi();
+  return useQuery({
+    queryKey: queryKeys.users.blocks(),
+    queryFn: () => api.get<User[]>("/users/me/blocks"),
+    enabled: !!isSignedIn,
+  });
+}
+
+// Block or unblock a user. Blocking hides each of you from the other's feed,
+// lists and comments and drops follows both ways, so everything refetches.
+export function useSetBlocked(userId: string) {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (blocked: boolean) =>
+      blocked ? api.post(`/users/${userId}/block`) : api.del(`/users/${userId}/block`),
+    onSuccess: () => queryClient.invalidateQueries(),
   });
 }
 
@@ -103,7 +128,7 @@ export function useUserSearch(
 export function useUserProfile(username: string | undefined) {
   const api = useApi();
   return useQuery({
-    queryKey: queryKeys.users.byUsername(username!),
+    queryKey: queryKeys.users.byUsername(username ?? ""),
     queryFn: () => api.get<UserProfile>(`/users/${username}`),
     enabled: !!username,
   });
@@ -112,15 +137,16 @@ export function useUserProfile(username: string | undefined) {
 export function useDjDetail(slug: string | undefined) {
   const api = useApi();
   return useQuery({
-    queryKey: queryKeys.djs.bySlug(slug!),
+    queryKey: queryKeys.djs.bySlug(slug ?? ""),
     queryFn: () => api.get<DjDetail>(`/djs/${slug}`),
+    enabled: !!slug,
   });
 }
 
 export function useEventDetail(slug: string | undefined) {
   const api = useApi();
   return useQuery({
-    queryKey: queryKeys.events.bySlug(slug!),
+    queryKey: queryKeys.events.bySlug(slug ?? ""),
     queryFn: () => api.get<EventDetail>(`/events/${slug}`),
     enabled: !!slug,
   });
@@ -129,9 +155,9 @@ export function useEventDetail(slug: string | undefined) {
 export function useVenueDetail(id: string | undefined) {
   const api = useApi();
   return useQuery({
-    queryKey: queryKeys.venues.byId(id!),
+    queryKey: queryKeys.venues.byId(id ?? ""),
     queryFn: () => api.get<VenueDetail>(`/venues/${id}`),
-    enabled: id !== undefined,
+    enabled: !!id,
   });
 }
 
@@ -139,18 +165,18 @@ export function useVenueDetail(id: string | undefined) {
 export function useUserStats(username: string | undefined) {
   const api = useApi();
   return useQuery({
-    queryKey: queryKeys.users.stats(username!),
+    queryKey: queryKeys.users.stats(username ?? ""),
     queryFn: () => api.get<UserStats>(`/users/${username}/stats`),
-    enabled: username !== undefined,
+    enabled: !!username,
   });
 }
 
 export function useFavoriteReviews(username: string | undefined) {
   const api = useApi();
   return useQuery({
-    queryKey: queryKeys.users.favorites(username!),
+    queryKey: queryKeys.users.favorites(username ?? ""),
     queryFn: () => api.get<FavoriteReviewsResponse>(`/users/${username}/favorites`),
-    enabled: username !== undefined,
+    enabled: !!username,
   });
 }
 
@@ -173,4 +199,19 @@ export function usePopularFeed(enabled: boolean) {
     queryFn: () => api.get<PopularResponse>("/feed/popular", { limit: 20 }),
     enabled,
   });
+}
+
+// The unread badge on the notifications bell (feed header on phones, the
+// web navbar on desktop). Polled, and refreshed when a push arrives
+// (lib/push.ts) or the list is opened.
+export function useUnreadNotificationCount() {
+  const api = useApi();
+  const { isSignedIn } = useAuth();
+  const { data } = useQuery({
+    queryKey: queryKeys.notifications.unreadCount(),
+    queryFn: () => api.get<UnreadNotificationsResponse>("/notifications/unread-count"),
+    enabled: !!isSignedIn,
+    refetchInterval: 60_000,
+  });
+  return isSignedIn ? (data?.count ?? 0) : 0;
 }

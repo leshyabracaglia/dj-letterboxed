@@ -10,7 +10,7 @@ import (
 )
 
 // Verifier verifies Clerk-issued session JWTs via Clerk's published JWKS,
-// replacing @clerk/backend's verifyToken() from lib/server/trpc.ts.
+// so the API needs no Clerk SDK.
 type Verifier struct {
 	jwks   keyfunc.Keyfunc
 	issuer string

@@ -1,16 +1,19 @@
 import { useAuth } from "@clerk/expo";
 import Constants from "expo-constants";
+import { useQueryClient } from "@tanstack/react-query";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import { useCallback, useEffect } from "react";
 import { Platform } from "react-native";
 
 import { useApi } from "./api/client";
+import { queryKeys } from "./api/queryKeys";
 import type { PushTokenInput } from "./api/types";
 import { ROUTES } from "./routes";
 
-// Push notifications for follows, likes and comments (sent by
-// server/internal/httpapi/notify.go). Native only: lib/push.web.ts stubs
+// Push notifications for follows, likes, comments and tags (sent by
+// server/internal/httpapi/notify.go), and the nudge that people you follow
+// logged nights while you were away (reengage.go). Native only: lib/push.web.ts stubs
 // this out, since expo-notifications doesn't support web.
 
 // Show notifications that arrive while the app is open, too.
@@ -48,9 +51,10 @@ function routeFor(data: Record<string, unknown> | undefined) {
   if (data?.type === "follow" && typeof data.username === "string") {
     return ROUTES.USER(data.username);
   }
-  if ((data?.type === "like" || data?.type === "comment") && typeof data.reviewId === "string") {
+  if ((data?.type === "like" || data?.type === "comment" || data?.type === "tag") && typeof data.reviewId === "string") {
     return ROUTES.REVIEW_DETAIL(data.reviewId);
   }
+  if (data?.type === "following_logs") return ROUTES.FEED;
   return undefined;
 }
 
@@ -65,6 +69,7 @@ function openNotification(response: Notifications.NotificationResponse) {
 export function usePushNotifications() {
   const { isSignedIn } = useAuth();
   const api = useApi();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!isSignedIn) return;
@@ -94,8 +99,15 @@ export function usePushNotifications() {
       Notifications.clearLastNotificationResponse();
     }
     const sub = Notifications.addNotificationResponseReceivedListener(openNotification);
-    return () => sub.remove();
-  }, []);
+    // Each push is also a new entry in the in-app list and its badge.
+    const received = Notifications.addNotificationReceivedListener(() =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all() }),
+    );
+    return () => {
+      sub.remove();
+      received.remove();
+    };
+  }, [queryClient]);
 }
 
 /** Clerk's signOut, after unregistering this device so the account's

@@ -1,30 +1,46 @@
 import { useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { Pressable, View } from "react-native";
 
-import { Avatar, DashedButton, Icon, Text } from "./ui";
+import { Avatar, DashedButton, Icon, Text, TextField } from "./ui";
 import { useUserSearch } from "../lib/api/hooks";
+import { useCurrentUser } from "../lib/auth";
 import type { User } from "../lib/api/types";
 
-const INPUT_CLASS =
-  "rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-3 text-ink dark:text-paper placeholder:text-muted";
+function TaggedUserChip({
+  taggedUser,
+  onRemoveTaggedUser,
+}: {
+  taggedUser: User;
+  onRemoveTaggedUser: (userId: string) => void;
+}) {
+  return (
+    <Pressable
+      onPress={() => onRemoveTaggedUser(taggedUser.id)}
+      accessibilityLabel={`Untag @${taggedUser.username}`}
+      className="flex-row items-center gap-1.5 bg-zine-purple px-2 py-1 active:opacity-80"
+    >
+      <Avatar uri={taggedUser.avatarUrl} name={taggedUser.username} size={18} />
+      <Text className="font-display text-base uppercase leading-5 text-paper">@{taggedUser.username}</Text>
+      <Icon name="close" size={14} className="text-paper" />
+    </Pressable>
+  );
+}
 
 /** Friends tagged as being at a night out, as removable chips, plus a
- * username search to tag more. Used when logging a night and, afterwards,
- * from the review page (who was there is the one thing editable later). */
+ * username search to tag more.  */
 export function TagFriendsPicker({
   taggedUsers,
   onAdd,
-  onRemove,
-  excludeUserId,
+  onRemoveTaggedUser,
   startTyping = false,
 }: {
   taggedUsers: User[];
   onAdd: (user: User) => void;
-  onRemove: (userId: string) => void;
-  /** Left out of the search results (yourself). */
-  excludeUserId?: string;
+  onRemoveTaggedUser: (userId: string) => void;
   startTyping?: boolean;
 }) {
+  const { me } = useCurrentUser();
+
   const [typing, setTyping] = useState(startTyping);
   const [query, setQuery] = useState("");
   const trimmed = query.trim();
@@ -32,48 +48,40 @@ export function TagFriendsPicker({
   const { data: results } = useUserSearch(trimmed, { minLength: 2 });
 
   const taggedIds = new Set(taggedUsers.map((u) => u.id));
-  const matches = (results ?? []).filter((u) => !taggedIds.has(u.id) && u.id !== excludeUserId);
+  // You can't tag yourself.
+  const matches = (results ?? []).filter((user) => !taggedIds.has(user.id) && user.id !== me?.id);
 
   return (
     <View>
       <View className="flex-row flex-wrap gap-2">
-        {taggedUsers.map((u) => (
-          <Pressable
-            key={u.id}
-            onPress={() => onRemove(u.id)}
-            accessibilityLabel={`Untag @${u.username}`}
-            className="flex-row items-center gap-1.5 bg-zine-purple px-2 py-1 active:opacity-80"
-          >
-            <Avatar uri={u.avatarUrl} name={u.username} size={18} />
-            <Text className="font-display text-base uppercase leading-5 text-paper">@{u.username}</Text>
-            <Icon name="close" size={14} className="text-paper" />
-          </Pressable>
+        {taggedUsers.map((taggedUser) => (
+          <TaggedUserChip key={taggedUser.id} taggedUser={taggedUser} onRemoveTaggedUser={onRemoveTaggedUser} />
         ))}
         {!typing && <DashedButton label="Tag a friend" onPress={() => setTyping(true)} />}
       </View>
       {typing && (
-        <TextInput
+        <TextField
           autoFocus
           placeholder="Search by username"
           value={query}
           onChangeText={setQuery}
           autoCapitalize="none"
-          className={`mt-2 ${INPUT_CLASS}`}
+          className="mt-2"
         />
       )}
       {typing && trimmed.length > 1 && !!matches.length && (
         <View className="border-x-2 border-b-2 border-white/15 bg-zine-panel">
-          {matches.map((u) => (
+          {matches.map((matchedUser) => (
             <Pressable
-              key={u.id}
+              key={matchedUser.id}
               onPress={() => {
-                onAdd(u);
+                onAdd(matchedUser);
                 setQuery("");
               }}
               className="flex-row items-center gap-2 border-b border-white/10 px-4 py-3 active:bg-zine-purple/20"
             >
-              <Avatar uri={u.avatarUrl} name={u.username} size={28} />
-              <Text className="text-paper">{u.username}</Text>
+              <Avatar uri={matchedUser.avatarUrl} name={matchedUser.username} size={28} />
+              <Text className="text-paper">{matchedUser.username}</Text>
             </Pressable>
           ))}
         </View>

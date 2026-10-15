@@ -60,13 +60,23 @@ func run() error {
 		slog.Warn("GOOGLE_PLACES_API_KEY not set; place search is disabled")
 	}
 
+	reportsEmail := domain.NewEmailClient(cfg.ResendAPIKey, cfg.ReportsEmailFrom, cfg.ReportsEmail)
+	if reportsEmail == nil {
+		slog.Warn("RESEND_API_KEY or REPORTS_EMAIL not set; content reports are only logged")
+	}
+
+	push := domain.NewPushClient(cfg.ExpoAccessToken)
+	go httpapi.RunReengagement(ctx, pool, push)
+
 	router := httpapi.NewRouter(httpapi.RouterConfig{
 		Pool:                      pool,
 		Verifier:                  verifier,
 		Spotify:                   spotify,
 		Places:                    places,
-		Push:                      domain.NewPushClient(cfg.ExpoAccessToken),
+		Push:                      push,
 		RA:                        domain.NewRAClient(),
+		Email:                     reportsEmail,
+		WebURL:                    cfg.WebURL,
 		ClerkWebhookSigningSecret: cfg.ClerkWebhookSigningSecret,
 	})
 

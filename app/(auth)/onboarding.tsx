@@ -1,10 +1,10 @@
 import { useUser } from "@clerk/expo";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Keyboard, Pressable, TextInput, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Keyboard, Pressable, View } from "react-native";
 
-import { Avatar, Button, KeyboardScrollView, Text, WallView } from "../../components/ui";
+import { AuthScreen } from "../../components/AuthScreen";
+import { Avatar, Button, FormMessage, Text, TextField } from "../../components/ui";
 
 import { useCurrentUser, useUpdateProfile } from "../../lib/auth";
 import { pickAndUploadAvatar } from "../../lib/avatarUpload";
@@ -62,78 +62,58 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <WallView>
-      <SafeAreaView className="flex-1">
-        <KeyboardScrollView
-          contentContainerStyle={{ flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 24 }}
-        >
-          <Text className="mb-2 text-center font-display text-5xl uppercase leading-[48px] text-paper">Set up your profile</Text>
-          <Text className="mb-8 text-center text-muted">
-            Choose a username so people can find you. A photo is optional.
-          </Text>
+    <AuthScreen title="Set up your profile" subtitle="Choose a username so people can find you. A photo is optional.">
+      <Pressable onPress={onPickPhoto} disabled={uploadingPhoto}>
+        <Avatar uri={avatarUrl} name={displayUsername || me?.username || "?"} size={88} />
+        <Text className="mt-2 text-center text-sm text-muted">
+          {uploadingPhoto ? "Uploading..." : avatarUrl ? "Change photo" : "Add a photo"}
+        </Text>
+      </Pressable>
 
-          <Pressable onPress={onPickPhoto} disabled={uploadingPhoto} className="mb-6">
-            <Avatar uri={avatarUrl} name={displayUsername || me?.username || "?"} size={88} />
-            <Text className="mt-2 text-center text-sm text-muted">
-              {uploadingPhoto ? "Uploading..." : avatarUrl ? "Change photo" : "Add a photo"}
+      <View className="mt-3 w-full gap-3">
+        <View>
+          <TextField
+            autoCapitalize="none"
+            autoCorrect={false}
+            placeholder="Username"
+            value={username}
+            onChangeText={setUsername}
+            returnKeyType="done"
+            onSubmitEditing={() => Keyboard.dismiss()}
+          />
+          {!!username.length && !usernameValid && (
+            <Text className="mt-1 text-xs text-danger-dark">
+              3-32 characters: lowercase letters, numbers, underscores.
             </Text>
-          </Pressable>
+          )}
+        </View>
 
-          <View className="w-full max-w-sm">
-            <TextInput
-              autoCapitalize="none"
-              autoCorrect={false}
-              placeholder="Username"
-              value={username}
-              onChangeText={setUsername}
-              returnKeyType="done"
-              onSubmitEditing={() => Keyboard.dismiss()}
-              className="mb-1 rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-3 text-base text-paper"
-            placeholderTextColor="rgba(246,246,249,0.4)"
-            />
-            {!!username.length && !usernameValid ? (
-              <Text className="mb-3 text-xs text-danger dark:text-danger-dark">
-                3-32 characters: lowercase letters, numbers, underscores.
-              </Text>
-            ) : (
-              <View className="mb-3" />
-            )}
+        <TextField
+          placeholder="Bio (optional)"
+          value={bio}
+          onChangeText={setBio}
+          multiline
+          numberOfLines={3}
+          blurOnSubmit
+          className="min-h-20"
+        />
 
-            <TextInput
-              placeholder="Bio (optional)"
-              value={bio}
-              onChangeText={setBio}
-              multiline
-              numberOfLines={3}
-              blurOnSubmit
-              className="mb-4 min-h-20 rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-3 text-base text-paper"
-            placeholderTextColor="rgba(246,246,249,0.4)"
-            />
+        <FormMessage>{error}</FormMessage>
 
-            {!!error && <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text>}
+        <Button onPress={onSubmit} disabled={submit.isPending || !usernameValid} className="w-full py-3">
+          <Text className="text-center font-semibold text-paper">{submit.isPending ? "Saving..." : "Continue"}</Text>
+        </Button>
 
-            <Button
-              onPress={onSubmit}
-              disabled={submit.isPending || !usernameValid}
-              className="w-full py-3"
-            >
-              <Text className="text-center font-semibold text-paper">
-                {submit.isPending ? "Saving..." : "Continue"}
-              </Text>
-            </Button>
-
-            <Pressable
-              onPress={async () => {
-                await signOut();
-                router.replace(ROUTES.SIGN_IN);
-              }}
-              className="mt-4"
-            >
-              <Text className="text-center text-sm text-muted">Not now — sign out</Text>
-            </Pressable>
-          </View>
-        </KeyboardScrollView>
-      </SafeAreaView>
-    </WallView>
+        <Pressable
+          onPress={async () => {
+            await signOut();
+            router.replace(ROUTES.SIGN_IN);
+          }}
+          className="mt-1"
+        >
+          <Text className="text-center text-sm text-muted">Not now — sign out</Text>
+        </Pressable>
+      </View>
+    </AuthScreen>
   );
 }

@@ -7,7 +7,7 @@ import { Tape } from "./ui";
 // page: a cream frame around a near-black print, with concentric rings
 // radiating from a "record" disc in the top right.
 export const POSTER_FRAME = "bg-[#E9E2D0]";
-export const POSTER_PRINT = "bg-[#0B090A]";
+const POSTER_PRINT = "bg-[#0B090A]";
 
 // Red and purple in turn, centred on the record.
 const RING_RADII = [62, 80, 100, 124, 150, 180, 214, 252];

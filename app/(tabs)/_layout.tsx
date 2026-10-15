@@ -10,7 +10,6 @@ import { useCurrentUser } from "../../lib/auth";
 import { ROUTES } from "../../lib/routes";
 import { needsOnboarding } from "../../lib/user";
 
-
 const TAB_LABELS: Record<string, string> = {
   feed: "Feed",
   browse: "Browse",
@@ -53,9 +52,9 @@ function ZineTabBar({ state, descriptors, navigation, insets }: BottomTabBarProp
               </View>
             ) : (
               <>
-                <GlowBar active={isFocused} className="mb-2" />
+                <GlowBar isActive={isFocused} />
                 <Text
-                  className={`font-display text-lg uppercase leading-5 ${
+                  className={`mt-2 font-display text-lg uppercase leading-5 ${
                     isFocused ? "text-paper" : "text-paper/55"
                   }`}
                 >
@@ -108,42 +107,42 @@ export default function TabsLayout() {
 
   return (
     <>
-    <Tabs
-      initialRouteName="feed"
-      tabBar={isDesktopWeb ? () => <WebNav /> : (props) => <ZineTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-        tabBarPosition: isDesktopWeb ? "top" : "bottom",
-      }}
-    >
-      <Tabs.Screen
-        name="feed"
-        options={{
-          title: "Feed",
+      <Tabs
+        initialRouteName="feed"
+        tabBar={isDesktopWeb ? () => <WebNav /> : (props) => <ZineTabBar {...props} />}
+        screenOptions={{
+          headerShown: false,
+          tabBarPosition: isDesktopWeb ? "top" : "bottom",
         }}
-      />
-      <Tabs.Screen
-        name="browse"
-        options={{
-          title: "Browse",
-        }}
-      />
-      <Tabs.Screen
-        name="review"
-        listeners={gatedTabListeners}
-        options={{
-          title: "Review a Set",
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        listeners={gatedTabListeners}
-        options={{
-          title: "Profile",
-        }}
-      />
-    </Tabs>
-    <SignInPromptModal visible={showSignInPrompt} onClose={() => setShowSignInPrompt(false)} />
+      >
+        <Tabs.Screen
+          name="feed"
+          options={{
+            title: "Feed",
+          }}
+        />
+        <Tabs.Screen
+          name="browse"
+          options={{
+            title: "Browse",
+          }}
+        />
+        <Tabs.Screen
+          name="review"
+          listeners={gatedTabListeners}
+          options={{
+            title: "Review a Set",
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          listeners={gatedTabListeners}
+          options={{
+            title: "Profile",
+          }}
+        />
+      </Tabs>
+      <SignInPromptModal visible={showSignInPrompt} onClose={() => setShowSignInPrompt(false)} />
     </>
   );
 }

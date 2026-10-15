@@ -40,6 +40,148 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/check-ins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check in at a venue, so the caller's log of it tonight shows as verified
+         * @description The venue must have coordinates, and latitude/longitude must be within 150m of it (up to 400m for a less accurate fix). Only the distance is stored, not the coordinates. A repeat check-in the same night is a no-op.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description the venue and where the caller is */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["checkInRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CheckInResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/check-ins/nearby": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Venues the caller is at, to check in at, nearest first
+         * @description Saved venues with coordinates within a few hundred meters of lat/lng. The coordinates aren't stored.
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description the caller's latitude */
+                    lat: number;
+                    /** @description the caller's longitude */
+                    lng: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NearbyVenuesResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/comments/{id}": {
         parameters: {
             query?: never;
@@ -252,7 +394,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List reviews for a DJ, cursor-paginated by seenAt desc */
+        /** List the nights out a DJ was on the lineup of (with any rating of them in the lineup), cursor-paginated by seenAt desc */
         get: {
             parameters: {
                 query?: {
@@ -277,6 +419,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["PaginatedReviews"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
                     };
                 };
             };
@@ -433,11 +584,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Activity feed: followed users' reviews interleaved with popular ones every 4th item */
+        /** Following feed: followed users' nights out, newest logged first */
         get: {
             parameters: {
                 query?: {
-                    /** @description pagination cursor (opaque, encodes createdAt + popular-pool offset) */
+                    /** @description pagination cursor (opaque, encodes the last item's createdAt) */
                     cursor?: string;
                     /** @description page size, 1-50, default 20 */
                     limit?: number;
@@ -483,7 +634,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Most-liked-and-commented reviews, ranked */
+        /** Most-liked-and-commented nights out, ranked */
         get: {
             parameters: {
                 query?: {
@@ -553,6 +704,15 @@ export interface paths {
                         "application/json": components["schemas"]["errorEnvelope"];
                     };
                 };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
             };
         };
         put?: never;
@@ -612,6 +772,15 @@ export interface paths {
                         "application/json": components["schemas"]["errorEnvelope"];
                     };
                 };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
             };
         };
         /** Unfollow a user */
@@ -645,6 +814,15 @@ export interface paths {
                         "application/json": components["schemas"]["errorEnvelope"];
                     };
                 };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
             };
         };
         options?: never;
@@ -652,17 +830,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/leaderboard": {
+    "/api/notifications": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Leaderboard scoped to the caller and everyone they follow */
+        /** The caller's notifications (follows, likes, comments, being tagged), newest first */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description pagination cursor (opaque, encodes the last item's createdAt) */
+                    cursor?: string;
+                    /** @description page size, 1-50, default 30 */
+                    limit?: number;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -675,7 +858,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["LeaderboardEntry"][];
+                        "application/json": components["schemas"]["NotificationsResponse"];
                     };
                 };
                 /** @description Unauthorized */
@@ -697,7 +880,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/logs": {
+    "/api/notifications/seen": {
         parameters: {
             query?: never;
             header?: never;
@@ -706,75 +889,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Log a night out: the event (picked, or found or created by name), venue, day, lineup, and the night and DJ reviews, in one go */
+        /** Mark all of the caller's notifications read */
         post: {
             parameters: {
                 query?: never;
                 header?: never;
                 path?: never;
-                cookie?: never;
-            };
-            /** @description the night to log */
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["createNightLogRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["NightLogResponse"];
-                    };
-                };
-                /** @description Bad Request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["errorEnvelope"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["errorEnvelope"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/logs/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete a night out owned by the caller, with all its reviews (404, never 403, if not owned/found) */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description log id */
-                    id: string;
-                };
                 cookie?: never;
             };
             requestBody?: never;
@@ -797,39 +917,30 @@ export interface paths {
                         "application/json": components["schemas"]["errorEnvelope"];
                     };
                 };
-                /** @description Not Found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["errorEnvelope"];
-                    };
-                };
             };
         };
+        delete?: never;
         options?: never;
         head?: never;
-        /**
-         * Change who was tagged as being at a night out owned by the caller (404, never 403, if not owned/found)
-         * @description The rest of a log - event, venue, date, lineup, ratings, reviews and tags - is fixed once logged. Tagged friends go on the night review, or on every DJ review when there's no night review.
-         */
-        patch: {
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How many of the caller's notifications came in since they last marked them seen */
+        get: {
             parameters: {
                 query?: never;
                 header?: never;
-                path: {
-                    /** @description log id */
-                    id: string;
-                };
+                path?: never;
                 cookie?: never;
             };
-            /** @description who was there */
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["updateNightLogRequest"];
-                };
-            };
+            requestBody?: never;
             responses: {
                 /** @description OK */
                 200: {
@@ -837,16 +948,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["UpdateNightLogResponse"];
-                    };
-                };
-                /** @description Bad Request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["errorEnvelope"];
+                        "application/json": components["schemas"]["UnreadNotificationsResponse"];
                     };
                 };
                 /** @description Unauthorized */
@@ -858,17 +960,14 @@ export interface paths {
                         "application/json": components["schemas"]["errorEnvelope"];
                     };
                 };
-                /** @description Not Found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["errorEnvelope"];
-                    };
-                };
             };
         };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/ra/areas": {
@@ -1078,6 +1177,133 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Report a review, comment or user for moderation */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description what's reported, and why */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["createReportRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Log a night out: the event (picked, or found or created by name), venue, day, rating, the DJs seen and any DJ reviews, tags and friends, in one go */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description the night to log */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["createReviewRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReviewDTO"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reviews/{id}": {
         parameters: {
             query?: never;
@@ -1085,7 +1311,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get the night-out post a review belongs to: its lead review (which may not be the id asked for) with its relations, the night's DJ reviews, engagement, and tagged users */
+        /** Get a night out with its lineup and DJ reviews, engagement, tags and tagged friends */
         get: {
             parameters: {
                 query?: never;
@@ -1120,7 +1346,7 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        /** Delete a review owned by the caller (404, never 403, if not owned/found). Deleting the review a night out is posted as (its night review) deletes the whole night out, as does deleting its last review. */
+        /** Delete a night out owned by the caller, with its DJ reviews, likes, comments and tags (404, never 403, if not owned/found) */
         delete: {
             parameters: {
                 query?: never;
@@ -1164,7 +1390,65 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Change who was tagged as being at a night out owned by the caller (404, never 403, if not owned/found)
+         * @description The rest of a review - event, venue, date, ratings, lineup, text and tags - is fixed once logged.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description review id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description who was there */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["updateReviewRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UpdateReviewResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/reviews/{id}/comments": {
@@ -1174,7 +1458,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List the comments on a review's night out (its lead review's), oldest first */
+        /** List the comments on a night out, oldest first */
         get: {
             parameters: {
                 query?: never;
@@ -1208,7 +1492,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Comment on a review's night out (comments go on its lead review) */
+        /** Comment on a night out */
         post: {
             parameters: {
                 query?: never;
@@ -1253,6 +1537,15 @@ export interface paths {
                         "application/json": components["schemas"]["errorEnvelope"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
                 /** @description Not Found */
                 404: {
                     headers: {
@@ -1279,7 +1572,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Like a review's night out (likes go on its lead review, whichever of the log's reviews is given) */
+        /** Like a night out */
         post: {
             parameters: {
                 query?: never;
@@ -1310,6 +1603,15 @@ export interface paths {
                         "application/json": components["schemas"]["errorEnvelope"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
                 /** @description Not Found */
                 404: {
                     headers: {
@@ -1321,7 +1623,7 @@ export interface paths {
                 };
             };
         };
-        /** Unlike a review's night out */
+        /** Unlike a night out */
         delete: {
             parameters: {
                 query?: never;
@@ -1506,6 +1808,51 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/users/me/blocks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the users the caller has blocked, most recent first */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["User"][];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/me/favorites": {
         parameters: {
             query?: never;
@@ -1519,7 +1866,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Replace the caller's showcased favorite reviews (0-3, ordered, #1 first) - reviews must be the caller's own */
+        /** Replace the caller's showcased favorite nights out (0-3, ordered, #1 first) - they must be the caller's own */
         patch: {
             parameters: {
                 query?: never;
@@ -1707,6 +2054,104 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users/{userId}/block": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Block a user: hides each of you from the other and unfollows both ways */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description user id to block */
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        /** Unblock a user */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description user id to unblock */
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/{userId}/followers": {
         parameters: {
             query?: never;
@@ -1734,6 +2179,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["User"][];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
                     };
                 };
             };
@@ -1773,6 +2227,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["User"][];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
                     };
                 };
             };
@@ -1840,7 +2303,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a user's showcased favorite reviews (top 3, ordered, #1 first) */
+        /** Get a user's showcased favorite nights out (top 3, ordered, #1 first) */
         get: {
             parameters: {
                 query?: never;
@@ -1888,7 +2351,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List a user's nights out (one lead review each, with the night's DJ reviews), cursor-paginated by seenAt desc */
+        /** List a user's nights out, cursor-paginated by seenAt desc */
         get: {
             parameters: {
                 query?: {
@@ -1941,7 +2404,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a user's review stats: totals, top DJs, top venues */
+        /** Get a user's review stats: totals, most-seen and recently seen DJs, top venues */
         get: {
             parameters: {
                 query?: never;
@@ -2141,46 +2604,40 @@ export interface components {
             iosUpdateUrl: string;
             minIosBuild: number;
         };
+        CheckInResponse: {
+            /**
+             * @description When the caller checked in there (an earlier check-in the same night
+             *     stands). Logging the venue for that night shows as verified.
+             */
+            checkedInAt: string;
+            venue: components["schemas"]["NearbyVenue"];
+        };
         Dj: {
-            bio: string;
+            bio: string | null;
             createdAt: string;
-            createdByUserId: string;
+            createdByUserId: string | null;
             genres: string[];
             id: string;
-            imageUrl: string;
+            imageUrl: string | null;
             name: string;
             slug: string;
-            spotifyId: string;
+            spotifyId: string | null;
             updatedAt: string;
         };
         DjDetailResponse: {
-            avgRating: number;
+            avgRating: number | null;
             dj: components["schemas"]["Dj"];
             /**
-             * @description RatingCounts is how many reviews gave each star rating: index 0 is
-             *     1 star, index 4 is 5 stars.
+             * @description RatingCounts is how many ratings of them gave each star rating: index
+             *     0 is 1 star, index 4 is 5 stars.
              */
             ratingCounts: number[];
             recentReviews: components["schemas"]["ReviewDTO"][];
             reviewCount: number;
         };
-        DjReviewDTO: {
-            createdAt: string;
-            dj?: components["schemas"]["Dj"];
-            /** @description DjID is nil for a review of the night as a whole. */
-            djId: string;
-            id: string;
-            logId: string;
-            rating: number;
-            reviewText: string;
-            /** @description SeenAt mirrors the log's, kept here for ordering and pagination. */
-            seenAt: string;
-            updatedAt: string;
-            userId: string;
-        };
         Event: {
             createdAt: string;
-            createdByUserId: string;
+            createdByUserId: string | null;
             id: string;
             name: string;
             slug: string;
@@ -2193,23 +2650,22 @@ export interface components {
         };
         EventDj: {
             dj: components["schemas"]["Dj"];
-            logCount: number;
+            reviewCount: number;
         };
         EventSummary: {
-            avgRating: number;
+            avgRating: number | null;
             createdAt: string;
-            createdByUserId: string;
+            createdByUserId: string | null;
             id: string;
-            logCount: number;
             name: string;
             reviewCount: number;
             slug: string;
         };
         EventVenue: {
-            city: string;
+            city: string | null;
             id: string;
-            logCount: number;
             name: string;
+            reviewCount: number;
         };
         FavoriteReviewsResponse: {
             items: components["schemas"]["ReviewDTO"][];
@@ -2217,68 +2673,53 @@ export interface components {
         FeedResponse: {
             followingCount: number;
             items: components["schemas"]["ReviewDTO"][];
-            nextCursor: string;
+            nextCursor: string | null;
         };
         FollowingStatusResponse: {
             following: boolean;
         };
-        LeaderboardEntry: {
-            reviewCount: number;
-            user: components["schemas"]["User"];
+        LineupEntry: {
+            dj: components["schemas"]["Dj"];
+            rating: number | null;
+            reviewText: string | null;
         };
-        Log: {
-            city: string;
-            createdAt: string;
-            /** @description EventID is nil for a night with no event name (just a venue). */
-            eventId: string;
+        NearbyVenue: {
+            city: string | null;
+            distanceM: number;
             id: string;
-            /**
-             * @description IsDay and IsNight say when this person went; both is day into night.
-             *     At least one is set.
-             */
-            isDay: boolean;
-            isNight: boolean;
-            seenAt: string;
-            userId: string;
-            /**
-             * @description Venue is the venue's display name, denormalized alongside VenueID.
-             *     Both are nil only on logs migrated from reviews that had no night.
-             */
-            venue: string;
-            venueId: string;
+            name: string;
         };
-        LogDTO: {
-            city: string;
+        NearbyVenuesResponse: {
+            venues: components["schemas"]["NearbyVenue"][];
+        };
+        Notification: {
+            actor: components["schemas"]["User"];
+            /** @description The comment's text, on comments. */
+            commentBody: string;
             createdAt: string;
-            event: components["schemas"]["Event"];
-            /** @description EventID is nil for a night with no event name (just a venue). */
-            eventId: string;
             id: string;
+            isUnread: boolean;
             /**
-             * @description IsDay and IsNight say when this person went; both is day into night.
-             *     At least one is set.
+             * @description On tags: whether the recipient has logged the night themselves (see
+             *     sameNightLoggedCond), so the app only prompts them to if not.
              */
-            isDay: boolean;
-            isNight: boolean;
-            lineup: components["schemas"]["Dj"][];
-            seenAt: string;
-            userId: string;
+            nightLogged: boolean;
             /**
-             * @description Venue is the venue's display name, denormalized alongside VenueID.
-             *     Both are nil only on logs migrated from reviews that had no night.
+             * @description The night out it's about (not on follows), and its title (see
+             *     nightTitleSQL).
              */
-            venue: string;
-            venueId: string;
+            reviewId: string;
+            subject: string;
+            /** @enum {string} */
+            type: "follow" | "like" | "comment" | "tag";
         };
-        NightLogResponse: {
-            /** @description Event is nil for a night with no event name. */
-            event: components["schemas"]["Event"];
-            log: components["schemas"]["Log"];
-            reviews: components["schemas"]["Review"][];
+        NotificationsResponse: {
+            items: components["schemas"]["Notification"][];
+            nextCursor: string;
         };
         PaginatedReviews: {
             items: components["schemas"]["ReviewDTO"][];
-            nextCursor: string;
+            nextCursor: string | null;
         };
         PlaceSuggestion: {
             name: string;
@@ -2302,9 +2743,9 @@ export interface components {
             name: string;
         };
         RAArtistMatch: {
-            dj: components["schemas"]["Dj"];
+            dj: components["schemas"]["Dj"] | null;
             name: string;
-            spotify: components["schemas"]["SpotifyArtist"];
+            spotify: components["schemas"]["SpotifyArtist"] | null;
         };
         RAEvent: {
             artists: components["schemas"]["RAArtist"][];
@@ -2312,7 +2753,7 @@ export interface components {
             /** @description Date is the night's calendar day, YYYY-MM-DD. */
             date: string;
             endTime: string;
-            flyerUrl: string;
+            flyerUrl: string | null;
             id: string;
             /**
              * @description StartTime/EndTime are local wall-clock times, RFC3339 without a zone
@@ -2329,7 +2770,7 @@ export interface components {
              * @description EventName is the party's name, or null when the night has none (an
              *     RA title that's just the lineup) and is headed by the venue.
              */
-            eventName: string;
+            eventName: string | null;
             isDay: boolean;
             isNight: boolean;
             lineup: components["schemas"]["RAArtistMatch"][];
@@ -2341,7 +2782,7 @@ export interface components {
              * @description Area is the one listed: the one asked for, or the area of the
              *     caller's latest night out; null when neither is known.
              */
-            area: components["schemas"]["RAArea"];
+            area: components["schemas"]["RAArea"] | null;
             events: components["schemas"]["RAEvent"][];
         };
         RAVenue: {
@@ -2353,22 +2794,13 @@ export interface components {
         RAVenueMatch: {
             city: string;
             name: string;
-            place: components["schemas"]["PlaceSuggestion"];
+            place: components["schemas"]["PlaceSuggestion"] | null;
             placeSessionToken: string;
-            venue: components["schemas"]["VenueSummary"];
+            venue: components["schemas"]["VenueSummary"] | null;
         };
-        Review: {
-            createdAt: string;
-            /** @description DjID is nil for a review of the night as a whole. */
-            djId: string;
-            id: string;
-            logId: string;
-            rating: number;
-            reviewText: string;
-            /** @description SeenAt mirrors the log's, kept here for ordering and pagination. */
-            seenAt: string;
-            updatedAt: string;
-            userId: string;
+        RecentDj: {
+            dj: components["schemas"]["Dj"];
+            lastSeenAt: string;
         };
         ReviewComment: {
             body: string;
@@ -2379,40 +2811,55 @@ export interface components {
             userId: string;
         };
         ReviewDTO: {
-            commentCount?: number;
+            city: string | null;
+            commentCount: number;
             createdAt: string;
-            dj?: components["schemas"]["Dj"];
-            /** @description DjID is nil for a review of the night as a whole. */
-            djId: string;
-            /**
-             * @description DjReviews are the log's other DJ reviews, by DJ name, on a review
-             *     that stands for its whole night out (see queries.leadReviewCond) - the
-             *     feed, profiles, event and venue pages, and a review's own page.
-             */
-            djReviews?: components["schemas"]["DjReviewDTO"][];
+            event: components["schemas"]["Event"] | null;
+            /** @description EventID is nil for a night with no event name (just a venue). */
+            eventId: string | null;
             id: string;
-            isLikedByMe?: boolean;
-            isPopular?: boolean;
-            likeCount?: number;
             /**
-             * @description Log is the night out this review is part of: event, venue, date,
-             *     day/night and lineup.
+             * @description IsDay and IsNight say when this person went; both is day into night.
+             *     At least one is set.
              */
-            log?: components["schemas"]["LogDTO"];
-            logId: string;
-            rating: number;
-            reviewText: string;
-            /** @description SeenAt mirrors the log's, kept here for ordering and pagination. */
+            isDay: boolean;
+            isLikedByMe: boolean;
+            isNight: boolean;
+            isPopular?: boolean;
+            likeCount: number;
+            lineup: components["schemas"]["LineupEntry"][];
+            /**
+             * @description Rating of the night as a whole, 1-5. Nil only on nights logged before
+             *     nights were rated, which only rated their DJs.
+             */
+            rating: number | null;
+            reviewText: string | null;
             seenAt: string;
             taggedUsers: components["schemas"]["User"][];
             tags: string[];
             updatedAt: string;
             user?: components["schemas"]["User"];
             userId: string;
+            /**
+             * @description Venue is the venue's display name, denormalized alongside VenueID.
+             *     Both are nil only on nights migrated from reviews that never had one.
+             */
+            venue: string | null;
+            venueId: string | null;
+            /**
+             * @description Verified is whether this person checked in at the venue that night
+             *     (see the check_ins table), worked out when the review is read.
+             */
+            verified: boolean;
+            /**
+             * @description On a review's own page, when the caller is tagged in it: whether
+             *     they've logged the night themselves (the page prompts them to if not).
+             */
+            viewerLoggedNight?: boolean;
         };
         SpotifyArtist: {
             genres: string[];
-            imageUrl: string;
+            imageUrl: string | null;
             name: string;
             spotifyId: string;
         };
@@ -2427,20 +2874,23 @@ export interface components {
         };
         TopDj: {
             dj: components["schemas"]["Dj"];
-            reviewCount: number;
+            timesSeen: number;
         };
         TopVenue: {
             reviewCount: number;
             venue: string;
         };
-        UpdateNightLogResponse: {
+        UnreadNotificationsResponse: {
+            count: number;
+        };
+        UpdateReviewResponse: {
             taggedUsers: components["schemas"]["User"][];
         };
         User: {
-            avatarUrl: string;
-            bio: string;
+            avatarUrl: string | null;
+            bio: string | null;
             createdAt: string;
-            displayName: string;
+            displayName: string | null;
             id: string;
             updatedAt: string;
             username: string;
@@ -2448,12 +2898,15 @@ export interface components {
         UserProfileResponse: {
             followerCount: number;
             followingCount: number;
+            /** @description ReviewCount is how many nights out they've logged. */
             reviewCount: number;
             user: components["schemas"]["User"];
         };
         UserStatsResponse: {
+            recentDjs: components["schemas"]["RecentDj"][];
             topDjs: components["schemas"]["TopDj"][];
             topVenues: components["schemas"]["TopVenue"][];
+            /** @description TotalReviews is how many nights out they've logged. */
             totalReviews: number;
             uniqueDjs: number;
         };
@@ -2464,16 +2917,16 @@ export interface components {
         };
         VenueEvent: {
             event: components["schemas"]["Event"];
-            logCount: number;
+            reviewCount: number;
         };
         VenueSummary: {
-            address: string;
-            city: string;
-            googlePlaceId: string;
+            address: string | null;
+            city: string | null;
+            googlePlaceId: string | null;
             id: string;
-            /** @description LogCount is how many nights out people have logged there. */
-            logCount: number;
             name: string;
+            /** @description ReviewCount is how many nights out people have logged there. */
+            reviewCount: number;
         };
         addCommentRequest: {
             body: string;
@@ -2482,6 +2935,13 @@ export interface components {
             code: string;
             message: string;
         };
+        checkInRequest: {
+            /** @description How accurate the device says the fix is, in meters. */
+            accuracyM: number;
+            latitude: number;
+            longitude: number;
+            venueId: string;
+        };
         createDjRequest: {
             bio: string;
             genres: string[];
@@ -2489,39 +2949,38 @@ export interface components {
             name: string;
             spotifyId: string;
         };
-        createNightLogRequest: {
+        createReportRequest: {
+            commentId?: string;
+            /** @description spam, harassment, hate, sexual, violence or other. */
+            reason: string;
+            reviewId?: string;
+            userId?: string;
+        };
+        createReviewRequest: {
             city: string;
-            djReviews: components["schemas"]["djReviewInput"][];
             eventId: string;
             eventName: string;
             /** @description When you went: day, night, or both. Neither given means night. */
             isDay: boolean;
             isNight: boolean;
-            /**
-             * @description DJs you saw. DJs in djReviews are added too, whether or not they're
-             *     listed here.
-             */
-            lineupDjIds: string[];
-            /** @description Review of the night as a whole. Required. */
-            night: components["schemas"]["nightReviewInput"];
+            lineup: components["schemas"]["lineupEntryInput"][];
             placeId: string;
             placeSessionToken: string;
+            /** @description The night as a whole, 1-5. Required. */
+            rating: number;
+            reviewText: string;
             seenAt: string;
             taggedUserIds: string[];
-            /** @description Tag names and tagged friends go on the night review. */
+            /** @description Descriptive tag names ("packed"), and friends who were there. */
             tags: string[];
             venue: string;
             venueId: string;
         };
-        djReviewInput: {
-            djId: string;
-            rating: number;
-            reviewText: string;
-        };
         errorEnvelope: {
             error: components["schemas"]["apiError"];
         };
-        nightReviewInput: {
+        lineupEntryInput: {
+            djId: string;
             rating: number;
             reviewText: string;
         };
@@ -2534,15 +2993,15 @@ export interface components {
         setFavoritesRequest: {
             reviewIds: string[];
         };
-        updateNightLogRequest: {
-            /** @description Replaces the tagged friends; [] clears them. */
-            taggedUserIds: string[];
-        };
         updateProfileRequest: {
             avatarUrl: string;
             bio: string;
             displayName: string;
             username: string;
+        };
+        updateReviewRequest: {
+            /** @description Replaces the tagged friends; [] clears them. */
+            taggedUserIds: string[];
         };
     };
     responses: never;

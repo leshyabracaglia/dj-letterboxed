@@ -5,17 +5,12 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"regexp"
 	"strings"
-
-	"github.com/go-chi/chi/v5"
 
 	"beatboxd/server/internal/db"
 	"beatboxd/server/internal/db/queries"
 	"beatboxd/server/internal/domain"
 )
-
-var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // SearchVenues godoc
 //
@@ -77,9 +72,8 @@ func (h *Handlers) SearchPlaces(w http.ResponseWriter, r *http.Request) {
 //	@Failure	404	{object}	errorEnvelope
 //	@Router		/api/venues/{id} [get]
 func (h *Handlers) GetVenueByID(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if !uuidPattern.MatchString(id) {
-		NotFound(w)
+	id, ok := uuidParam(w, r, "id")
+	if !ok {
 		return
 	}
 
@@ -99,12 +93,8 @@ func (h *Handlers) GetVenueByID(w http.ResponseWriter, r *http.Request) {
 		InternalError(w, err)
 		return
 	}
-	dtos, err := h.hydrateReviews(r.Context(), reviews, hydrateOpts{
-		IncludeUser: true, IncludeDj: true, IncludeLog: true,
-		IncludeEngagement: true, IncludeDjReviews: true, CurrentUserID: optionalUserID(r),
-	})
-	if err != nil {
-		InternalError(w, err)
+	dtos, ok := h.visibleReviews(w, r, reviews)
+	if !ok {
 		return
 	}
 
@@ -115,11 +105,12 @@ func (h *Handlers) GetVenueByID(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// errVenueInput is a resolveVenue failure caused by the request (unknown
-// venue id, bad place id), reported as a 400 rather than a 500.
-type errVenueInput struct{ msg string }
+// errBadInput is a resolveVenue/resolveEvent failure caused by the request
+// (unknown venue or event id, bad place id), reported as a 400 rather than
+// a 500.
+type errBadInput struct{ msg string }
 
-func (e errVenueInput) Error() string { return e.msg }
+func (e errBadInput) Error() string { return e.msg }
 
 // venueInput is how a request names a venue, checked in this order: venueId
 // (a saved venue), placeId (a Google Places result, saved as a venue on
@@ -140,11 +131,11 @@ func (h *Handlers) resolveVenue(ctx context.Context, req venueInput, userID stri
 	switch {
 	case req.VenueID != nil && *req.VenueID != "":
 		if !uuidPattern.MatchString(*req.VenueID) {
-			return nil, errVenueInput{"unknown venueId"}
+			return nil, errBadInput{"unknown venueId"}
 		}
 		v, err := queries.GetVenueByID(ctx, h.Pool, *req.VenueID)
 		if errors.Is(err, queries.ErrNotFound) {
-			return nil, errVenueInput{"unknown venueId"}
+			return nil, errBadInput{"unknown venueId"}
 		}
 		return v, err
 
@@ -163,7 +154,7 @@ func (h *Handlers) resolveVenue(ctx context.Context, req venueInput, userID stri
 				return nil, err
 			}
 			slog.Error("places details failed", "placeId", *req.PlaceID, "error", err)
-			return nil, errVenueInput{"could not look up that place"}
+			return nil, errBadInput{"could not look up that place"}
 		}
 		return queries.UpsertPlaceVenue(ctx, h.Pool, queries.CreatePlaceVenueParams{
 			GooglePlaceID:   place.PlaceID,
@@ -178,7 +169,7 @@ func (h *Handlers) resolveVenue(ctx context.Context, req venueInput, userID stri
 	default:
 		name := strings.TrimSpace(req.Venue)
 		if name == "" || len(name) > 160 {
-			return nil, errVenueInput{"venue, venueId or placeId is required (venue max 160 chars)"}
+			return nil, errBadInput{"venue, venueId or placeId is required (venue max 160 chars)"}
 		}
 		return queries.UpsertUnlinkedVenue(ctx, h.Pool, name, req.City, userID)
 	}

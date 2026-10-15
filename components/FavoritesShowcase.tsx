@@ -7,9 +7,9 @@ import { Avatar, Button, Skeleton, Text } from "./ui";
 import { useApi } from "../lib/api/client";
 import { useFavoriteReviews } from "../lib/api/hooks";
 import { queryKeys } from "../lib/api/queryKeys";
-import type { FavoriteReviewsResponse, Review } from "../lib/api/types";
+import type { FavoriteReviewsResponse, Review, SetFavoritesInput } from "../lib/api/types";
 import { formatRating } from "../lib/format";
-import { reviewSubject } from "../lib/review";
+import { reviewSubject, soloSet } from "../lib/review";
 import { ROUTES } from "../lib/routes";
 
 const MAX_FAVORITES = 3;
@@ -52,10 +52,10 @@ export function FavoritesShowcase({
   return (
     <View>
       <View className="flex-row items-center justify-between">
-        <Text className="text-sm font-semibold text-ink dark:text-paper">Favorite shows</Text>
+        <Text className="text-sm font-semibold text-paper">Favorite shows</Text>
         {isSelf && (
           <Pressable onPress={() => setEditing(true)} hitSlop={6}>
-            <Text className="text-xs text-primary dark:text-primary-dark">Edit</Text>
+            <Text className="text-xs text-primary-dark">Edit</Text>
           </Pressable>
         )}
       </View>
@@ -79,11 +79,11 @@ export function FavoritesShowcase({
               onPress={() => router.push(ROUTES.REVIEW_DETAIL(review.id))}
               className="w-[72px] items-center"
             >
-              <Avatar uri={reviewSubject(review).imageUrl} name={reviewSubject(review).name} size={48} />
-              <Text className="mt-1 text-center text-xs text-ink dark:text-paper" numberOfLines={2}>
-                {reviewSubject(review).name}
+              <Avatar uri={reviewSubject(review, soloSet(review)).imageUrl} name={reviewSubject(review, soloSet(review)).name} size={48} />
+              <Text className="mt-1 text-center text-xs text-paper" numberOfLines={2}>
+                {reviewSubject(review, soloSet(review)).name}
               </Text>
-              <Text className="text-xs text-muted">{formatRating(review.rating)}</Text>
+              <Text className="text-xs text-muted">{formatRating((soloSet(review) ?? review).rating)}</Text>
             </Pressable>
           );
         })}
@@ -130,9 +130,8 @@ function EditFavoritesModal({
   async function save() {
     setSaving(true);
     try {
-      const result = await api.patch<FavoriteReviewsResponse>("/users/me/favorites", {
-        reviewIds: selected,
-      });
+      const input: SetFavoritesInput = { reviewIds: selected };
+      const result = await api.patch<FavoriteReviewsResponse>("/users/me/favorites", input);
       queryClient.setQueryData(queryKeys.users.favorites(username), result);
       onClose();
     } finally {
@@ -143,17 +142,12 @@ function EditFavoritesModal({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable onPress={onClose} className="flex-1 justify-end bg-ink/40">
-        <Pressable
-          onPress={(e) => e.stopPropagation()}
-          className="max-h-[70%] rounded-t-2xl bg-paper dark:bg-surface-dark p-5"
-        >
-          <Text className="mb-1 text-center text-lg font-display text-ink dark:text-paper">
-            Pin your top {MAX_FAVORITES} shows
-          </Text>
-          <Text className="mb-4 text-center text-xs text-muted">
+        <Pressable onPress={(e) => e.stopPropagation()} className="max-h-[70%] rounded-t-2xl bg-surface-dark p-5">
+          <Text className="text-center text-lg font-display text-paper">Pin your top {MAX_FAVORITES} shows</Text>
+          <Text className="mt-1 text-center text-xs text-muted">
             Tap to pin, in the order you want them shown. Tap again to unpin.
           </Text>
-          <ScrollView className="max-h-96">
+          <ScrollView className="mt-4 max-h-96" contentContainerClassName="gap-2">
             {!ownReviews.length ? (
               <Text className="py-6 text-center text-muted">
                 Review a show first, then come back to pin your favorites.
@@ -166,17 +160,17 @@ function EditFavoritesModal({
                   <Pressable
                     key={review.id}
                     onPress={() => toggle(review.id)}
-                    className={`mb-2 flex-row items-center gap-3 rounded-xl border px-3 py-2 ${
-                      isSelected ? "border-primary bg-primary-tint/40 dark:bg-primary-dark/15" : "border-primary/15"
+                    className={`flex-row items-center gap-3 rounded-xl border px-3 py-2 ${
+                      isSelected ? "border-primary bg-primary-dark/15" : "border-primary/15"
                     }`}
                   >
-                    <Avatar uri={reviewSubject(review).imageUrl} name={reviewSubject(review).name} size={32} />
+                    <Avatar uri={reviewSubject(review, soloSet(review)).imageUrl} name={reviewSubject(review, soloSet(review)).name} size={32} />
                     <View className="flex-1">
-                      <Text className="text-ink dark:text-paper">{reviewSubject(review).name}</Text>
-                      <Text className="text-xs text-muted">{formatRating(review.rating)}</Text>
+                      <Text className="text-paper">{reviewSubject(review, soloSet(review)).name}</Text>
+                      <Text className="text-xs text-muted">{formatRating((soloSet(review) ?? review).rating)}</Text>
                     </View>
                     {isSelected && (
-                      <View className="h-6 w-6 items-center justify-center rounded-full bg-primary dark:bg-primary-dark">
+                      <View className="h-6 w-6 items-center justify-center rounded-full bg-primary-dark">
                         <Text className="text-xs font-semibold text-paper">{rank + 1}</Text>
                       </View>
                     )}
@@ -187,12 +181,13 @@ function EditFavoritesModal({
           </ScrollView>
           <View className="mt-4 flex-row gap-3">
             <Button onPress={save} disabled={saving} className="flex-1 py-3">
-              <Text className="text-center font-semibold text-paper">
-                {saving ? "Saving…" : "Save"}
-              </Text>
+              <Text className="text-center font-semibold text-paper">{saving ? "Saving…" : "Save"}</Text>
             </Button>
-            <Pressable onPress={onClose} className="flex-1 items-center justify-center rounded-xl border border-primary/30 py-3">
-              <Text className="text-center font-semibold text-ink dark:text-paper">Cancel</Text>
+            <Pressable
+              onPress={onClose}
+              className="flex-1 items-center justify-center rounded-xl border border-primary/30 py-3"
+            >
+              <Text className="text-center font-semibold text-paper">Cancel</Text>
             </Pressable>
           </View>
         </Pressable>

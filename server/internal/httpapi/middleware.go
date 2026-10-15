@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -36,11 +38,35 @@ func bearerToken(r *http.Request) string {
 type Auth struct {
 	Verifier *auth.Verifier
 	Pool     *pgxpool.Pool
+	// touched is when each user's last_active_at was last written.
+	touched sync.Map
 }
 
-// RequireAuth replicates protectedProcedure from lib/server/trpc.ts: 401 if
-// there's no valid token, lazily provision a `users` row on first sight
-// (race-safe against the Clerk webhook path), 500 if still unresolvable.
+// activeTouchInterval is how often a user's last_active_at is written while
+// they're using the app.
+const activeTouchInterval = 5 * time.Minute
+
+// touch records that userID is using the app (for the re-engagement push,
+// see reengage.go), at most every activeTouchInterval and in the
+// background: it never slows down or fails the request.
+func (a *Auth) touch(userID string) {
+	now := time.Now()
+	if last, ok := a.touched.Load(userID); ok && now.Sub(last.(time.Time)) < activeTouchInterval {
+		return
+	}
+	a.touched.Store(userID, now)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := queries.TouchUserActive(ctx, a.Pool, userID); err != nil {
+			slog.Warn("recording user activity failed", "error", err)
+		}
+	}()
+}
+
+// RequireAuth 401s if there's no valid token, lazily provisions a `users`
+// row on first sight (race-safe against the Clerk webhook path), and 500s if
+// the user still can't be resolved.
 func (a *Auth) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := bearerToken(r)
@@ -76,16 +102,17 @@ func (a *Auth) RequireAuth(next http.Handler) http.Handler {
 			InternalError(w, errors.New("could not resolve user"))
 			return
 		}
+		a.touch(user.ID)
 
 		ctx := context.WithValue(r.Context(), ctxKeyUser, user)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-// OptionalAuth replicates resolveOptionalUserId: personalizes output for a
-// logged-in caller without requiring auth. An invalid/missing token, or a
-// valid token whose user row hasn't been created yet, simply means no
-// personalization — never a 401, and never lazily creates a user.
+// OptionalAuth personalizes output for a logged-in caller without requiring
+// auth. An invalid/missing token, or a valid token whose user row hasn't
+// been created yet, simply means no personalization — never a 401, and
+// never lazily creates a user.
 func (a *Auth) OptionalAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := bearerToken(r)
@@ -105,6 +132,7 @@ func (a *Auth) OptionalAuth(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+		a.touch(user.ID)
 
 		ctx := context.WithValue(r.Context(), ctxKeyUser, user)
 		next.ServeHTTP(w, r.WithContext(ctx))

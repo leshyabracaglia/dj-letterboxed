@@ -1,13 +1,11 @@
 import { useSignIn } from "@clerk/expo";
 import { Link, router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
-import { Button, KeyboardScrollView, Text, WallView } from "../../components/ui";
+import { Pressable, View } from "react-native";
+import { AuthScreen } from "../../components/AuthScreen";
+import { Button, FormMessage, Text, TextField } from "../../components/ui";
 
 import { ROUTES } from "../../lib/routes";
-
-const inputClassName =
-  "mb-3 w-full max-w-sm rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-3 text-base text-paper placeholder:text-paper/40";
 
 export default function ForgotPasswordScreen() {
   const params = useLocalSearchParams<{ email?: string }>();
@@ -93,84 +91,68 @@ export default function ForgotPasswordScreen() {
 
   if (codeSent) {
     return (
-      <WallView>
-        <KeyboardScrollView
-          className="flex-1"
-          contentContainerClassName="flex-grow items-center justify-center px-6"
-        >
-          <Text className="mb-8 text-center font-display text-5xl uppercase leading-[48px] text-paper">Reset password</Text>
-          <Text className="mb-4 text-center text-muted">
-            We sent a code to {email.trim()}. Enter it below with your new password.
-          </Text>
-          <TextInput
-            placeholder="Reset code"
-            keyboardType="number-pad"
-            autoComplete="one-time-code"
-            value={code}
-            onChangeText={setCode}
-            className={inputClassName}
-          />
-          <TextInput
-            secureTextEntry
-            autoComplete="new-password"
-            placeholder="New password"
-            value={password}
-            onChangeText={setPassword}
-            className={inputClassName}
-          />
-          <TextInput
-            secureTextEntry
-            autoComplete="new-password"
-            placeholder="Confirm new password"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            className={inputClassName}
-          />
-          {!!error && <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text>}
-          <Button onPress={onReset} disabled={busy} className="mt-1 w-full max-w-sm py-3">
-            <Text className="text-center font-semibold text-paper">
-              {busy ? "Resetting..." : "Reset password"}
-            </Text>
-          </Button>
-          <Pressable onPress={sendCode} disabled={busy} className="mt-6">
-            <Text className="text-primary dark:text-primary-dark">Resend code</Text>
-          </Pressable>
-        </KeyboardScrollView>
-      </WallView>
+      <AuthScreen
+        title="Reset password"
+        subtitle={<>We sent a code to {email.trim()}. Enter it below with your new password.</>}
+      >
+        <TextField
+          placeholder="Reset code"
+          keyboardType="number-pad"
+          autoComplete="one-time-code"
+          value={code}
+          onChangeText={setCode}
+          className="w-full"
+        />
+        <TextField
+          secureTextEntry
+          autoComplete="new-password"
+          placeholder="New password"
+          value={password}
+          onChangeText={setPassword}
+          className="w-full"
+        />
+        <TextField
+          secureTextEntry
+          autoComplete="new-password"
+          placeholder="Confirm new password"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          className="w-full"
+        />
+        <FormMessage>{error}</FormMessage>
+        <Button onPress={onReset} disabled={busy} className="mt-1 w-full py-3">
+          <Text className="text-center font-semibold text-paper">{busy ? "Resetting..." : "Reset password"}</Text>
+        </Button>
+        <Pressable onPress={sendCode} disabled={busy} className="mt-3">
+          <Text className="text-primary-dark">Resend code</Text>
+        </Pressable>
+      </AuthScreen>
     );
   }
 
   return (
-    <WallView>
-      <KeyboardScrollView
-        className="flex-1"
-        contentContainerClassName="flex-grow items-center justify-center px-6"
-      >
-        <Text className="mb-8 text-center font-display text-5xl uppercase leading-[48px] text-paper">Forgot password</Text>
-        <Text className="mb-4 text-center text-muted">
-          Enter the email on your account and we&apos;ll send you a code to reset your password.
-        </Text>
-        <TextInput
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoComplete="email"
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          className={inputClassName}
-        />
-        {!!error && <Text className="mb-3 text-danger dark:text-danger-dark">{error}</Text>}
-        <Button onPress={sendCode} disabled={busy} className="mt-1 w-full max-w-sm py-3">
-          <Text className="text-center font-semibold text-paper">
-            {busy ? "Sending..." : "Send reset code"}
-          </Text>
-        </Button>
-        <View className="mt-10">
-          <Link href={ROUTES.SIGN_IN}>
-            <Text className="text-primary dark:text-primary-dark">Back to sign in</Text>
-          </Link>
-        </View>
-      </KeyboardScrollView>
-    </WallView>
+    <AuthScreen
+      title="Forgot password"
+      subtitle={<>Enter the email on your account and we&apos;ll send you a code to reset your password.</>}
+    >
+      <TextField
+        autoCapitalize="none"
+        keyboardType="email-address"
+        autoComplete="email"
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+        className="w-full"
+      />
+      <FormMessage>{error}</FormMessage>
+      <Button onPress={sendCode} disabled={busy} className="mt-1 w-full py-3">
+        <Text className="text-center font-semibold text-paper">{busy ? "Sending..." : "Send reset code"}</Text>
+      </Button>
+      <View className="mt-7">
+        <Link href={ROUTES.SIGN_IN}>
+          <Text className="text-primary-dark">Back to sign in</Text>
+        </Link>
+      </View>
+    </AuthScreen>
   );
 }

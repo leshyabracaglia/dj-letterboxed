@@ -20,6 +20,13 @@ type Config struct {
 	// Optional: only needed if the Expo project has enhanced push security
 	// turned on. Push notifications send without it otherwise.
 	ExpoAccessToken string
+	// Optional: with both set, every content report is emailed to
+	// ReportsEmail via Resend (it's only logged otherwise). WebURL builds the
+	// links in it.
+	ResendAPIKey     string
+	ReportsEmail     string
+	ReportsEmailFrom string
+	WebURL           string
 }
 
 func Load() (*Config, error) {
@@ -34,11 +41,21 @@ func Load() (*Config, error) {
 		SpotifyClientSecret:       os.Getenv("SPOTIFY_CLIENT_SECRET"),
 		GooglePlacesAPIKey:        os.Getenv("GOOGLE_PLACES_API_KEY"),
 		ExpoAccessToken:           os.Getenv("EXPO_ACCESS_TOKEN"),
+		ResendAPIKey:              os.Getenv("RESEND_API_KEY"),
+		ReportsEmail:              os.Getenv("REPORTS_EMAIL"),
+		ReportsEmailFrom:          os.Getenv("REPORTS_EMAIL_FROM"),
+		WebURL:                    getEnv("WEB_URL", "https://beatboxd.com"),
 	}
 	// Terraform stores "unset" when no key was given (Secrets Manager
 	// rejects empty strings); treat it as not configured.
 	if cfg.GooglePlacesAPIKey == "unset" {
 		cfg.GooglePlacesAPIKey = ""
+	}
+	if cfg.ResendAPIKey == "unset" {
+		cfg.ResendAPIKey = ""
+	}
+	if cfg.ReportsEmail == "unset" {
+		cfg.ReportsEmail = ""
 	}
 
 	if cfg.DatabaseURL == "" {

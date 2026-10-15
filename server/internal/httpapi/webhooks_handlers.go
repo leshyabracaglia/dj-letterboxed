@@ -23,10 +23,10 @@ type clerkUserEvent struct {
 	} `json:"data"`
 }
 
-// ClerkWebhook ports api/webhooks/clerk.ts: svix-verified sync of Clerk
-// user.created/updated/deleted events into the local users table. This is
-// the primary sync path; RequireAuth's lazy-create is only a
-// race-condition fallback for requests that beat the webhook.
+// ClerkWebhook is the svix-verified sync of Clerk user.created/updated/
+// deleted events into the local users table. This is the primary sync path;
+// RequireAuth's lazy-create is only a race-condition fallback for requests
+// that beat the webhook.
 func (h *Handlers) ClerkWebhook(webhookSecret string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if webhookSecret == "" {

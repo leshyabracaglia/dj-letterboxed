@@ -22,11 +22,5 @@ function resolveFontFamily(className: string): string | undefined {
 
 export function Text({ className = "", style, ...props }: TextProps & { className?: string }) {
   const fontFamily = resolveFontFamily(className);
-  return (
-    <RNText
-      className={className}
-      style={fontFamily ? [{ fontFamily }, style] : style}
-      {...props}
-    />
-  );
+  return <RNText className={className} style={fontFamily ? [{ fontFamily }, style] : style} {...props} />;
 }
