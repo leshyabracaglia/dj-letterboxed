@@ -148,3 +148,13 @@ test("an ID on a night shows who named it, and what people think an open one is"
   await expect(text(page, "@carla thinks it's")).toBeVisible();
   await expect(text(page, "Sueño Latino")).toBeVisible();
 });
+
+test("a profile's lists open to their nights and sets, with notes", async ({ page }) => {
+  await page.goto("/user/bob");
+  await shown(page.getByRole("link").filter({ hasText: "Best closing sets of 2026" })).click();
+
+  await expect(text(page, "by @bob")).toBeVisible();
+  await expect(text(page, "1. Floating Points's set")).toBeVisible();
+  await expect(text(page, "3. The whole night")).toBeVisible();
+  await expect(shown(page.getByText("Acid techno at sunrise after twelve hours", { exact: false }))).toBeVisible();
+});

@@ -1,12 +1,13 @@
-/** "1 night", "3 nights". */
-export function plural(n: number, word: string): string {
-  return `${n} ${pluralWord(n, word)}`;
+/** "1 night", "3 nights"; `many` for a word that doesn't just take an s
+ * ("entries"). */
+export function plural(n: number, word: string, many?: string): string {
+  return `${n} ${pluralWord(n, word, many)}`;
 }
 
 /** Just the word: "night" for 1, "nights" otherwise - for when the count is
  * rendered separately. */
-export function pluralWord(n: number, word: string): string {
-  return n === 1 ? word : `${word}s`;
+export function pluralWord(n: number, word: string, many = `${word}s`): string {
+  return n === 1 ? word : many;
 }
 
 /** A night's date as a passport stamp shows it: the month over the day,

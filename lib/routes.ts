@@ -38,6 +38,8 @@ export const ROUTES = {
     return `/review/${id}${params.length ? `?${params.join("&")}` : ""}` as Href;
   },
   USER: (username: string): Href => `/user/${username}` as Href,
+  // A curated list of nights and sets.
+  LIST: (id: string): Href => `/list/${id}` as Href,
   USER_FOLLOWERS: (username: string): Href => `/user/${username}/followers` as Href,
   USER_FOLLOWING: (username: string): Href => `/user/${username}/following` as Href,
 } as const;

@@ -7,8 +7,8 @@ import type { Review, ReviewDetail, User } from "@/lib/api/types";
 // review's card might sit in rather than knowing each shape.
 
 /** The query key prefixes of everything that can hold a review: the feed,
- * profiles, and DJ/event/venue pages. */
-const REVIEW_LIST_PREFIXES = ["feed", "reviews", "users", "djs", "events", "venues"] as const;
+ * profiles, DJ/event/venue pages and lists. */
+const REVIEW_LIST_PREFIXES = ["feed", "reviews", "users", "djs", "events", "venues", "lists"] as const;
 
 // How deep the walk goes; review lists sit well within this.
 const MAX_DEPTH = 6;

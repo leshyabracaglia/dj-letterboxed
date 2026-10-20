@@ -211,3 +211,20 @@ export function useUnreadNotificationCount() {
   });
   return isSignedIn ? (data?.count ?? 0) : 0;
 }
+
+// A user's lists: on their profile, and (with `reviewId`, marking which have
+// that night) the review page's add-to-list sheet.
+export function useUserLists(username: string | undefined, reviewId?: string) {
+  const api = useApi();
+  return useQuery({
+    queryKey: queryKeys.lists.byUser(username ?? "", reviewId),
+    queryFn: username
+      ? () =>
+          unwrap(
+            api.GET("/api/users/{username}/lists", {
+              params: { path: { username }, query: reviewId ? { reviewId } : {} },
+            }),
+          )
+      : skipToken,
+  });
+}

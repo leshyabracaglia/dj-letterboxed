@@ -6,6 +6,7 @@ import { Button, KeyboardScrollView, paperFor, type Paper, Text, usePageContentS
 import { DetailPage } from "@/components/DetailPage";
 import { ModerationButton } from "@/components/ModerationSheet";
 import { ReviewCard, ReviewCardSkeleton } from "@/components/ReviewCard";
+import { AddToListButton } from "@/components/review/AddToListButton";
 import { CommentCount, CommentSection } from "@/components/review/Comments";
 import { LikeButton } from "@/components/review/LikeButton";
 import { DeleteReviewButton, WhoWasThereButton } from "@/components/review/OwnerActions";
@@ -139,6 +140,7 @@ function ReviewDetailBody({
       {/* Clear of the torn edge and rating stamp hanging off the card. */}
       <View className="mt-14 w-full items-center gap-4">
         {isAuthor && <WhoWasThereButton review={review} />}
+        {loaded && !!me && <AddToListButton review={review} />}
 
         {loaded && review.viewerLoggedNight === false && <LogItTooPrompt review={review} />}
 

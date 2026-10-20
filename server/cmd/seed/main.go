@@ -620,6 +620,18 @@ func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User,
 		must(queries.CreateNotification(ctx, pool, n))
 	}
 
+	// Lists: bob's mixes whole nights and single sets (his own and other
+	// people's), with and without notes; carla's has one item; alice's is
+	// empty.
+	closers := must(queries.CreateList(ctx, pool, bob.ID, "Best closing sets of 2026",
+		strPtr("The last hour is the whole night. These are the ones that got it right.")))
+	must(0, queries.AddListItem(ctx, pool, closers.ID, marathonNight.ID, &floating.ID, strPtr("Acid techno at sunrise after twelve hours. Nothing else comes close.")))
+	must(0, queries.AddListItem(ctx, pool, closers.ID, honeyNight.ID, &honey.ID, nil))
+	must(0, queries.AddListItem(ctx, pool, closers.ID, rushNight.ID, nil, strPtr("Not a closer exactly, but the whole night felt like one.")))
+	sunset := must(queries.CreateList(ctx, pool, carla.ID, "Sunset sets", nil))
+	must(0, queries.AddListItem(ctx, pool, sunset.ID, honeyNight.ID, &honey.ID, strPtr("The garden at golden hour.")))
+	must(queries.CreateList(ctx, pool, alice.ID, "To revisit", strPtr("Nights I want to hear again.")))
+
 	// carla checked in at fabric on a trip without logging the night: it's
 	// in her passport (no nights) and one of her favorite venues, with Good
 	// Room. bob has one favorite; alice and dev none.

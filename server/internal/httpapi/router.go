@@ -82,6 +82,8 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/reviews/{id}/comments", h.ListComments)
 			r.Get("/users/{username}/reviews", h.ListReviewsByUser)
 			r.Get("/users/{username}/favorites", h.GetFavoriteReviews)
+			r.Get("/users/{username}/lists", h.ListUserLists)
+			r.Get("/lists/{id}", h.GetList)
 			r.Get("/feed/popular", h.GetPopular)
 		})
 
@@ -139,6 +141,12 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Patch("/users/me/settings", h.UpdateSettings)
 			r.Patch("/users/me/favorites", h.SetFavoriteReviews)
 			r.Patch("/users/me/favorite-venues", h.SetFavoriteVenues)
+
+			r.With(limitByUser(30, time.Hour)).Post("/lists", h.CreateList)
+			r.Patch("/lists/{id}", h.UpdateList)
+			r.Delete("/lists/{id}", h.DeleteList)
+			r.With(limitByUser(200, time.Hour)).Post("/lists/{id}/items", h.AddListItem)
+			r.Delete("/lists/{id}/items/{itemId}", h.RemoveListItem)
 			r.Post("/users/me/push-tokens", h.RegisterPushToken)
 			r.Delete("/users/me/push-tokens", h.UnregisterPushToken)
 

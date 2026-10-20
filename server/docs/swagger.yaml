@@ -285,6 +285,119 @@ definitions:
     - dj
     - reviewText
     type: object
+  List:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+        x-nullable: true
+      id:
+        type: string
+      title:
+        type: string
+      updatedAt:
+        type: string
+      userId:
+        type: string
+    required:
+    - createdAt
+    - description
+    - id
+    - title
+    - updatedAt
+    - userId
+    type: object
+  ListDetailResponse:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+        x-nullable: true
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/ListItemDTO'
+        type: array
+      title:
+        type: string
+      updatedAt:
+        type: string
+      user:
+        $ref: '#/definitions/User'
+      userId:
+        type: string
+    required:
+    - createdAt
+    - description
+    - id
+    - items
+    - title
+    - updatedAt
+    - user
+    - userId
+    type: object
+  ListItemDTO:
+    properties:
+      djId:
+        type: string
+        x-nullable: true
+      id:
+        type: string
+      note:
+        type: string
+        x-nullable: true
+      review:
+        allOf:
+        - $ref: '#/definitions/ReviewDTO'
+        description: The night it's from, as the app shows it.
+      reviewId:
+        type: string
+    required:
+    - djId
+    - id
+    - note
+    - review
+    - reviewId
+    type: object
+  ListSummary:
+    properties:
+      coverImages:
+        description: CoverImages are photos of the DJs on its first few items, for
+          its tile.
+        items:
+          type: string
+        type: array
+      createdAt:
+        type: string
+      description:
+        type: string
+        x-nullable: true
+      hasReview:
+        type: boolean
+      id:
+        type: string
+      itemCount:
+        type: integer
+      title:
+        type: string
+      updatedAt:
+        type: string
+      userId:
+        type: string
+    required:
+    - coverImages
+    - createdAt
+    - description
+    - hasReview
+    - id
+    - itemCount
+    - title
+    - updatedAt
+    - userId
+    type: object
   NearbyVenue:
     properties:
       city:
@@ -1105,6 +1218,18 @@ definitions:
     required:
     - body
     type: object
+  addListItemRequest:
+    properties:
+      djId:
+        description: One DJ's set on the night, or omitted for the whole night.
+        type: string
+      note:
+        type: string
+      reviewId:
+        type: string
+    required:
+    - reviewId
+    type: object
   apiError:
     properties:
       code:
@@ -1231,6 +1356,15 @@ definitions:
         type: string
     required:
     - djId
+    type: object
+  listRequest:
+    properties:
+      description:
+        type: string
+      title:
+        type: string
+    required:
+    - title
     type: object
   pushTokenRequest:
     properties:
@@ -1772,6 +1906,171 @@ paths:
       summary: Whether the caller follows the given user
       tags:
       - follows
+  /api/lists:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: title and optional description
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/listRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/List'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Start a list
+      tags:
+      - lists
+  /api/lists/{id}:
+    delete:
+      parameters:
+      - description: list id
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Delete a list of your own (the nights on it stay)
+      tags:
+      - lists
+    get:
+      parameters:
+      - description: list id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ListDetailResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: A list, who made it, and its nights and sets in order
+      tags:
+      - lists
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: list id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: title and optional description
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/listRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/List'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Rename a list of your own, or change its description
+      tags:
+      - lists
+  /api/lists/{id}/items:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: list id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: the night, the set, and a note
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/addListItemRequest'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Put a night, or one DJ's set on it, on a list of your own (anyone's
+        nights can go on it)
+      tags:
+      - lists
+  /api/lists/{id}/items/{itemId}:
+    delete:
+      parameters:
+      - description: list id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: item id
+        in: path
+        name: itemId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Take a night or set off a list of your own
+      tags:
+      - lists
   /api/notifications:
     get:
       parameters:
@@ -2570,6 +2869,35 @@ paths:
       summary: 'Get a user''s showcased favorite nights out (top 3, ordered, #1 first)'
       tags:
       - users
+  /api/users/{username}/lists:
+    get:
+      parameters:
+      - description: username
+        in: path
+        name: username
+        required: true
+        type: string
+      - description: a night to check each list for
+        in: query
+        name: reviewId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/ListSummary'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: A user's lists, most recently changed first; with reviewId, whether
+        that night is on each
+      tags:
+      - lists
   /api/users/{username}/reviews:
     get:
       parameters:

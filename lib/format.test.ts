@@ -9,6 +9,7 @@ import {
 
 describe("plural", () => {
   it("uses the singular for one", () => expect(plural(1, "night")).toBe("1 night"));
+  it("takes an irregular plural", () => expect(plural(2, "city", "cities")).toBe("2 cities"));
   it("uses the plural otherwise", () => {
     expect(plural(0, "night")).toBe("0 nights");
     expect(plural(3, "night")).toBe("3 nights");

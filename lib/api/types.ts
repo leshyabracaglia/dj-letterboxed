@@ -40,6 +40,9 @@ export type TrackMatch = Schemas["TrackMatch"];
 /** A track people highlighted from a DJ's sets, and on how many nights. */
 export type TopTrack = Schemas["TopTrack"];
 export type ReviewComment = Schemas["ReviewComment"];
+/** A curated list of nights, or single DJs' sets on them. */
+export type ListSummary = Schemas["ListSummary"];
+export type ListDetail = Schemas["ListDetailResponse"];
 export type PlaceSuggestion = Schemas["PlaceSuggestion"];
 
 export type Paginated<T> = {

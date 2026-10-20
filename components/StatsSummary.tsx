@@ -1,11 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
+import { ListFormSheet } from "./ListFormSheet";
 import { Avatar, Button, Icon, KEYBOARD_DISMISS_PROPS, Sheet, Skeleton, Stamp, Text } from "./ui";
 import { router } from "expo-router";
 
 import { errorMessage, unwrap, useApi } from "@/lib/api/client";
-import { useUserStats } from "@/lib/api/hooks";
+import { useUserLists, useUserStats } from "@/lib/api/hooks";
 import { queryKeys } from "@/lib/api/queryKeys";
 import { useCurrentUser } from "@/lib/auth";
 import { plural } from "@/lib/format";
@@ -255,6 +256,70 @@ function FavoriteVenuesSheet({
   );
 }
 
+// Their lists, each with a strip of the DJs on it; their own profile can
+// start one.
+function Lists({ username, isSelf }: { username: string; isSelf: boolean }) {
+  const { data: lists } = useUserLists(username);
+  const [creating, setCreating] = useState(false);
+  if (!lists?.length && !isSelf) return null;
+  return (
+    <View>
+      <View className="flex-row items-center justify-between">
+        <Text variant="display" className="text-xl text-paper/85">
+          Lists
+        </Text>
+        {isSelf && (
+          <Pressable onPress={() => setCreating(true)} hitSlop={8} accessibilityRole="button">
+            <Text variant="display" className="text-base text-paper/70 underline">
+              New list
+            </Text>
+          </Pressable>
+        )}
+      </View>
+      {lists?.length ? (
+        <View className="mt-2 gap-2">
+          {lists.map((list) => (
+            <Pressable
+              key={list.id}
+              onPress={() => router.push(ROUTES.LIST(list.id))}
+              accessibilityRole="link"
+              className="flex-row items-center gap-3 border border-white/10 bg-zine-panel/90 p-3 active:opacity-80"
+            >
+              <View className="flex-row">
+                {list.coverImages.slice(0, 3).map((uri, i) => (
+                  <View key={uri} style={{ marginLeft: i ? -14 : 0 }}>
+                    <Avatar uri={uri} name={list.title} size={36} />
+                  </View>
+                ))}
+                {!list.coverImages.length && <Icon name="list" size={28} className="text-paper/60" />}
+              </View>
+              <View className="flex-1">
+                <Text variant="display" className="text-xl leading-6 text-paper" numberOfLines={1}>
+                  {list.title}
+                </Text>
+                <Text className="text-xs text-paper/60">{plural(list.itemCount, "entry", "entries")}</Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      ) : (
+        <Text className="mt-1 text-sm text-paper/60">
+          Gather nights and sets that belong together: best closers, sunrise sets, the nights that got you into it.
+        </Text>
+      )}
+      {creating && (
+        <ListFormSheet
+          onSaved={(list) => {
+            setCreating(false);
+            router.push(ROUTES.LIST(list.id));
+          }}
+          onClose={() => setCreating(false)}
+        />
+      )}
+    </View>
+  );
+}
+
 // Every club they've been to (logged a night at or checked in at), as
 // stamps in a passport, first visit first.
 function Passport({ stamps }: { stamps: UserStats["passport"] }) {
@@ -266,7 +331,7 @@ function Passport({ stamps }: { stamps: UserStats["passport"] }) {
     <View>
       <Text variant="display" className="text-xl text-paper/85">
         Passport · {plural(stamps.length, "club")}
-        {!!cities.size && ` · ${cities.size} ${cities.size === 1 ? "city" : "cities"}`}
+        {!!cities.size && ` · ${plural(cities.size, "city", "cities")}`}
       </Text>
       <View className="mt-2 flex-row flex-wrap gap-2">
         {shown.map((stamp, i) => (
@@ -351,6 +416,10 @@ export function StatsSummary({ username, favorites }: { username: string; favori
           <Passport stamps={stats.passport} />
         </View>
       )}
+
+      <View className="mt-3">
+        <Lists username={username} isSelf={isSelf} />
+      </View>
     </View>
   );
 }

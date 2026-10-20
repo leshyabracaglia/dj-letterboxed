@@ -830,6 +830,287 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/lists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a list */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["listRequest"];
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["List"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lists/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A list, who made it, and its nights and sets in order */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description list id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ListDetailResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Delete a list of your own (the nights on it stay) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description list id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Rename a list of your own, or change its description */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description list id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["listRequest"];
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["List"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/lists/{id}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Put a night, or one DJ's set on it, on a list of your own (anyone's nights can go on it) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description list id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description the night, the set, and a note */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["addListItemRequest"];
+                };
+            };
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lists/{id}/items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take a night or set off a list of your own */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description list id */
+                    id: string;
+                    /** @description item id */
+                    itemId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notifications": {
         parameters: {
             query?: never;
@@ -2772,6 +3053,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users/{username}/lists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A user's lists, most recently changed first; with reviewId, whether that night is on each */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description a night to check each list for */
+                    reviewId?: string;
+                };
+                header?: never;
+                path: {
+                    /** @description username */
+                    username: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ListSummary"][];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/{username}/reviews": {
         parameters: {
             query?: never;
@@ -3131,6 +3463,44 @@ export interface components {
             dj: components["schemas"]["Dj"];
             reviewText: string | null;
         };
+        List: {
+            createdAt: string;
+            description: string | null;
+            id: string;
+            title: string;
+            updatedAt: string;
+            userId: string;
+        };
+        ListDetailResponse: {
+            createdAt: string;
+            description: string | null;
+            id: string;
+            items: components["schemas"]["ListItemDTO"][];
+            title: string;
+            updatedAt: string;
+            user: components["schemas"]["User"];
+            userId: string;
+        };
+        ListItemDTO: {
+            djId: string | null;
+            id: string;
+            note: string | null;
+            /** @description The night it's from, as the app shows it. */
+            review: components["schemas"]["ReviewDTO"];
+            reviewId: string;
+        };
+        ListSummary: {
+            /** @description CoverImages are photos of the DJs on its first few items, for its tile. */
+            coverImages: string[];
+            createdAt: string;
+            description: string | null;
+            hasReview: boolean;
+            id: string;
+            itemCount: number;
+            title: string;
+            updatedAt: string;
+            userId: string;
+        };
         NearbyVenue: {
             city: string | null;
             distanceM: number;
@@ -3447,6 +3817,12 @@ export interface components {
         addCommentRequest: {
             body: string;
         };
+        addListItemRequest: {
+            /** @description One DJ's set on the night, or omitted for the whole night. */
+            djId?: string;
+            note?: string;
+            reviewId: string;
+        };
         apiError: {
             code: string;
             message: string;
@@ -3505,6 +3881,10 @@ export interface components {
             djId: string;
             reviewText?: string;
         };
+        listRequest: {
+            description?: string;
+            title: string;
+        };
         pushTokenRequest: {
             /** @description "ios" or "android"; ignored on unregister. */
             platform: string;
@@ -3556,6 +3936,12 @@ export interface components {
     responses: never;
     parameters: never;
     requestBodies: {
+        /** @description title and optional description */
+        listRequest: {
+            content: {
+                "application/json": components["schemas"]["listRequest"];
+            };
+        };
         /** @description the device's push token */
         pushTokenRequest: {
             content: {
