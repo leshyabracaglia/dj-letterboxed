@@ -1,0 +1,9 @@
+dist/
+server/
+infra/
+.agents/
+.expo/
+lib/api/generated.ts
+package-lock.json
+playwright-report/
+test-results/

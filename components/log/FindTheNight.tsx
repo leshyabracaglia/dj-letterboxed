@@ -14,25 +14,19 @@ import {
   Skeleton,
   Text,
   usePageContentStyle,
-} from "../ui";
-import { ApiError, useApi } from "../../lib/api/client";
-import { useEventSearch } from "../../lib/api/hooks";
-import { queryKeys } from "../../lib/api/queryKeys";
-import type {
-  CheckInInput,
-  CheckInResponse,
-  EventSummary,
-  NearbyVenue,
-  NearbyVenuesResponse,
-  RAArea,
-  RAEvent,
-  RAEventsResponse,
-} from "../../lib/api/types";
-import { parseDateInputValue, toDateInputValue } from "../../lib/format";
-import { getCurrentPlace, getPreciseFix } from "../../lib/location";
-import { useDebouncedValue, withTimeout } from "../../lib/utils";
-import { addDays, type IBlankSeed, nightsLogged, shortDayLabel, startOfToday } from "./draft";
+} from "@/components/ui";
+import { ApiError, useApi, unwrap } from "@/lib/api/client";
+import { useEventSearch } from "@/lib/api/hooks";
+import { invalidateReviewLists } from "@/lib/api/cache";
+import { queryKeys } from "@/lib/api/queryKeys";
+import type { CheckInInput, CheckInPlace, EventSummary, NearbyVenue, RAArea, RAEvent } from "@/lib/api/types";
+import { parseDateInputValue, toDateInputValue } from "@/lib/format";
+import { getCurrentPlace, getPreciseFix } from "@/lib/location";
+import { withTimeout } from "@/lib/async";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import { addDays, type BlankSeed, nightsLogged, shortDayLabel, startOfToday } from "./draft";
 import { FieldLabel, NO_WEB_OUTLINE, SearchField, SheetRow, SheetSkeletonRow } from "./fields";
+import { colors } from "@/lib/colors";
 
 // ---- Find the night ----------------------------------------------------
 
@@ -69,7 +63,7 @@ function AreaSheet({ onPick, onClose }: { onPick: (area: RAArea) => void; onClos
   const query = useDebouncedValue(value.trim(), 250);
   const { data, isFetching } = useQuery({
     queryKey: queryKeys.ra.areas(query),
-    queryFn: () => api.get<RAArea[]>("/ra/areas", { q: query }),
+    queryFn: () => unwrap(api.GET("/api/ra/areas", { params: { query: { q: query } } })),
     enabled: query.length > 1,
     retry: false,
   });
@@ -104,7 +98,9 @@ function FilterChip({ icon, label, onPress }: { icon: IconName; label: string; o
       className="flex-row items-center gap-1.5 border-2 border-paper/70 px-2 py-1 active:opacity-70"
     >
       <Icon name={icon} size={12} className="text-paper" />
-      <Text className="font-display text-base uppercase leading-5 text-paper">{label}</Text>
+      <Text variant="display" className="text-base leading-5 text-paper">
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -142,27 +138,29 @@ function RAEventRow({
         </View>
       )}
       <View className="flex-1">
-        <Text numberOfLines={2} className="font-display text-xl uppercase leading-5 text-paper">
+        <Text numberOfLines={2} variant="display" className="text-xl leading-5 text-paper">
           {event.title}
         </Text>
         <Text numberOfLines={1} className="mt-0.5 text-xs text-paper/60">
           {[event.venue.name, event.venue.area].filter(Boolean).join(" · ")}
         </Text>
         {!!event.artists.length && (
-          <Text numberOfLines={1} className="mt-0.5 font-display text-sm uppercase leading-4 text-primary-dark">
+          <Text numberOfLines={1} variant="display" className="mt-0.5 text-sm leading-4 text-primary-dark">
             {event.artists.map((a) => a.name).join(" · ")}
           </Text>
         )}
         <View className="mt-1 flex-row items-center gap-2">
           <View className="border border-paper/60 px-1">
-            <Text className="font-display text-xs uppercase leading-4 text-paper">RA</Text>
+            <Text variant="display" className="text-xs leading-4 text-paper">
+              RA
+            </Text>
           </View>
           {!!event.attending && <Text className="text-xs text-paper/60">{event.attending.toLocaleString()} going</Text>}
         </View>
       </View>
       <View className="justify-center pr-1">
         {loading ? (
-          <ActivityIndicator size="small" color="#F6F6F9" />
+          <ActivityIndicator size="small" color={colors.paper} />
         ) : (
           <Icon name="chevron-forward" size={18} className="text-paper/60" />
         )}
@@ -172,7 +170,7 @@ function RAEventRow({
 }
 
 // Nothing on RA matched: start a poster with the typed text in a slot.
-function NotOnTheWall({ query, onStart }: { query: string; onStart: (seed: IBlankSeed) => void }) {
+function NotOnTheWall({ query, onStart }: { query: string; onStart: (seed: BlankSeed) => void }) {
   const options: {
     type: "event" | "dj" | "venue";
     title: string;
@@ -204,12 +202,16 @@ function NotOnTheWall({ query, onStart }: { query: string; onStart: (seed: IBlan
   ];
   return (
     <View>
-      <Text className="font-display text-2xl uppercase leading-6 text-paper">Not on the wall yet</Text>
+      <Text variant="display" className="text-2xl leading-6 text-paper">
+        Not on the wall yet
+      </Text>
       <Text className="mt-1 text-sm text-paper/70">
         Nothing on Resident Advisor matches &ldquo;{query}&rdquo;. Make the first poster for it.
       </Text>
       <View className="mt-4 gap-2">
-        <Text className="font-display text-sm uppercase text-paper/50">&ldquo;{query}&rdquo; is…</Text>
+        <Text variant="display" className="text-sm text-paper/50">
+          &ldquo;{query}&rdquo; is…
+        </Text>
         {options.map((o) => (
           <Pressable
             key={o.type}
@@ -218,7 +220,9 @@ function NotOnTheWall({ query, onStart }: { query: string; onStart: (seed: IBlan
           >
             <Icon name={o.icon} size={20} className="text-paper" />
             <View className="flex-1">
-              <Text className="font-display text-xl uppercase leading-5 text-paper">{o.title}</Text>
+              <Text variant="display" className="text-xl leading-5 text-paper">
+                {o.title}
+              </Text>
               <Text className="text-xs text-paper/75">{o.subtitle}</Text>
             </View>
             <Icon name="chevron-forward" size={18} className="text-paper" />
@@ -229,44 +233,54 @@ function NotOnTheWall({ query, onStart }: { query: string; onStart: (seed: IBlan
   );
 }
 
-// Out right now: check in at the venue, so your log of tonight there shows
+// Out right now: check in at the venue, so your review of tonight there shows
 // as verified whenever you post it. Location is read only on tapping (a fresh
-// precise fix), sent to find the venue you're at, and not kept.
+// precise fix), sent to find the clubs and bars around you (saved venues and
+// Google Places), and not kept. You always pick which one you're at.
+// What to tell someone whose check-in the server turned down, by error code.
+const CHECK_IN_ERRORS: Record<string, string> = {
+  TOO_FAR: "You don't seem to be there. Try again once you're inside.",
+  IMPRECISE_LOCATION: "Your location is too rough to check in. Turn on precise location and try again.",
+};
+
+// A nearby venue is a saved one (id) or a Google place not on Beatboxd yet.
+function checkInPlace(venue: NearbyVenue): CheckInPlace {
+  return venue.id ? { venueId: venue.id } : { placeId: venue.placeId ?? "" };
+}
+
 function CheckInStrip() {
   const api = useApi();
   const queryClient = useQueryClient();
-  const [choices, setChoices] = useState<{ fix: CheckInInput; venues: NearbyVenue[] }>();
+  const [choices, setChoices] = useState<{ fix: Omit<CheckInInput, keyof CheckInPlace>; venues: NearbyVenue[] }>();
   const [message, setMessage] = useState<string>();
 
   const checkIn = useMutation({
-    mutationFn: (input: CheckInInput) => api.post<CheckInResponse>("/check-ins", input),
+    mutationFn: (input: CheckInInput) => unwrap(api.POST("/api/check-ins", { body: input })),
     onSuccess: () => {
       setChoices(undefined);
       setMessage(undefined);
-      // A log of tonight already posted there now shows as verified.
-      queryClient.invalidateQueries({ queryKey: queryKeys.feed.activity() });
-      queryClient.invalidateQueries({ queryKey: ["reviews"] });
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      // A review of tonight already posted there now shows as verified.
+      invalidateReviewLists(queryClient);
     },
     onError: (err) =>
-      setMessage(
-        err instanceof ApiError && err.code === "TOO_FAR"
-          ? "You don't seem to be there. Try again once you're inside."
-          : err instanceof ApiError && err.code === "IMPRECISE_LOCATION"
-            ? "Your location is too rough to check in. Turn on precise location and try again."
-            : "Couldn't check in. Try again.",
-      ),
+      setMessage((err instanceof ApiError && CHECK_IN_ERRORS[err.code]) || "Couldn't check in. Try again."),
   });
   const locate = useMutation({
     mutationFn: async () => {
       const fix = await withTimeout(getPreciseFix(), LOCATE_TIMEOUT_MS).catch(() => null);
       if (!fix) return null;
-      const { venues } = await api.get<NearbyVenuesResponse>("/check-ins/nearby", {
-        lat: fix.latitude,
-        lng: fix.longitude,
-      });
+      const { venues } = await unwrap(
+        api.GET("/api/check-ins/nearby", {
+          params: {
+            query: {
+              lat: fix.latitude,
+              lng: fix.longitude,
+            },
+          },
+        }),
+      );
       return {
-        fix: { venueId: "", latitude: fix.latitude, longitude: fix.longitude, accuracyM: fix.accuracy },
+        fix: { latitude: fix.latitude, longitude: fix.longitude, accuracyM: fix.accuracy },
         venues,
       };
     },
@@ -275,9 +289,7 @@ function CheckInStrip() {
       if (!found) {
         setMessage("Couldn't get your location. Allow location access to check in.");
       } else if (!found.venues.length) {
-        setMessage("No venue on Beatboxd right here yet. Log it from Google Places and you can check in next time.");
-      } else if (found.venues.length === 1) {
-        checkIn.mutate({ ...found.fix, venueId: found.venues[0].id });
+        setMessage("Couldn't find a club or bar right where you are.");
       } else {
         setChoices(found);
       }
@@ -288,10 +300,10 @@ function CheckInStrip() {
 
   if (checkIn.data) {
     return (
-      <View className={`flex-row items-center gap-3 border-2 border-primary-dark bg-ink px-3 py-3`}>
+      <View className="flex-row items-center gap-3 border-2 border-primary-dark bg-ink px-3 py-3">
         <Icon name="checkmark-circle" size={22} className="text-primary-dark" />
         <View className="flex-1">
-          <Text className="font-display text-xl uppercase leading-5 text-paper">
+          <Text variant="display" className="text-xl leading-5 text-paper">
             Checked in at {checkIn.data.venue.name}
           </Text>
           <Text className="text-xs text-paper/70">Log tonight any time and it&apos;ll show as verified.</Text>
@@ -309,25 +321,29 @@ function CheckInStrip() {
       >
         <Icon name="checkmark-circle-outline" size={22} className="text-paper" />
         <View className="flex-1">
-          <Text className="font-display text-xl uppercase leading-5 text-paper">Out right now? Check in</Text>
+          <Text variant="display" className="text-xl leading-5 text-paper">
+            Out right now? Check in
+          </Text>
           <Text className="text-xs text-paper/60">Your log of tonight shows as verified: you were there.</Text>
         </View>
-        {busy && <ActivityIndicator size="small" color="#F6F6F9" />}
+        {busy && <ActivityIndicator size="small" color={colors.paper} />}
       </Pressable>
       {!!choices && (
         <View className="mt-2 gap-1">
-          <Text className="font-display text-sm uppercase text-paper/50">Which one are you at?</Text>
+          <Text variant="display" className="text-sm text-paper/50">
+            Which one are you at?
+          </Text>
           <View className="gap-2">
             {choices.venues.map((venue) => (
               <Pressable
-                key={venue.id}
-                onPress={() => checkIn.mutate({ ...choices.fix, venueId: venue.id })}
+                key={venue.id ?? venue.placeId}
+                onPress={() => checkIn.mutate({ ...choices.fix, ...checkInPlace(venue) })}
                 disabled={busy}
                 className="flex-row items-center gap-3 border border-white/10 bg-zine-panel/90 px-3 py-2 active:opacity-80"
               >
                 <Icon name="location-outline" size={16} className="text-paper" />
                 <View className="flex-1">
-                  <Text numberOfLines={1} className="font-display text-lg uppercase leading-5 text-paper">
+                  <Text numberOfLines={1} variant="display" className="text-lg leading-5 text-paper">
                     {venue.name}
                   </Text>
                   {!!venue.city && <Text className="text-xs text-paper/60">{venue.city}</Text>}
@@ -356,7 +372,7 @@ export function FindTheNight({
   matchingId?: string;
   onPickRA: (event: RAEvent) => void;
   onPickEvent: (event: EventSummary) => void;
-  onStartBlank: (seed?: IBlankSeed) => void;
+  onStartBlank: (seed?: BlankSeed) => void;
 }) {
   const api = useApi();
   const queryClient = useQueryClient();
@@ -395,12 +411,12 @@ export function FindTheNight({
     : here
       ? here.city || here.region
         ? { city: here.city, region: here.region }
-        : { lat: here.latitude.toFixed(2), lng: here.longitude.toFixed(2) }
+        : { lat: Number(here.latitude.toFixed(2)), lng: Number(here.longitude.toFixed(2)) }
       : {};
 
   const { data, isLoading, isError } = useQuery({
     queryKey: queryKeys.ra.events(where, from, to),
-    queryFn: () => api.get<RAEventsResponse>("/ra/events", { ...where, from, to }),
+    queryFn: () => unwrap(api.GET("/api/ra/events", { params: { query: { ...where, from, to } } })),
     // Wait for a location before falling back to your latest log's city.
     enabled: !!area || !locating,
     placeholderData: keepPreviousData,
@@ -471,7 +487,9 @@ export function FindTheNight({
             onPress={() => setAreaSheet(true)}
             className="mt-4 border border-dashed border-paper/50 p-4 active:opacity-70"
           >
-            <Text className="font-display text-xl uppercase text-paper">Where do you go out?</Text>
+            <Text variant="display" className="text-xl text-paper">
+              Where do you go out?
+            </Text>
             <Text className="text-sm text-paper/60">
               Pick your city to see the nights on Resident Advisor near you.
             </Text>
@@ -485,7 +503,7 @@ export function FindTheNight({
                 <Text className="font-numeric text-2xl leading-7 text-stamp-red">
                   {String(dayIndex + 1).padStart(2, "0")}
                 </Text>
-                <Text className="font-display text-xl uppercase leading-6 text-paper">
+                <Text variant="display" className="text-xl leading-6 text-paper">
                   {nightLabel(day)}
                   {shownArea?.name ? ` near ${shownArea.name}` : ""}
                 </Text>
@@ -510,7 +528,9 @@ export function FindTheNight({
 
         {!!matchingParties.length && (
           <View className="mt-4 gap-2">
-            <Text className="font-display text-sm uppercase text-paper/50">Parties on Beatboxd</Text>
+            <Text variant="display" className="text-sm text-paper/50">
+              Parties on Beatboxd
+            </Text>
             {matchingParties.map((event, i) => (
               <Pressable
                 key={event.id}
@@ -523,13 +543,15 @@ export function FindTheNight({
                   <Text className="font-numeric text-base leading-5 text-paper">{event.reviewCount}</Text>
                 </View>
                 <View className="flex-1">
-                  <Text numberOfLines={1} className="font-display text-lg uppercase leading-5 text-paper">
+                  <Text numberOfLines={1} variant="display" className="text-lg leading-5 text-paper">
                     {event.name}
                   </Text>
                   <Text className="text-xs text-paper/60">{nightsLogged(event.reviewCount)}</Text>
                 </View>
                 <View className="border border-paper/60 px-1">
-                  <Text className="font-display text-xs uppercase leading-4 text-paper">Beatboxd</Text>
+                  <Text variant="display" className="text-xs leading-4 text-paper">
+                    Beatboxd
+                  </Text>
                 </View>
               </Pressable>
             ))}

@@ -4,7 +4,7 @@ import { Linking, ScrollView, View } from "react-native";
 
 import { Page, SectionTitle, Text, usePageContentStyle } from "./ui";
 
-export const CONTACT_EMAIL = "leshyabracaglia@gmail.com";
+const CONTACT_EMAIL = "leshyabracaglia@gmail.com";
 
 export type InfoSection = { title: string; body: string[] };
 
@@ -36,10 +36,12 @@ export function InfoPage({
       <Stack.Screen options={{ title }} />
       <ScrollView contentContainerStyle={contentStyle}>
         <View className="w-full max-w-2xl self-center pb-8">
-          <Text className="font-display text-4xl uppercase text-paper">{title}</Text>
+          <Text variant="display" className="text-4xl text-paper">
+            {title}
+          </Text>
           {!!subtitle && <Text className="text-sm text-paper/60">{subtitle}</Text>}
           <View className="mt-6 gap-6">
-            {sections.map((section, i) => (
+            {sections.map((section) => (
               <View key={section.title} className="gap-2">
                 <SectionTitle>{section.title}</SectionTitle>
                 {section.body.map((paragraph, i) => (

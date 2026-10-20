@@ -1,5 +1,6 @@
-import { Platform, useWindowDimensions, type ViewStyle } from "react-native";
+import { useWindowDimensions, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { isWeb } from "@/lib/platform";
 
 // Horizontal page gutter. Content is capped at MAX_CONTENT_WIDTH: on wide
 // viewports (tablets, desktop web) the gutter grows to center it, while
@@ -33,5 +34,5 @@ export function usePageContentStyle(top: keyof typeof CONTENT_TOP = "default"): 
 // same bottom tab bar and native-style stack header as the apps.
 export function useIsDesktopWeb(): boolean {
   const { width } = useWindowDimensions();
-  return Platform.OS === "web" && width >= WIDE_BREAKPOINT;
+  return isWeb && width >= WIDE_BREAKPOINT;
 }

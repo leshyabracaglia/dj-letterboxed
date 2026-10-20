@@ -1,9 +1,9 @@
 import { Animated, Pressable, View } from "react-native";
 
-import { Poster, POSTER_FRAME, POSTER_RECORD_STYLE } from "../Poster";
-import { FitText, Icon, type IconName, Text } from "../ui";
-import { parseDateInputValue, toDateInputValue } from "../../lib/format";
-import { eventPickName, type IReviewDraft, type ISheet, venuePickName, venuePickSubtitle } from "./draft";
+import { Poster, POSTER_FRAME, POSTER_RECORD_STYLE } from "@/components/Poster";
+import { FitText, Icon, type IconName, Text } from "@/components/ui";
+import { parseDateInputValue, toDateInputValue } from "@/lib/format";
+import { eventPickName, type ReviewDraft, type PosterSheet, venuePickName, venuePickSubtitle } from "./draft";
 
 // Either or both: a day into night party picks both.
 const DAY_NIGHT_OPTIONS: { field: "isDay" | "isNight"; label: string; icon: IconName }[] = [
@@ -18,7 +18,9 @@ const DAY_NIGHT_OPTIONS: { field: "isDay" | "isNight"; label: string; icon: Icon
 function SlotLabel({ label, filled, className = "" }: { label: string; filled: boolean; className?: string }) {
   return (
     <View className={`flex-row items-center gap-1 ${className}`}>
-      <Text className="font-display text-sm uppercase leading-4 text-paper/60">{label}</Text>
+      <Text variant="display" className="text-sm leading-4 text-paper/60">
+        {label}
+      </Text>
       {filled && <Icon name="pencil" size={10} className="text-paper/60" />}
     </View>
   );
@@ -37,13 +39,13 @@ export function NightPoster({
   onAddDj,
   onToggle,
 }: {
-  draft: IReviewDraft;
+  draft: ReviewDraft;
   // Sets you didn't tick off an RA lineup show dimmed.
   lineup: { name: string; dim: boolean }[];
   username?: string;
   venueMissing: boolean;
   shake: Animated.Value;
-  onEdit: (sheet: ISheet) => void;
+  onEdit: (sheet: PosterSheet) => void;
   onAddDj: () => void;
   onToggle: (field: "isDay" | "isNight") => void;
 }) {
@@ -59,8 +61,14 @@ export function NightPoster({
   return (
     <Poster>
       <View className="flex-row items-center justify-between px-3 pt-3">
-        <Text className="font-display text-sm uppercase tracking-widest text-paper/80">Beatboxd presents</Text>
-        {!!username && <Text className="font-display text-sm uppercase text-stamp-red">@{username}</Text>}
+        <Text variant="display" className="text-sm tracking-widest text-paper/80">
+          Beatboxd presents
+        </Text>
+        {!!username && (
+          <Text variant="display" className="text-sm text-stamp-red">
+            @{username}
+          </Text>
+        )}
       </View>
 
       <Pressable
@@ -72,7 +80,7 @@ export function NightPoster({
         }`}
       >
         <View className="flex-row items-center gap-0.5">
-          <Text className="font-display text-sm uppercase leading-4 text-paper/80">
+          <Text variant="display" className="text-sm leading-4 text-paper/80">
             {isToday ? "Today" : date.toLocaleDateString(undefined, { weekday: "short" })}
           </Text>
           {!isToday && <Icon name="pencil" size={9} className="text-paper/80" />}
@@ -92,11 +100,13 @@ export function NightPoster({
             </FitText>
           ) : (
             <View className="self-start border border-dashed border-paper/40 px-2 py-1">
-              <Text className="font-display text-5xl uppercase leading-[44px] text-paper/30">Name{"\n"}the night?</Text>
+              <Text variant="display" className="text-5xl leading-[44px] text-paper/30">
+                Name{"\n"}the night?
+              </Text>
             </View>
           )}
         </Pressable>
-        <Text className="mt-3 font-display text-lg uppercase leading-5 text-paper">
+        <Text variant="display" className="mt-3 text-lg leading-5 text-paper">
           {lineup.map(({ name, dim }) => (
             <Text key={name} className={`font-display ${dim ? "text-paper/35" : "text-paper"}`}>
               {name} ·{" "}
@@ -119,7 +129,7 @@ export function NightPoster({
             <SlotLabel label="Venue" filled={!!venueName} />
             {draft.venuePick ? (
               <>
-                <Text numberOfLines={2} className="mt-1 font-display text-xl uppercase leading-5 text-paper">
+                <Text numberOfLines={2} variant="display" className="mt-1 text-xl leading-5 text-paper">
                   {venueName}
                 </Text>
                 {!!venuePickSubtitle(draft.venuePick) && (
@@ -130,7 +140,9 @@ export function NightPoster({
               </>
             ) : (
               <View className="mt-1 self-start border border-dashed border-paper/40 px-2 py-1">
-                <Text className="font-display text-xl uppercase leading-5 text-paper/30">Where?</Text>
+                <Text variant="display" className="text-xl leading-5 text-paper/30">
+                  Where?
+                </Text>
                 <Text className="text-xs text-danger-dark">Required</Text>
               </View>
             )}
@@ -152,9 +164,7 @@ export function NightPoster({
                   }`}
                 >
                   <Icon name={icon} size={12} className={selected ? "text-ink" : "text-paper"} />
-                  <Text
-                    className={`font-display text-base uppercase leading-5 ${selected ? "text-ink" : "text-paper"}`}
-                  >
+                  <Text variant="display" className={`text-base leading-5 ${selected ? "text-ink" : "text-paper"}`}>
                     {label}
                   </Text>
                 </Pressable>
@@ -174,7 +184,7 @@ export function PosterCaption({
   username,
   filledFrom,
 }: {
-  draft: IReviewDraft;
+  draft: ReviewDraft;
   username?: string;
   filledFrom?: string;
 }) {
@@ -188,7 +198,7 @@ export function PosterCaption({
       className={`ml-6 self-start px-3 py-2 shadow-md shadow-black/60 ${POSTER_FRAME}`}
       style={{ transform: [{ rotate: "-1deg" }] }}
     >
-      <Text className="font-display text-lg uppercase leading-5 text-ink">
+      <Text variant="display" className="text-lg leading-5 text-ink">
         {eventName ?? venueName ?? "Untitled night"}, {year}
       </Text>
       {!!(venueName || by) && (

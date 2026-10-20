@@ -55,7 +55,7 @@ func run() error {
 	}
 
 	spotify := domain.NewSpotifyClient(cfg.SpotifyClientID, cfg.SpotifyClientSecret)
-	places := domain.NewPlacesClient(cfg.GooglePlacesAPIKey)
+	places := domain.NewPlacesClient(cfg.GooglePlacesAPIKey, cfg.GooglePlacesDailyLimit)
 	if !places.Configured() {
 		slog.Warn("GOOGLE_PLACES_API_KEY not set; place search is disabled")
 	}

@@ -49,7 +49,8 @@ export function FitText({
   return (
     <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       <Text
-        className={`font-display uppercase ${className}`}
+        variant="display"
+        className={className}
         style={{ fontSize: size, lineHeight: Math.round(size * lineHeightRatio) }}
         numberOfLines={numberOfLines}
       >

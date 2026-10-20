@@ -6,10 +6,11 @@ import { router } from "expo-router";
 import { useCallback, useEffect } from "react";
 import { Platform } from "react-native";
 
-import { useApi } from "./api/client";
+import { useApi, unwrap } from "./api/client";
 import { queryKeys } from "./api/queryKeys";
 import type { PushTokenInput } from "./api/types";
 import { ROUTES } from "./routes";
+import { isAndroid } from "@/lib/platform";
 
 // Push notifications for follows, likes, comments and tags (sent by
 // server/internal/httpapi/notify.go), and the nudge that people you follow
@@ -31,7 +32,7 @@ let registeredToken: string | undefined;
 
 async function getPushToken(): Promise<string | undefined> {
   // Android 13+ won't show the permission prompt until a channel exists.
-  if (Platform.OS === "android") {
+  if (isAndroid) {
     await Notifications.setNotificationChannelAsync("default", {
       name: "Default",
       importance: Notifications.AndroidImportance.DEFAULT,
@@ -51,7 +52,10 @@ function routeFor(data: Record<string, unknown> | undefined) {
   if (data?.type === "follow" && typeof data.username === "string") {
     return ROUTES.USER(data.username);
   }
-  if ((data?.type === "like" || data?.type === "comment" || data?.type === "tag") && typeof data.reviewId === "string") {
+  if (
+    (data?.type === "like" || data?.type === "comment" || data?.type === "tag") &&
+    typeof data.reviewId === "string"
+  ) {
     return ROUTES.REVIEW_DETAIL(data.reviewId);
   }
   if (data?.type === "following_logs") return ROUTES.FEED;
@@ -79,7 +83,7 @@ export function usePushNotifications() {
         const token = await getPushToken();
         if (!token || cancelled) return;
         const body: PushTokenInput = { token, platform: Platform.OS };
-        await api.post("/users/me/push-tokens", body);
+        await unwrap(api.POST("/api/users/me/push-tokens", { body }));
         registeredToken = token;
       } catch (err) {
         // No token on simulators or Expo Go; the app works fine without.
@@ -120,7 +124,7 @@ export function useSignOut() {
     if (token) {
       const body: PushTokenInput = { token, platform: Platform.OS };
       // Best effort: never block signing out on it.
-      await api.del("/users/me/push-tokens", body).catch(() => {});
+      await unwrap(api.DELETE("/api/users/me/push-tokens", { body })).catch(() => {});
       registeredToken = undefined;
     }
     await signOut();

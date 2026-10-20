@@ -29,9 +29,7 @@ export function SegmentedTabs<T extends string>({
                 : "border-transparent bg-zine-panel/80 shadow-transparent"
             }`}
           >
-            <Text
-              className={`font-display text-lg uppercase tracking-wide ${selected ? "text-paper" : "text-paper/45"}`}
-            >
+            <Text variant="display" className={`text-lg tracking-wide ${selected ? "text-paper" : "text-paper/45"}`}>
               {t.label}
             </Text>
           </Pressable>

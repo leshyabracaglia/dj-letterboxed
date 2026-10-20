@@ -1,34 +1,41 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { useApi } from "../../lib/api/client";
-import { queryKeys } from "../../lib/api/queryKeys";
-import type { CreateReviewInput, Dj, Paginated, Review } from "../../lib/api/types";
-import { useCurrentUser } from "../../lib/auth";
-import { parseDateInputValue } from "../../lib/format";
-import type { ICreateDjInput, ILineupEntry, IReviewDraft } from "./draft";
+import { useApi, unwrap } from "@/lib/api/client";
+import { queryKeys } from "@/lib/api/queryKeys";
+import type { CreateDjInput, CreateReviewInput, Dj, Paginated, Review } from "@/lib/api/types";
+import { useCurrentUser } from "@/lib/auth";
+import { parseDateInputValue } from "@/lib/format";
+import type { DraftLineupEntry, EventPick, ReviewDraft, VenuePick } from "./draft";
+
+type WhereAndWhen = Omit<CreateReviewInput, "rating" | "reviewText" | "lineup" | "tags" | "taggedUserIds">;
+
+// The event part of the POST /reviews body: an existing event, one to
+// create by name, or none.
+function eventFields(pick: EventPick | undefined): Pick<CreateReviewInput, "eventId" | "eventName"> {
+  if (pick?.type === "existing") return { eventId: pick.event.id };
+  if (pick?.type === "new") return { eventName: pick.name };
+  return {};
+}
+
+// The venue part: a saved venue, a Google place to save, or a typed name.
+function venueFields(
+  pick: VenuePick,
+): Pick<CreateReviewInput, "venueId" | "placeId" | "placeSessionToken" | "venue" | "city"> {
+  if (pick.type === "existing") return { venueId: pick.venue.id };
+  if (pick.type === "place") return { placeId: pick.place.placeId, placeSessionToken: pick.sessionToken };
+  return { venue: pick.name, city: pick.city || undefined };
+}
 
 // The POST /reviews body's where and when, from a draft draftProblem passed.
-function logPlace(
-  draft: IReviewDraft,
-): Omit<CreateReviewInput, "rating" | "reviewText" | "lineup" | "tags" | "taggedUserIds"> {
-  const { eventPick } = draft;
-  const venuePick = draft.venuePick!;
+function whereAndWhen(draft: ReviewDraft): WhereAndWhen {
   const seenAt = parseDateInputValue(draft.seenAt)!;
   // Midday local time, so the stored instant reads back as the same
   // calendar day in any time zone (UTC midnight shows as the day before
   // across the Americas).
   seenAt.setHours(12);
   return {
-    ...(eventPick?.type === "existing"
-      ? { eventId: eventPick.event.id }
-      : eventPick?.type === "new"
-        ? { eventName: eventPick.name }
-        : {}),
-    ...(venuePick.type === "existing"
-      ? { venueId: venuePick.venue.id }
-      : venuePick.type === "place"
-        ? { placeId: venuePick.place.placeId, placeSessionToken: venuePick.sessionToken }
-        : { venue: venuePick.name, city: venuePick.city || undefined }),
+    ...eventFields(draft.eventPick),
+    ...venueFields(draft.venuePick!),
     seenAt: seenAt.toISOString(),
     isDay: draft.isDay,
     isNight: draft.isNight,
@@ -44,15 +51,15 @@ export function useLogNight() {
   const { me } = useCurrentUser();
 
   const createDj = useMutation({
-    mutationFn: (input: ICreateDjInput) => api.post<Dj>("/djs", input),
+    mutationFn: (input: CreateDjInput) => unwrap(api.POST("/api/djs", { body: input })),
   });
   const createReview = useMutation({
-    mutationFn: (input: CreateReviewInput) => api.post<Review>("/reviews", input),
+    mutationFn: (input: CreateReviewInput) => unwrap(api.POST("/api/reviews", { body: input })),
   });
 
   const logNight = async (
-    draft: IReviewDraft,
-    caught: ILineupEntry[],
+    draft: ReviewDraft,
+    caught: DraftLineupEntry[],
     {
       sourceReviewId,
       onDjSaved,
@@ -76,11 +83,11 @@ export function useLogNight() {
       djsByKey.set(entry.key, dj);
       onDjSaved(entry.key, dj);
     }
-    const djFor = (entry: ILineupEntry) => djsByKey.get(entry.key)!;
+    const djFor = (entry: DraftLineupEntry) => djsByKey.get(entry.key)!;
 
     // The response is the whole post, as the feed and profiles show it.
     const post = await createReview.mutateAsync({
-      ...logPlace(draft),
+      ...whereAndWhen(draft),
       rating: draft.rating!,
       reviewText: draft.reviewText.trim() || undefined,
       lineup: caught.map((e) => ({

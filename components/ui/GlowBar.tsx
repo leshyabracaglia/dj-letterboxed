@@ -7,5 +7,10 @@ const GLOW = "0 0 6px 1px rgba(246,246,249,0.75), 0 0 14px 2px rgba(246,246,249,
 
 /** The short bar over a nav item: glowing white when it's the current one, a dim red stub otherwise. */
 export function GlowBar({ isActive }: { isActive: boolean }) {
-  return <View className="h-[3px] w-7 rounded-full bg-paper" style={{ boxShadow: isActive ? GLOW : undefined }} />;
+  return (
+    <View
+      className={`h-[3px] w-7 rounded-full ${isActive ? "bg-paper" : "bg-zine-red/40"}`}
+      style={{ boxShadow: isActive ? GLOW : undefined }}
+    />
+  );
 }

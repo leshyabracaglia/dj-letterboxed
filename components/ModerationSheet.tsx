@@ -1,14 +1,15 @@
-import { useAuth } from "@clerk/expo";
 import { useMutation } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
 
 import { Icon, type IconName, Sheet, Text } from "./ui";
-import { useApi } from "../lib/api/client";
-import { useBlockedUsers, useSetBlocked } from "../lib/api/hooks";
-import type { CreateReportInput, ReportReason, User } from "../lib/api/types";
-import { ROUTES } from "../lib/routes";
+import { useApi, unwrap } from "@/lib/api/client";
+import { useBlockedUsers, useSetBlocked } from "@/lib/api/hooks";
+import type { CreateReportInput, ReportReason, User } from "@/lib/api/types";
+import { useCurrentUser } from "@/lib/auth";
+import { ROUTES } from "@/lib/routes";
+import { colors } from "@/lib/colors";
 
 type ReportTarget = { reviewId: string } | { commentId: string } | { userId: string };
 
@@ -40,7 +41,7 @@ function Row({
     >
       <View className="w-8 items-center">
         {pending ? (
-          <ActivityIndicator size="small" color="#F6F6F9" />
+          <ActivityIndicator size="small" color={colors.paper} />
         ) : (
           <Icon name={icon} size={20} className="text-paper/80" />
         )}
@@ -69,7 +70,8 @@ function ModerationSheet({ user, target, onClose }: { user: User; target: Report
   const isBlocked = !!blocked?.some((u) => u.id === user.id);
   const setBlocked = useSetBlocked(user.id);
   const report = useMutation({
-    mutationFn: (reason: ReportReason) => api.post("/reports", { ...target, reason } satisfies CreateReportInput),
+    mutationFn: (reason: ReportReason) =>
+      unwrap(api.POST("/api/reports", { body: { ...target, reason } satisfies CreateReportInput })),
     onSuccess: () => setModerationStep(MODERATION_STEPS.REPORTED),
   });
 
@@ -133,7 +135,7 @@ function ModerationSheet({ user, target, onClose }: { user: User; target: Report
 /** Opens the report/block sheet: an ellipsis icon, or with `label` a text
  * button. Signed-out users go to sign in instead. */
 export function ModerationButton({ user, target, label }: { user: User; target: ReportTarget; label?: string }) {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn } = useCurrentUser();
   const [isOpen, setIsOpen] = useState(false);
 
   const onPress = () => (isSignedIn ? setIsOpen(true) : router.push(ROUTES.SIGN_IN));
@@ -143,7 +145,9 @@ export function ModerationButton({ user, target, label }: { user: User; target: 
       {label ? (
         <Pressable onPress={onPress} className="flex-row items-center gap-1.5 self-center px-3 py-2 active:opacity-70">
           <Icon name="flag-outline" size={16} className="text-paper/60" />
-          <Text className="font-display text-lg uppercase text-paper/60">{label}</Text>
+          <Text variant="display" className="text-lg text-paper/60">
+            {label}
+          </Text>
         </Pressable>
       ) : (
         <Pressable

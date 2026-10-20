@@ -1,13 +1,6 @@
 import { type Ref, useEffect, useImperativeHandle, useRef, useState } from "react";
-import {
-  Keyboard,
-  Platform,
-  ScrollView,
-  TextInput,
-  View,
-  type KeyboardEvent,
-  type ScrollViewProps,
-} from "react-native";
+import { Keyboard, ScrollView, TextInput, View, type KeyboardEvent, type ScrollViewProps } from "react-native";
+import { isIos } from "@/lib/platform";
 
 // Keyboard dismissal for any scrollable list: with "handled", a tap on empty
 // space (anything that isn't a button/input) drops the keyboard, while taps
@@ -22,8 +15,8 @@ export const KEYBOARD_DISMISS_PROPS = {
 
 // iOS sends "will" events (so the scroll runs alongside the keyboard
 // animation); Android only reliably sends "did".
-const SHOW_EVENT = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-const HIDE_EVENT = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+const SHOW_EVENT = isIos ? "keyboardWillShow" : "keyboardDidShow";
+const HIDE_EVENT = isIos ? "keyboardWillHide" : "keyboardDidHide";
 
 // Drop-in ScrollView for any screen with text inputs. On top of
 // KEYBOARD_DISMISS_PROPS, when the keyboard opens (or focus moves to another

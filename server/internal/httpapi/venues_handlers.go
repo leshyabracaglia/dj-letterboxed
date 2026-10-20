@@ -51,8 +51,8 @@ func (h *Handlers) SearchPlaces(w http.ResponseWriter, r *http.Request) {
 	}
 	suggestions, err := h.Places.Autocomplete(r.Context(), q, r.URL.Query().Get("sessionToken"))
 	if err != nil {
-		if errors.Is(err, domain.ErrPlacesNotConfigured) {
-			WriteError(w, http.StatusServiceUnavailable, "UNAVAILABLE", "place search is not configured")
+		if domain.PlacesUnavailable(err) {
+			WriteError(w, http.StatusServiceUnavailable, "UNAVAILABLE", "place search is unavailable right now")
 			return
 		}
 		slog.Error("places autocomplete failed", "error", err)
@@ -150,7 +150,7 @@ func (h *Handlers) resolveVenue(ctx context.Context, req venueInput, userID stri
 		}
 		place, err := h.Places.Details(ctx, *req.PlaceID, sessionToken)
 		if err != nil {
-			if errors.Is(err, domain.ErrPlacesNotConfigured) {
+			if domain.PlacesUnavailable(err) {
 				return nil, err
 			}
 			slog.Error("places details failed", "placeId", *req.PlaceID, "error", err)

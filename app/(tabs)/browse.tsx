@@ -19,14 +19,14 @@ import {
   TextField,
   tiltFor,
   usePageContentStyle,
-} from "../../components/ui";
-import { FollowButton } from "../../components/FollowButton";
-import { useDjSearch, useEventSearch, useUserSearch, useVenueSearch } from "../../lib/api/hooks";
-import type { Dj, EventSummary, User, VenueSummary } from "../../lib/api/types";
-import { useCurrentUser } from "../../lib/auth";
-import { plural } from "../../lib/format";
-import { ROUTES } from "../../lib/routes";
-import { useDebouncedValue } from "../../lib/utils";
+} from "@/components/ui";
+import { FollowButton } from "@/components/FollowButton";
+import { useDjSearch, useEventSearch, useUserSearch, useVenueSearch } from "@/lib/api/hooks";
+import type { Dj, EventSummary, User, VenueSummary } from "@/lib/api/types";
+import { useCurrentUser } from "@/lib/auth";
+import { plural } from "@/lib/format";
+import { ROUTES } from "@/lib/routes";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
 function DjCard({ dj }: { dj: Dj }) {
   return (
@@ -34,7 +34,7 @@ function DjCard({ dj }: { dj: Dj }) {
       <View className="flex-row items-center gap-4">
         <Photo uri={dj.imageUrl} width={64} height={72} framed rotate={-2} />
         <View className="flex-1">
-          <Text className="font-display text-3xl uppercase leading-8 text-paper" numberOfLines={2}>
+          <Text variant="display" className="text-3xl leading-8 text-paper" numberOfLines={2}>
             {dj.name}
           </Text>
           {!!dj.genres?.length && (
@@ -51,8 +51,10 @@ function DjCard({ dj }: { dj: Dj }) {
 function VenueCard({ venue }: { venue: VenueSummary }) {
   return (
     <Card href={ROUTES.VENUE(venue.id)} tilt={tiltFor(venue.id, 0.6)}>
-      <Text className="font-display text-3xl uppercase leading-8 text-paper">{venue.name}</Text>
-      <Text className="mt-1 font-display text-base uppercase text-paper/60">
+      <Text variant="display" className="text-3xl leading-8 text-paper">
+        {venue.name}
+      </Text>
+      <Text variant="display" className="mt-1 text-base text-paper/60">
         {venue.city ? `${venue.city} · ` : ""}
         {plural(venue.reviewCount, "night")} logged
       </Text>
@@ -66,8 +68,10 @@ function EventCard({ event }: { event: EventSummary }) {
     <Card href={ROUTES.EVENT(event.slug)} tint="accent" tilt={tiltFor(event.id, 0.8)}>
       <View className="flex-row items-center gap-3">
         <View className="flex-1">
-          <Text className="font-display text-3xl uppercase leading-8 text-paper">{event.name}</Text>
-          <Text className="mt-1 font-display text-base uppercase text-zine-red-ink">
+          <Text variant="display" className="text-3xl leading-8 text-paper">
+            {event.name}
+          </Text>
+          <Text variant="display" className="mt-1 text-base text-zine-red-ink">
             {plural(event.reviewCount, "night")} logged
           </Text>
         </View>
@@ -87,7 +91,9 @@ function UserCard({ user, isSelf }: { user: User; isSelf: boolean }) {
           <Pressable className="flex-1 flex-row items-center gap-3 active:opacity-80">
             <Avatar uri={user.avatarUrl} name={user.username} size={48} />
             <View className="flex-1">
-              <Text className="font-display text-2xl uppercase text-paper">@{user.username}</Text>
+              <Text variant="display" className="text-2xl text-paper">
+                @{user.username}
+              </Text>
             </View>
           </Pressable>
         </Link>
@@ -118,7 +124,11 @@ function BrowseCardSkeleton({ tint }: { tint: CardTint }) {
 }
 
 function SuggestionsLabel({ label }: { label: string }) {
-  return <Text className="font-display text-xl uppercase text-paper/80">{label}</Text>;
+  return (
+    <Text variant="display" className="text-xl text-paper/80">
+      {label}
+    </Text>
+  );
 }
 
 const BROWSE_TABS = {

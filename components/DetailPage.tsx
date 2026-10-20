@@ -2,8 +2,8 @@ import { Link, Stack } from "expo-router";
 import type { ComponentProps, ReactNode } from "react";
 import { View } from "react-native";
 
-import { ApiError } from "../lib/api/client";
-import { ROUTES } from "../lib/routes";
+import { ApiError } from "@/lib/api/client";
+import { ROUTES } from "@/lib/routes";
 import { Button, Page, Text } from "./ui";
 
 type StackOptions = NonNullable<ComponentProps<typeof Stack.Screen>["options"]>;
@@ -13,7 +13,9 @@ type StackOptions = NonNullable<ComponentProps<typeof Stack.Screen>["options"]>;
 export function MissingState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
     <View className="flex-1 items-center justify-center gap-4 px-6 py-16">
-      <Text className="text-center font-display text-3xl uppercase text-paper">{message}</Text>
+      <Text variant="display" className="text-center text-3xl text-paper">
+        {message}
+      </Text>
       {onRetry ? (
         <Button onPress={onRetry} className="px-5 py-2.5">
           <Text className="font-semibold text-paper">Try again</Text>
@@ -26,7 +28,6 @@ export function MissingState({ message, onRetry }: { message: string; onRetry?: 
     </View>
   );
 }
-
 
 /** The shell of a page about one thing loaded by a query (a DJ, event,
  * venue, user or review): `skeleton` while it loads, a not-found or retry
@@ -55,11 +56,8 @@ export function DetailPage<T>({
   let body: ReactNode;
 
   if (data) body = children(data);
-
   else if (!error) body = skeleton;
-
   else if (error instanceof ApiError && error.status === 404) body = <MissingState message={missing} />;
-
   else body = <MissingState message="Couldn't load this page." onRetry={() => void refetch()} />;
 
   return (

@@ -10,6 +10,7 @@ import (
 	svix "github.com/svix/svix-webhooks/go"
 
 	"beatboxd/server/internal/db/queries"
+	"beatboxd/server/internal/domain"
 )
 
 type clerkUserEvent struct {
@@ -67,8 +68,10 @@ func (h *Handlers) ClerkWebhook(webhookSecret string) http.HandlerFunc {
 			return
 		}
 
+		// Names set in Clerk skip the API's own checks, so a blocked one
+		// falls back to the placeholder, as an unset one does.
 		username := "user_" + lastN(clerkID, 8)
-		if event.Data.Username != nil && *event.Data.Username != "" {
+		if event.Data.Username != nil && *event.Data.Username != "" && !domain.IsObjectionable(*event.Data.Username) {
 			username = *event.Data.Username
 		}
 
@@ -80,7 +83,7 @@ func (h *Handlers) ClerkWebhook(webhookSecret string) http.HandlerFunc {
 			nameParts = append(nameParts, *event.Data.LastName)
 		}
 		var displayName *string
-		if len(nameParts) > 0 {
+		if len(nameParts) > 0 && !domain.IsObjectionable(nameParts...) {
 			joined := strings.Join(nameParts, " ")
 			displayName = &joined
 		}

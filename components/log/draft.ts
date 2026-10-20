@@ -1,26 +1,27 @@
-import type { Dj, EventSummary, PlaceSuggestion, RAEventMatch, Review, User, VenueSummary } from "../../lib/api/types";
-import { parseDateInputValue, plural, toDateInputValue } from "../../lib/format";
+import type {
+  CreateDjInput,
+  Dj,
+  EventSummary,
+  PlaceSuggestion,
+  RAEventMatch,
+  Review,
+  User,
+  VenueSummary,
+} from "@/lib/api/types";
+import { parseDateInputValue, plural, toDateInputValue } from "@/lib/format";
 
 // The log screen's form model: what's picked and typed so far, and the
 // helpers that name and fill it in.
 
-export type ICreateDjInput = {
-  name: string;
-  bio?: string;
-  genres?: string[];
-  spotifyId?: string;
-  imageUrl?: string | null;
-};
-
 // An already-saved DJ, or one (from Spotify or typed in by hand) that gets
 // created when the night is saved.
-export type IArtistPick = { type: "existing"; dj: Dj } | { type: "new"; input: ICreateDjInput };
+export type ArtistPick = { type: "existing"; dj: Dj } | { type: "new"; input: CreateDjInput };
 
 // One DJ in the night's lineup. Rating them is optional; an unrated DJ is
 // still saved to the lineup.
-export type ILineupEntry = {
+export type DraftLineupEntry = {
   key: string;
-  pick: IArtistPick;
+  pick: ArtistPick;
   rating?: number;
   reviewText: string;
   // Their review box is open.
@@ -34,22 +35,22 @@ export type ILineupEntry = {
 
 // An existing event ("Innervisions NY"), a new one created by name when the
 // night is saved, or (none) a night with no name, just the venue.
-export type IEventPick = { type: "existing"; event: EventSummary } | { type: "new"; name: string } | { type: "none" };
+export type EventPick = { type: "existing"; event: EventSummary } | { type: "new"; name: string } | { type: "none" };
 
 // An already-saved venue, a Google Places result (saved as a venue when the
 // night is saved, in the billing session it was found in), or a name typed in
 // by hand. Saved and Google venues already know their city.
-export type IVenuePick =
+export type VenuePick =
   | { type: "existing"; venue: VenueSummary }
   | { type: "place"; place: PlaceSuggestion; sessionToken: string }
   | { type: "typed"; name: string; city: string };
 
-// Form fields as typed; turned into the POST /logs body on submit. rating,
+// Form fields as typed; turned into the POST /reviews body on submit. rating,
 // tags and reviewText are the review of the night as a whole.
-export type IReviewDraft = {
+export type ReviewDraft = {
   // Unset until they name the night or pick "no name".
-  eventPick?: IEventPick;
-  venuePick?: IVenuePick;
+  eventPick?: EventPick;
+  venuePick?: VenuePick;
   seenAt: string;
   isDay: boolean;
   isNight: boolean;
@@ -60,9 +61,9 @@ export type IReviewDraft = {
 };
 
 // Which slot of the poster is being edited in a sheet.
-export type ISheet = "event" | "date" | "venue";
+export type PosterSheet = "event" | "date" | "venue";
 
-export function emptyDraft(): IReviewDraft {
+export function emptyDraft(): ReviewDraft {
   return {
     seenAt: toDateInputValue(new Date()),
     isDay: false,
@@ -73,16 +74,16 @@ export function emptyDraft(): IReviewDraft {
   };
 }
 
-export function artistPickName(pick: IArtistPick) {
+export function artistPickName(pick: ArtistPick) {
   return pick.type === "existing" ? pick.dj.name : pick.input.name;
 }
 
-export function artistPickKey(pick: IArtistPick) {
+export function artistPickKey(pick: ArtistPick) {
   if (pick.type === "existing") return `dj-${pick.dj.id}`;
   return pick.input.spotifyId ? `spotify-${pick.input.spotifyId}` : `new-${pick.input.name.toLowerCase()}`;
 }
 
-export function eventPickName(pick: IEventPick | undefined) {
+export function eventPickName(pick: EventPick | undefined) {
   if (pick?.type === "existing") return pick.event.name;
   if (pick?.type === "new") return pick.name;
   return undefined;
@@ -111,36 +112,36 @@ export function shortDayLabel(date: Date) {
   return `${weekday} ${date.getDate()} ${month}`;
 }
 
-export function venuePickName(pick: IVenuePick) {
+export function venuePickName(pick: VenuePick) {
   if (pick.type === "existing") return pick.venue.name;
   if (pick.type === "place") return pick.place.name;
   return pick.name;
 }
 
-export function venuePickSubtitle(pick: IVenuePick) {
+export function venuePickSubtitle(pick: VenuePick) {
   if (pick.type === "existing") return pick.venue.city || pick.venue.address || "";
   if (pick.type === "place") return pick.place.secondaryText;
   return pick.city;
 }
 
 // What the typed text could seed a blank poster as.
-export type IBlankSeed = { type: "event" | "dj" | "venue"; text: string } | undefined;
+export type BlankSeed = { type: "event" | "dj" | "venue"; text: string } | undefined;
 
 // The poster's starting point for an RA night, from its match: the party
 // name (or none, headed by the venue), venue, day, day/night, and the lineup
 // to tick off.
-export function draftFromRA(match: RAEventMatch): { draft: IReviewDraft; lineup: ILineupEntry[] } {
+export function draftFromRA(match: RAEventMatch): { draft: ReviewDraft; lineup: DraftLineupEntry[] } {
   const { venue } = match;
-  const venuePick: IVenuePick | undefined = venue.venue
+  const venuePick: VenuePick | undefined = venue.venue
     ? { type: "existing", venue: venue.venue }
     : venue.place
       ? { type: "place", place: venue.place, sessionToken: venue.placeSessionToken }
       : venue.name
         ? { type: "typed", name: venue.name, city: venue.city }
         : undefined;
-  const lineup: ILineupEntry[] = [];
+  const lineup: DraftLineupEntry[] = [];
   for (const artist of match.lineup) {
-    const pick: IArtistPick = artist.dj
+    const pick: ArtistPick = artist.dj
       ? { type: "existing", dj: artist.dj }
       : artist.spotify
         ? {
@@ -179,14 +180,14 @@ export function draftFromReview(
   review: Review,
   venue: VenueSummary | undefined,
   myId: string,
-): { draft: IReviewDraft; lineup: ILineupEntry[] } {
-  const venuePick: IVenuePick | undefined = venue
+): { draft: ReviewDraft; lineup: DraftLineupEntry[] } {
+  const venuePick: VenuePick | undefined = venue
     ? { type: "existing", venue }
     : review.venue
       ? { type: "typed", name: review.venue, city: review.city ?? "" }
       : undefined;
-  const lineup: ILineupEntry[] = review.lineup.map(({ dj }) => {
-    const pick: IArtistPick = { type: "existing", dj };
+  const lineup: DraftLineupEntry[] = review.lineup.map(({ dj }) => {
+    const pick: ArtistPick = { type: "existing", dj };
     return { key: artistPickKey(pick), pick, reviewText: "", reviewing: false, caught: false, listed: true };
   });
   const friends = [...(review.user ? [review.user] : []), ...review.taggedUsers].filter(
@@ -210,8 +211,8 @@ export function draftFromReview(
 // What stops the draft being logged, if anything. A missing venue or night
 // rating is flagged on the form itself (`field`); the rest is a message.
 export function draftProblem(
-  draft: IReviewDraft,
-  caught: ILineupEntry[],
+  draft: ReviewDraft,
+  caught: DraftLineupEntry[],
 ): { field?: "venue" | "night"; message?: string } | undefined {
   if (!draft.venuePick) return { field: "venue" };
   if (!parseDateInputValue(draft.seenAt)) return { message: "Pick the date you went" };

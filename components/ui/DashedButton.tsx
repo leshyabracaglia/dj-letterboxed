@@ -21,7 +21,9 @@ export function DashedButton({
       className={`flex-row items-center justify-center gap-1.5 border border-dashed border-paper/60 px-2 py-1 active:opacity-70 ${className}`}
     >
       <Icon name={icon} size={14} className="text-paper" />
-      <Text className="font-display text-base uppercase leading-5 text-paper">{label}</Text>
+      <Text variant="display" className="text-base leading-5 text-paper">
+        {label}
+      </Text>
     </Pressable>
   );
 }

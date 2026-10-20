@@ -1,5 +1,5 @@
-// Stable react-query key factories, replacing tRPC's auto-derived keys.
-// Infinite queries use the base (no-cursor) key; react-query tracks pages
+// Stable react-query key factories, so every query and cache write on the
+// same data agrees on its key. Infinite queries use the base (no-cursor) key; react-query tracks pages
 // internally via pageParam.
 export const queryKeys = {
   appVersion: () => ["app-version"] as const,
@@ -33,6 +33,7 @@ export const queryKeys = {
   users: {
     me: () => ["users", "me"] as const,
     blocks: () => ["users", "me", "blocks"] as const,
+    settings: () => ["users", "me", "settings"] as const,
     search: (q: string) => ["users", "search", q] as const,
     byUsername: (username: string) => ["users", username] as const,
     stats: (username: string) => ["users", username, "stats"] as const,

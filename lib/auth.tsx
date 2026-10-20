@@ -2,9 +2,9 @@ import { useAuth } from "@clerk/expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, type ReactNode } from "react";
 
-import { ApiError, errorMessage, useApi } from "./api/client";
+import { ApiError, errorMessage, useApi, unwrap } from "./api/client";
 import { queryKeys } from "./api/queryKeys";
-import type { User } from "./api/types";
+import type { UpdateProfileInput, User } from "./api/types";
 
 type AuthContextValue = {
   /** The signed-in user's local `users` row; undefined while signed out or still loading. */
@@ -14,13 +14,6 @@ type AuthContextValue = {
   isLoaded: boolean;
   /** Signed in, but `/users/me` hasn't resolved yet. */
   isLoadingMe: boolean;
-};
-
-type UpdateProfileInput = {
-  username?: string;
-  displayName?: string;
-  bio?: string;
-  avatarUrl?: string;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -35,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const { data, isPending } = useQuery({
     queryKey: queryKeys.users.me(),
-    queryFn: () => api.get<User>("/users/me"),
+    queryFn: () => unwrap(api.GET("/api/users/me")),
     enabled: signedIn,
   });
 
@@ -76,7 +69,7 @@ export function useUpdateProfile({
   const api = useApi();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: UpdateProfileInput) => api.patch<User>("/users/me", input),
+    mutationFn: (input: UpdateProfileInput) => unwrap(api.PATCH("/api/users/me", { body: input })),
     onSuccess: (updated) => {
       queryClient.setQueryData(queryKeys.users.me(), updated);
       onSuccess?.(updated);

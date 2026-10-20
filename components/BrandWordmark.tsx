@@ -21,7 +21,7 @@ export function BrandWordmark({
         <View className="h-3.5 w-3.5 rounded-full bg-paper shadow-md shadow-white/70" />
       ) : (
         <Image
-          source={require("../assets/logo-mark.png")}
+          source={require("@/assets/logo-mark.png")}
           accessibilityIgnoresInvertColors
           style={{ width: compact ? 36 : 46, height: compact ? 36 : 46 }}
         />

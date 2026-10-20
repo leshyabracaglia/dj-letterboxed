@@ -81,10 +81,10 @@ func (h *Handlers) GetDjBySlug(w http.ResponseWriter, r *http.Request) {
 
 type createDjRequest struct {
 	Name      string   `json:"name"`
-	Bio       *string  `json:"bio"`
-	Genres    []string `json:"genres"`
-	SpotifyID *string  `json:"spotifyId"`
-	ImageURL  *string  `json:"imageUrl"`
+	Bio       *string  `json:"bio,omitempty"`
+	Genres    []string `json:"genres,omitempty"`
+	SpotifyID *string  `json:"spotifyId,omitempty"`
+	ImageURL  *string  `json:"imageUrl,omitempty"`
 }
 
 // CreateDj godoc
@@ -112,6 +112,10 @@ func (h *Handlers) CreateDj(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Name == "" || len(req.Name) > 128 {
 		BadRequest(w, "name must be 1-128 characters")
+		return
+	}
+	if domain.IsObjectionable(append([]string{req.Name, deref(req.Bio)}, req.Genres...)...) {
+		BadRequest(w, domain.ErrObjectionable.Error())
 		return
 	}
 

@@ -18,11 +18,12 @@ import {
   tiltFor,
 } from "./ui";
 
-import type { LineupEntry, Review, User } from "../lib/api/types";
-import { pluralWord } from "../lib/format";
-import { nightDateParts, ratedSets, reviewSubject, soloSet } from "../lib/review";
-import { ROUTES } from "../lib/routes";
+import type { LineupEntry, Review, User } from "@/lib/api/types";
+import { pluralWord } from "@/lib/format";
+import { nightDateParts, ratedSets, reviewSubject, soloSet } from "@/lib/review";
+import { ROUTES } from "@/lib/routes";
 import { ReviewTags } from "./ReviewTags";
+import { colors } from "@/lib/colors";
 
 // How many lineup photos a night card shows before "+N more".
 const LINEUP_SHOWN = 3;
@@ -38,7 +39,9 @@ function PopularMark() {
   return (
     <View className="flex-row items-center gap-0.5">
       <Icon name="flame" size={12} className="text-paper" />
-      <Text className="font-display text-sm uppercase text-paper">Popular</Text>
+      <Text variant="display" className="text-sm text-paper">
+        Popular
+      </Text>
     </View>
   );
 }
@@ -53,7 +56,9 @@ function VerifiedMark() {
       testID="verified-mark"
     >
       <Icon name="checkmark-circle" size={14} className="text-paper" />
-      <Text className="font-display text-sm uppercase text-paper">Verified</Text>
+      <Text variant="display" className="text-sm text-paper">
+        Verified
+      </Text>
     </View>
   );
 }
@@ -77,20 +82,12 @@ function EngagementCounts({ review }: { review: Review }) {
 
 // Tags, then the reviewer's name tag and the like/comment counts (or, on the
 // review's own page, `actions`), along the bottom of either card.
-function CardFooter({
-  review,
-  expanded,
-  actions,
-}: {
-  review: Review;
-  expanded: boolean;
-  actions?: ReactNode;
-}) {
+function CardFooter({ review, expanded, actions }: { review: Review; expanded: boolean; actions?: ReactNode }) {
   return (
     <View className="gap-y-2">
       <ReviewTags tags={review.tags} limit={expanded ? undefined : 3} />
       {expanded && !!review.taggedUsers.length && (
-        <Text className="font-display text-lg uppercase text-paper/85">
+        <Text variant="display" className="text-lg text-paper/85">
           With {review.taggedUsers.map((u) => `@${u.username}`).join(", ")}
         </Text>
       )}
@@ -110,8 +107,6 @@ const AVATAR_SIZE = 38;
 const TAIL_WIDTH = 10;
 // How far in from the tag's edge the notch's point sits.
 const TAIL_NOTCH = 4;
-// tailwind `paper`, for the SVG fill.
-const PAPER = "#F6F6F9";
 
 // Who wrote it, along the bottom of either card: their avatar in a white
 // ring, pinned over a paper name tag with a notched tail, linked to their
@@ -129,14 +124,14 @@ function ReviewerFlag({ user }: { user: User }) {
     >
       <View className="flex-row items-center" style={{ marginLeft: AVATAR_SIZE / 2 }}>
         <View className="justify-center bg-paper pr-2" style={{ height: TAG_HEIGHT, paddingLeft: AVATAR_SIZE / 2 + 8 }}>
-          <Text className="font-display text-xl uppercase leading-6 tracking-wider text-ink" numberOfLines={1}>
+          <Text variant="display" className="text-xl leading-6 tracking-wider text-ink" numberOfLines={1}>
             @{user.username}
           </Text>
         </View>
         <Svg width={TAIL_WIDTH + 1} height={TAG_HEIGHT} style={{ marginLeft: -1 }}>
           <Path
             d={`M0 0 H${TAIL_WIDTH + 1} L${TAIL_NOTCH} ${TAG_HEIGHT / 2} L${TAIL_WIDTH + 1} ${TAG_HEIGHT} H0 Z`}
-            fill={PAPER}
+            fill={colors.paper}
           />
         </Svg>
       </View>
@@ -166,7 +161,11 @@ function WhereLine({ review, set, expanded }: { review: Review; set: LineupEntry
   const where = reviewSubject(review, set).where;
   if (!where.length) return null;
   if (!expanded) {
-    return <Text className="font-display text-xl uppercase leading-6 text-paper">{where.join(" @ ")}</Text>;
+    return (
+      <Text variant="display" className="text-xl leading-6 text-paper">
+        {where.join(" @ ")}
+      </Text>
+    );
   }
   const hrefFor = (part: string): Href | null =>
     review.event && part === review.event.name
@@ -175,7 +174,7 @@ function WhereLine({ review, set, expanded }: { review: Review; set: LineupEntry
         ? ROUTES.VENUE(review.venueId)
         : null;
   return (
-    <Text className="font-display text-xl uppercase leading-6 text-paper">
+    <Text variant="display" className="text-xl leading-6 text-paper">
       {where.map((part, i) => {
         const href = hrefFor(part);
         return (
@@ -255,7 +254,9 @@ function DjReviewCard({ review, set, paper, expanded, actions }: CardProps & { s
       <View className="flex-row gap-3">
         <View className="flex-1">
           <View className="flex-row flex-wrap items-center gap-2">
-            <Text className={`font-display text-base uppercase ${paper.inkClassName}`}>{cardLabel(review, false)}</Text>
+            <Text variant="display" className={`text-base ${paper.inkClassName}`}>
+              {cardLabel(review, false)}
+            </Text>
             {review.isPopular && <PopularMark />}
           </View>
           <View className="mt-6">
@@ -323,7 +324,8 @@ function SetReviews({ sets, paper, expanded }: { sets: LineupEntry[]; paper: Pap
           <View className="flex-1">
             <MaybeLink href={ROUTES.DJ(set.dj.slug)} expanded={expanded}>
               <Text
-                className="font-display text-2xl uppercase leading-7 text-paper"
+                variant="display"
+                className="text-2xl leading-7 text-paper"
                 numberOfLines={expanded ? undefined : 1}
               >
                 {set.dj.name}
@@ -342,7 +344,7 @@ function SetReviews({ sets, paper, expanded }: { sets: LineupEntry[]; paper: Pap
         </View>
       ))}
       {!!hidden && (
-        <Text className={`mt-2 font-display text-base uppercase ${paper.inkClassName}`}>
+        <Text variant="display" className={`mt-2 text-base ${paper.inkClassName}`}>
           +{hidden} more {pluralWord(hidden, "set")}
         </Text>
       )}
@@ -384,7 +386,7 @@ function NightReviewCard({ review, paper, expanded, actions }: CardProps) {
     >
       <View className="pr-20">
         <View className="flex-row flex-wrap items-center gap-2">
-          <Text className={`font-display text-base uppercase ${paper.inkClassName}`}>
+          <Text variant="display" className={`text-base ${paper.inkClassName}`}>
             {cardLabel(review, isRated)}
           </Text>
           {review.isPopular && <PopularMark />}
@@ -397,7 +399,7 @@ function NightReviewCard({ review, paper, expanded, actions }: CardProps) {
           </MaybeLink>
         </View>
         {!!venue && (
-          <Text className="font-display text-lg uppercase text-paper/90">
+          <Text variant="display" className="text-lg text-paper/90">
             @{" "}
             {expanded && venueHref ? (
               <Link href={venueHref}>
@@ -426,7 +428,7 @@ function NightReviewCard({ review, paper, expanded, actions }: CardProps) {
                     silhouetteClassName={paper.photoSilhouetteClassName}
                   />
                 </View>
-                <Text className="mt-1 font-display text-lg uppercase leading-5 text-paper" numberOfLines={1}>
+                <Text variant="display" className="mt-1 text-lg leading-5 text-paper" numberOfLines={1}>
                   {dj.name}
                 </Text>
               </MaybeLink>
@@ -439,7 +441,7 @@ function NightReviewCard({ review, paper, expanded, actions }: CardProps) {
         </View>
       ))}
       {!!hidden && (
-        <Text className={`mt-1 font-display text-base uppercase ${paper.inkClassName}`}>
+        <Text variant="display" className={`mt-1 text-base ${paper.inkClassName}`}>
           +{hidden} more on the lineup
         </Text>
       )}
@@ -458,7 +460,7 @@ function NightReviewCard({ review, paper, expanded, actions }: CardProps) {
         </>
       )}
       {!!sets.length && !!unreviewed.length && (
-        <Text className={`mt-3 font-display text-base uppercase ${paper.inkClassName}`}>
+        <Text variant="display" className={`mt-3 text-base ${paper.inkClassName}`}>
           Also saw {unreviewed.map((dj) => dj.name).join(", ")}
         </Text>
       )}
@@ -490,7 +492,9 @@ export function ReviewCard({
   // night from before nights were rated, see soloSet) gets the DJ card.
   const set = soloSet(review);
   return (
-    <FadeInView index={index}>{set ? <DjReviewCard {...props} set={set} /> : <NightReviewCard {...props} />}</FadeInView>
+    <FadeInView index={index}>
+      {set ? <DjReviewCard {...props} set={set} /> : <NightReviewCard {...props} />}
+    </FadeInView>
   );
 }
 

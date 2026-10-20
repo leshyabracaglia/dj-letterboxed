@@ -300,11 +300,10 @@ func (h *Handlers) matchRAVenue(ctx context.Context, v domain.RAVenue) RAVenueMa
 		if v.Address != "" {
 			input += ", " + v.Address
 		}
-		suggestions, err := h.Places.Autocomplete(ctx, input, token)
+		place, err := h.Places.TopSuggestion(ctx, input, token)
 		if err != nil {
 			slog.Error("places autocomplete for RA venue failed", "venue", v.Name, "error", err)
-		} else if len(suggestions) > 0 {
-			place := suggestions[0]
+		} else if place != nil {
 			saved, err := queries.GetVenueSummaryByPlaceID(ctx, h.Pool, place.PlaceID)
 			if err == nil {
 				m.Venue = saved
@@ -313,7 +312,7 @@ func (h *Handlers) matchRAVenue(ctx context.Context, v domain.RAVenue) RAVenueMa
 			if !errors.Is(err, queries.ErrNotFound) {
 				slog.Error("venue lookup failed", "error", err)
 			}
-			m.Place = &place
+			m.Place = place
 			m.PlaceSessionToken = token
 			return m
 		}

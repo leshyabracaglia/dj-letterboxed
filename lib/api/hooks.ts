@@ -1,25 +1,16 @@
-import { useAuth } from "@clerk/expo";
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  skipToken,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
-import { useApi } from "./client";
+import { useCurrentUser } from "@/lib/auth";
+
+import { useApi, unwrap } from "./client";
 import { queryKeys } from "./queryKeys";
-import type {
-  Dj,
-  DjDetail,
-  EventDetail,
-  EventSummary,
-  FavoriteReviewsResponse,
-  FeedResponse,
-  Paginated,
-  PopularResponse,
-  Review,
-  User,
-  UserProfile,
-  UnreadNotificationsResponse,
-  UserStats,
-  VenueDetail,
-  VenueSummary,
-} from "./types";
 
 // The review tab writes a freshly created review into this same cache entry
 // (queryKeys.reviews.byUser), so keep the key and page size in one place.
@@ -27,18 +18,19 @@ export function useUserReviews(username: string | undefined) {
   const api = useApi();
   return useQuery({
     queryKey: queryKeys.reviews.byUser(username ?? ""),
-    queryFn: () => api.get<Paginated<Review>>(`/users/${username}/reviews`, { limit: 20 }),
-    enabled: !!username,
+    queryFn: username
+      ? () => unwrap(api.GET("/api/users/{username}/reviews", { params: { path: { username }, query: { limit: 20 } } }))
+      : skipToken,
   });
 }
 
 // Who the signed-in user has blocked (for the block/unblock toggles).
 export function useBlockedUsers() {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn } = useCurrentUser();
   const api = useApi();
   return useQuery({
     queryKey: queryKeys.users.blocks(),
-    queryFn: () => api.get<User[]>("/users/me/blocks"),
+    queryFn: () => unwrap(api.GET("/api/users/me/blocks")),
     enabled: !!isSignedIn,
   });
 }
@@ -50,7 +42,9 @@ export function useSetBlocked(userId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (blocked: boolean) =>
-      blocked ? api.post(`/users/${userId}/block`) : api.del(`/users/${userId}/block`),
+      blocked
+        ? unwrap(api.POST("/api/users/{userId}/block", { params: { path: { userId } } }))
+        : unwrap(api.DELETE("/api/users/{userId}/block", { params: { path: { userId } } })),
     onSuccess: () => queryClient.invalidateQueries(),
   });
 }
@@ -73,24 +67,18 @@ export function useDjSearch(query: string, { enabled = true, suggest = false }: 
   return useQuery({
     queryKey: queryKeys.djs.search(query),
     queryFn: () =>
-      api.get<Dj[]>("/djs/search", query ? { q: query } : { limit: SUGGESTION_COUNT }),
+      unwrap(api.GET("/api/djs/search", { params: { query: query ? { q: query } : { limit: SUGGESTION_COUNT } } })),
     enabled: enabled && (suggest || !!query.length),
     placeholderData: keepPreviousData,
   });
 }
 
-export function useVenueSearch(
-  query: string,
-  { enabled = true, suggest = false }: SearchOptions = {},
-) {
+export function useVenueSearch(query: string, { enabled = true, suggest = false }: SearchOptions = {}) {
   const api = useApi();
   return useQuery({
     queryKey: queryKeys.venues.search(query),
     queryFn: () =>
-      api.get<VenueSummary[]>(
-        "/venues/search",
-        query ? { q: query } : { limit: SUGGESTION_COUNT },
-      ),
+      unwrap(api.GET("/api/venues/search", { params: { query: query ? { q: query } : { limit: SUGGESTION_COUNT } } })),
     enabled: enabled && (suggest || !!query.length),
     placeholderData: keepPreviousData,
   });
@@ -102,7 +90,7 @@ export function useEventSearch(query: string, enabled: boolean = true) {
   const api = useApi();
   return useQuery({
     queryKey: queryKeys.events.list(query),
-    queryFn: () => api.get<EventSummary[]>("/events", query ? { q: query } : undefined),
+    queryFn: () => unwrap(api.GET("/api/events", { params: { query: query ? { q: query } : undefined } })),
     enabled,
     placeholderData: keepPreviousData,
   });
@@ -119,9 +107,19 @@ export function useUserSearch(
   return useQuery({
     queryKey: queryKeys.users.search(query),
     queryFn: () =>
-      api.get<User[]>("/users/search", query ? { q: query } : { limit: SUGGESTION_COUNT }),
+      unwrap(api.GET("/api/users/search", { params: { query: query ? { q: query } : { limit: SUGGESTION_COUNT } } })),
     enabled: enabled && (query.length >= minLength || (suggest && !query.length)),
     placeholderData: keepPreviousData,
+  });
+}
+
+// A review's comments: the list under it, and the count beside its like
+// button (the same query, so no extra fetch).
+export function useReviewComments(reviewId: string) {
+  const api = useApi();
+  return useQuery({
+    queryKey: queryKeys.reviews.comments(reviewId),
+    queryFn: () => unwrap(api.GET("/api/reviews/{id}/comments", { params: { path: { id: reviewId } } })),
   });
 }
 
@@ -129,8 +127,7 @@ export function useUserProfile(username: string | undefined) {
   const api = useApi();
   return useQuery({
     queryKey: queryKeys.users.byUsername(username ?? ""),
-    queryFn: () => api.get<UserProfile>(`/users/${username}`),
-    enabled: !!username,
+    queryFn: username ? () => unwrap(api.GET("/api/users/{username}", { params: { path: { username } } })) : skipToken,
   });
 }
 
@@ -138,8 +135,7 @@ export function useDjDetail(slug: string | undefined) {
   const api = useApi();
   return useQuery({
     queryKey: queryKeys.djs.bySlug(slug ?? ""),
-    queryFn: () => api.get<DjDetail>(`/djs/${slug}`),
-    enabled: !!slug,
+    queryFn: slug ? () => unwrap(api.GET("/api/djs/{slug}", { params: { path: { slug } } })) : skipToken,
   });
 }
 
@@ -147,8 +143,7 @@ export function useEventDetail(slug: string | undefined) {
   const api = useApi();
   return useQuery({
     queryKey: queryKeys.events.bySlug(slug ?? ""),
-    queryFn: () => api.get<EventDetail>(`/events/${slug}`),
-    enabled: !!slug,
+    queryFn: slug ? () => unwrap(api.GET("/api/events/{slug}", { params: { path: { slug } } })) : skipToken,
   });
 }
 
@@ -156,8 +151,7 @@ export function useVenueDetail(id: string | undefined) {
   const api = useApi();
   return useQuery({
     queryKey: queryKeys.venues.byId(id ?? ""),
-    queryFn: () => api.get<VenueDetail>(`/venues/${id}`),
-    enabled: !!id,
+    queryFn: id ? () => unwrap(api.GET("/api/venues/{id}", { params: { path: { id } } })) : skipToken,
   });
 }
 
@@ -166,8 +160,9 @@ export function useUserStats(username: string | undefined) {
   const api = useApi();
   return useQuery({
     queryKey: queryKeys.users.stats(username ?? ""),
-    queryFn: () => api.get<UserStats>(`/users/${username}/stats`),
-    enabled: !!username,
+    queryFn: username
+      ? () => unwrap(api.GET("/api/users/{username}/stats", { params: { path: { username } } }))
+      : skipToken,
   });
 }
 
@@ -175,8 +170,9 @@ export function useFavoriteReviews(username: string | undefined) {
   const api = useApi();
   return useQuery({
     queryKey: queryKeys.users.favorites(username ?? ""),
-    queryFn: () => api.get<FavoriteReviewsResponse>(`/users/${username}/favorites`),
-    enabled: !!username,
+    queryFn: username
+      ? () => unwrap(api.GET("/api/users/{username}/favorites", { params: { path: { username } } }))
+      : skipToken,
   });
 }
 
@@ -185,7 +181,7 @@ export function useFeed(enabled: boolean = true) {
   return useInfiniteQuery({
     queryKey: queryKeys.feed.activity(),
     queryFn: ({ pageParam }: { pageParam?: string }) =>
-      api.get<FeedResponse>("/feed", { cursor: pageParam, limit: 20 }),
+      unwrap(api.GET("/api/feed", { params: { query: { cursor: pageParam, limit: 20 } } })),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     enabled,
@@ -196,7 +192,7 @@ export function usePopularFeed(enabled: boolean) {
   const api = useApi();
   return useQuery({
     queryKey: queryKeys.feed.popular(),
-    queryFn: () => api.get<PopularResponse>("/feed/popular", { limit: 20 }),
+    queryFn: () => unwrap(api.GET("/api/feed/popular", { params: { query: { limit: 20 } } })),
     enabled,
   });
 }
@@ -206,10 +202,10 @@ export function usePopularFeed(enabled: boolean) {
 // (lib/push.ts) or the list is opened.
 export function useUnreadNotificationCount() {
   const api = useApi();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn } = useCurrentUser();
   const { data } = useQuery({
     queryKey: queryKeys.notifications.unreadCount(),
-    queryFn: () => api.get<UnreadNotificationsResponse>("/notifications/unread-count"),
+    queryFn: () => unwrap(api.GET("/api/notifications/unread-count")),
     enabled: !!isSignedIn,
     refetchInterval: 60_000,
   });

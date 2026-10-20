@@ -1,7 +1,10 @@
 import { useAuth } from "@clerk/expo";
 import Constants from "expo-constants";
+import createClient from "openapi-fetch";
 import { useMemo } from "react";
-import { Platform } from "react-native";
+
+import type { paths } from "./generated";
+import { isWeb } from "@/lib/platform";
 
 // In dev, point at the local API on whatever machine is serving the bundle, so
 // a changed LAN IP (new wifi) never needs a .env edit. Web uses the page's own
@@ -12,10 +15,7 @@ function resolveApiUrl() {
   const configured = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080";
   if (!__DEV__) return configured;
 
-  const host =
-    Platform.OS === "web"
-      ? globalThis.location?.hostname
-      : Constants.expoConfig?.hostUri?.split(":")[0];
+  const host = isWeb ? globalThis.location?.hostname : Constants.expoConfig?.hostUri?.split(":")[0];
   if (!host || host.endsWith(".exp.direct")) return configured;
   // The e2e suite runs its own API (on its own seeded DB) on another port.
   return `http://${host}:${process.env.EXPO_PUBLIC_DEV_API_PORT ?? "8080"}`;
@@ -39,69 +39,42 @@ export function errorMessage(err: unknown, fallback: string): string {
   return err instanceof Error && err.message ? err.message : fallback;
 }
 
-type Params = Record<string, string | number | undefined>;
+// The server's error body: `{ error: { code, message } }`.
+type ErrorBody = { error?: { code?: string; message?: string } };
 
-function buildUrl(path: string, params?: Params) {
-  const url = new URL(API_URL + "/api" + path);
-  if (params) {
-    for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined) url.searchParams.set(key, String(value));
-    }
-  }
-  return url.toString();
+function toApiError(response: Response, body: unknown): ApiError {
+  const { error } = (body ?? {}) as ErrorBody;
+  return new ApiError(response.status, error?.code ?? "UNKNOWN", error?.message ?? response.statusText);
 }
 
-async function request<T>(
-  method: string,
-  path: string,
-  getToken: () => Promise<string | null>,
-  opts?: { params?: Params; body?: unknown },
-): Promise<T> {
-  const token = await getToken();
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) headers.authorization = `Bearer ${token}`;
+// What a successful call resolves to: the `data` side of openapi-fetch's
+// `{ data } | { error }` result.
+type ResponseData<R> = R extends { data: infer D } ? D : never;
 
-  const res = await fetch(buildUrl(path, opts?.params), {
-    method,
-    headers,
-    body: opts?.body !== undefined ? JSON.stringify(opts.body) : undefined,
-  });
-
-  if (!res.ok) {
-    let code = "UNKNOWN";
-    let message = res.statusText;
-    try {
-      const data = await res.json();
-      code = data?.error?.code ?? code;
-      message = data?.error?.message ?? message;
-    } catch {
-      // response body wasn't JSON - fall back to statusText above
-    }
-    throw new ApiError(res.status, code, message);
-  }
-
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+/** A call's data, typed from the spec; a failed one throws an ApiError
+ * (status, the server's error code and message) instead of resolving to
+ * `{ error }`, so react-query sees it as failed. */
+export async function unwrap<R extends { data?: unknown; error?: unknown; response: Response }>(
+  call: Promise<R>,
+): Promise<ResponseData<R>> {
+  const { data, error, response } = await call;
+  if (!response.ok) throw toApiError(response, error);
+  return data as ResponseData<R>;
 }
 
-export type ApiClient = {
-  get<T>(path: string, params?: Params): Promise<T>;
-  post<T>(path: string, body?: unknown): Promise<T>;
-  patch<T>(path: string, body?: unknown): Promise<T>;
-  del<T>(path: string, body?: unknown): Promise<T>;
-};
-
-/** Thin fetch wrapper: base URL (+ "/api" prefix) + Clerk bearer token, replacing hooks/trpc.ts. Call paths omit "/api". */
-export function useApi(): ApiClient {
+/** The API client, signed in as the current Clerk session. */
+export function useApi() {
   const { getToken } = useAuth();
 
-  return useMemo(
-    () => ({
-      get: <T,>(path: string, params?: Params) => request<T>("GET", path, getToken, { params }),
-      post: <T,>(path: string, body?: unknown) => request<T>("POST", path, getToken, { body }),
-      patch: <T,>(path: string, body?: unknown) => request<T>("PATCH", path, getToken, { body }),
-      del: <T,>(path: string, body?: unknown) => request<T>("DELETE", path, getToken, { body }),
-    }),
-    [getToken],
-  );
+  return useMemo(() => {
+    const client = createClient<paths>({ baseUrl: API_URL });
+    client.use({
+      async onRequest({ request }) {
+        const token = await getToken();
+        if (token) request.headers.set("Authorization", `Bearer ${token}`);
+        return request;
+      },
+    });
+    return client;
+  }, [getToken]);
 }

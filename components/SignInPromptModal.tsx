@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { Modal, Pressable, View } from "react-native";
 
-import { ROUTES } from "../lib/routes";
+import { ROUTES } from "@/lib/routes";
 import { Button, Text } from "./ui";
 
 // Shown when a signed-out user tries something that needs an account

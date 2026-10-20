@@ -1,5 +1,9 @@
 import { Text } from "./Text";
 
 export function SectionTitle({ children }: { children: string }) {
-  return <Text className={`font-display text-2xl uppercase text-paper/85`}>{children}</Text>;
+  return (
+    <Text variant="display" className="text-2xl text-paper/85">
+      {children}
+    </Text>
+  );
 }

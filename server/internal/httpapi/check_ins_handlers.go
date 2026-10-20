@@ -1,7 +1,9 @@
 package httpapi
 
 import (
+	"context"
 	"errors"
+	"log/slog"
 	"math"
 	"net/http"
 	"sort"
@@ -22,9 +24,12 @@ const (
 	nearbyVenuesLimit   = 5
 )
 
-// NearbyVenue is a venue the caller could check in at.
+// NearbyVenue is a venue the caller could check in at: a saved venue (id
+// set), or a Google place not on Beatboxd yet (only placeId set; checking
+// in there saves it).
 type NearbyVenue struct {
-	ID        string  `json:"id"`
+	ID        *string `json:"id" extensions:"x-nullable"`
+	PlaceID   *string `json:"placeId" extensions:"x-nullable"`
 	Name      string  `json:"name"`
 	City      *string `json:"city" extensions:"x-nullable"`
 	DistanceM int     `json:"distanceM"`
@@ -35,11 +40,14 @@ type NearbyVenuesResponse struct {
 }
 
 type checkInRequest struct {
-	VenueID   string  `json:"venueId"`
+	// One of venueId (a saved venue) or placeId (a Google place from
+	// GET /api/check-ins/nearby).
+	VenueID   string  `json:"venueId,omitempty"`
+	PlaceID   string  `json:"placeId,omitempty"`
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
 	// How accurate the device says the fix is, in meters.
-	AccuracyM *float64 `json:"accuracyM"`
+	AccuracyM *float64 `json:"accuracyM,omitempty"`
 }
 
 type CheckInResponse struct {
@@ -56,7 +64,7 @@ func validLatLng(lat, lng float64) bool {
 // NearbyVenues godoc
 //
 //	@Summary		Venues the caller is at, to check in at, nearest first
-//	@Description	Saved venues with coordinates within a few hundred meters of lat/lng. The coordinates aren't stored.
+//	@Description	Saved venues with coordinates and Google Places venues (clubs, bars, event spaces) within a few hundred meters of lat/lng, up to 5. A Google place already saved is listed once, as the saved venue. The coordinates aren't stored.
 //	@Tags			check-ins
 //	@Produce		json
 //	@Param			lat	query		number	true	"the caller's latitude"
@@ -84,10 +92,29 @@ func (h *Handlers) NearbyVenues(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	venues := []NearbyVenue{}
+	saved := map[string]bool{}
 	for _, p := range points {
 		d := domain.DistanceM(lat, lng, p.Latitude, p.Longitude)
 		if d <= nearbyVenuesRadiusM {
-			venues = append(venues, NearbyVenue{ID: p.ID, Name: p.Name, City: p.City, DistanceM: int(math.Round(d))})
+			venues = append(venues, NearbyVenue{ID: &p.ID, PlaceID: p.GooglePlaceID, Name: p.Name, City: p.City, DistanceM: int(math.Round(d))})
+			if p.GooglePlaceID != nil {
+				saved[*p.GooglePlaceID] = true
+			}
+		}
+	}
+	// Google fills in the places nobody's logged yet. Without it (not
+	// configured, or down) the saved venues still work.
+	if h.Places.Configured() {
+		places, err := h.Places.SearchNearby(r.Context(), lat, lng, nearbyVenuesRadiusM, nearbyVenuesLimit)
+		if err != nil {
+			slog.Error("places nearby search failed", "error", err)
+		}
+		for _, p := range places {
+			if saved[p.PlaceID] {
+				continue
+			}
+			d := domain.DistanceM(lat, lng, *p.Latitude, *p.Longitude)
+			venues = append(venues, NearbyVenue{PlaceID: &p.PlaceID, Name: p.Name, City: p.City, DistanceM: int(math.Round(d))})
 		}
 	}
 	sort.Slice(venues, func(i, j int) bool { return venues[i].DistanceM < venues[j].DistanceM })
@@ -99,8 +126,8 @@ func (h *Handlers) NearbyVenues(w http.ResponseWriter, r *http.Request) {
 
 // CheckIn godoc
 //
-//	@Summary		Check in at a venue, so the caller's log of it tonight shows as verified
-//	@Description	The venue must have coordinates, and latitude/longitude must be within 150m of it (up to 400m for a less accurate fix). Only the distance is stored, not the coordinates. A repeat check-in the same night is a no-op.
+//	@Summary		Check in at a venue, so the caller's review of it tonight shows as verified
+//	@Description	At a saved venue (venueId) or a Google place (placeId, saved as a venue on check-in). The venue must have coordinates, and latitude/longitude must be within 150m of it (up to 400m for a less accurate fix). Only the distance is stored, not the coordinates. A repeat check-in the same night is a no-op.
 //	@Tags			check-ins
 //	@Accept			json
 //	@Produce		json
@@ -122,8 +149,8 @@ func (h *Handlers) CheckIn(w http.ResponseWriter, r *http.Request) {
 		BadRequest(w, "invalid request body")
 		return
 	}
-	if req.VenueID == "" || !validLatLng(req.Latitude, req.Longitude) {
-		BadRequest(w, "venueId, latitude and longitude are required")
+	if (req.VenueID == "") == (req.PlaceID == "") || !validLatLng(req.Latitude, req.Longitude) {
+		BadRequest(w, "one of venueId or placeId, and latitude and longitude, are required")
 		return
 	}
 	var accuracy float64
@@ -138,12 +165,25 @@ func (h *Handlers) CheckIn(w http.ResponseWriter, r *http.Request) {
 		accuracyM = &a
 	}
 
-	venue, err := queries.GetVenuePoint(r.Context(), h.Pool, req.VenueID)
-	if errors.Is(err, queries.ErrNotFound) {
+	var venue *queries.VenuePoint
+	var err error
+	if req.VenueID != "" {
+		if !uuidPattern.MatchString(req.VenueID) {
+			NotFound(w)
+			return
+		}
+		venue, err = queries.GetVenuePoint(r.Context(), h.Pool, req.VenueID)
+	} else {
+		venue, err = h.placeVenuePoint(r.Context(), req.PlaceID)
+	}
+	switch {
+	case errors.Is(err, queries.ErrNotFound):
 		NotFound(w)
 		return
-	}
-	if err != nil {
+	case domain.PlacesUnavailable(err):
+		WriteError(w, http.StatusServiceUnavailable, "UNAVAILABLE", "place search is unavailable right now")
+		return
+	case err != nil:
 		InternalError(w, err)
 		return
 	}
@@ -153,13 +193,57 @@ func (h *Handlers) CheckIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	distanceM := int(math.Round(distance))
+	// A Google place is saved as a venue only once someone's checked in
+	// there, so a review picking the same place lands on the same venue.
+	if venue.ID == "" {
+		saved, err := queries.UpsertPlaceVenue(r.Context(), h.Pool, queries.CreatePlaceVenueParams{
+			GooglePlaceID:   *venue.GooglePlaceID,
+			Name:            truncateRunes(venue.Name, 160),
+			City:            venue.City,
+			Latitude:        &venue.Latitude,
+			Longitude:       &venue.Longitude,
+			CreatedByUserID: user.ID,
+		})
+		if err != nil {
+			InternalError(w, err)
+			return
+		}
+		venue.ID = saved.ID
+	}
 	at, err := queries.CreateCheckIn(r.Context(), h.Pool, user.ID, venue.ID, distanceM, accuracyM, time.Now().Add(-checkInRepeatWindow))
 	if err != nil {
 		InternalError(w, err)
 		return
 	}
 	WriteJSON(w, http.StatusOK, CheckInResponse{
-		Venue:       NearbyVenue{ID: venue.ID, Name: venue.Name, City: venue.City, DistanceM: distanceM},
+		Venue:       NearbyVenue{ID: &venue.ID, PlaceID: venue.GooglePlaceID, Name: venue.Name, City: venue.City, DistanceM: distanceM},
 		CheckedInAt: at,
 	})
+}
+
+// placeVenuePoint is a Google place's point: its saved venue if there is
+// one, otherwise from Place Details with an empty ID (not saved yet).
+// ErrNotFound if Google doesn't know the place or it has no location.
+func (h *Handlers) placeVenuePoint(ctx context.Context, placeID string) (*queries.VenuePoint, error) {
+	v, err := queries.GetVenueByPlaceID(ctx, h.Pool, placeID)
+	if err == nil {
+		if v.Latitude == nil || v.Longitude == nil {
+			return nil, queries.ErrNotFound
+		}
+		return &queries.VenuePoint{ID: v.ID, Name: v.Name, City: v.City, Latitude: *v.Latitude, Longitude: *v.Longitude, GooglePlaceID: v.GooglePlaceID}, nil
+	}
+	if !errors.Is(err, queries.ErrNotFound) {
+		return nil, err
+	}
+	place, err := h.Places.Details(ctx, placeID, "")
+	if domain.PlacesUnavailable(err) {
+		return nil, err
+	}
+	if err != nil || place.Latitude == nil || place.Longitude == nil {
+		if err != nil {
+			slog.Error("places details failed", "placeId", placeID, "error", err)
+		}
+		return nil, queries.ErrNotFound
+	}
+	return &queries.VenuePoint{Name: place.Name, City: place.City, Latitude: *place.Latitude, Longitude: *place.Longitude, GooglePlaceID: &place.PlaceID}, nil
 }

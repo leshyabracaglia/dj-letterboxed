@@ -1,20 +1,25 @@
 import { type ReactNode, useEffect, useRef } from "react";
-import { Platform, Pressable, TextInput, View } from "react-native";
+import { Pressable, TextInput, View } from "react-native";
 
-import { Icon, type IconName, Skeleton, Text } from "../ui";
+import { Icon, type IconName, Skeleton, Text } from "@/components/ui";
+import { isWeb } from "@/lib/platform";
 
 // Small form and sheet pieces shared across the log screen.
 
 export const INPUT_CLASS =
-  "rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-3 text-ink dark:text-paper placeholder:text-muted";
+  "rounded-md border-2 border-white/15 bg-zine-panel/90 focus:border-paper px-4 py-3 text-paper placeholder:text-muted";
 
 // Inputs drawn inside their own frame (search boxes, ruled paper) drop the
 // browser's focus ring.
-export const NO_WEB_OUTLINE = Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : undefined;
+export const NO_WEB_OUTLINE = isWeb ? ({ outlineStyle: "none" } as object) : undefined;
 
 // Small pixel-type label above a field ("YOUR RATING").
 export function FieldLabel({ children }: { children: ReactNode }) {
-  return <Text className="font-display text-base uppercase text-paper/60">{children}</Text>;
+  return (
+    <Text variant="display" className="text-base text-paper/60">
+      {children}
+    </Text>
+  );
 }
 
 // A search box for the sheets: white rule, magnifier, focused on open.
@@ -136,7 +141,11 @@ export function SheetRow({
 }
 
 export function SheetSectionLabel({ children }: { children: ReactNode }) {
-  return <Text className="px-4 pb-1 pt-2 font-display text-sm uppercase text-paper/50">{children}</Text>;
+  return (
+    <Text variant="display" className="px-4 pb-1 pt-2 text-sm text-paper/50">
+      {children}
+    </Text>
+  );
 }
 
 export function CircleIcon({ name }: { name: IconName }) {
@@ -177,9 +186,13 @@ export function SectionHeading({
     <View className="flex-row items-end justify-between">
       <View className="flex-row items-end gap-2">
         <Text className={`font-numeric text-4xl leading-9 ${numberClassName}`}>{number}</Text>
-        <Text className="font-display text-2xl uppercase leading-7 text-paper">{title}</Text>
+        <Text variant="display" className="text-2xl leading-7 text-paper">
+          {title}
+        </Text>
       </View>
-      <Text className={`font-display text-sm uppercase ${asideClassName}`}>{aside}</Text>
+      <Text variant="display" className={`text-sm ${asideClassName}`}>
+        {aside}
+      </Text>
     </View>
   );
 }

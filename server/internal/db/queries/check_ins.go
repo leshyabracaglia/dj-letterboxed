@@ -15,13 +15,15 @@ type VenuePoint struct {
 	City      *string
 	Latitude  float64
 	Longitude float64
+	// GooglePlaceID is set when the venue is a Google Places place.
+	GooglePlaceID *string
 }
 
 // VenuesInBox lists venues with coordinates inside a lat/lng box, for the
 // caller to measure exactly.
 func VenuesInBox(ctx context.Context, q DBTX, minLat, maxLat, minLng, maxLng float64) ([]VenuePoint, error) {
 	rows, err := q.Query(ctx, `
-		SELECT id, name, city, latitude, longitude FROM venues
+		SELECT id, name, city, latitude, longitude, google_place_id FROM venues
 		WHERE latitude BETWEEN $1 AND $2 AND longitude BETWEEN $3 AND $4`,
 		minLat, maxLat, minLng, maxLng)
 	return collect(rows, err, pgx.RowToStructByPos[VenuePoint])
@@ -31,9 +33,9 @@ func VenuesInBox(ctx context.Context, q DBTX, minLat, maxLat, minLng, maxLng flo
 func GetVenuePoint(ctx context.Context, q DBTX, id string) (*VenuePoint, error) {
 	var v VenuePoint
 	err := q.QueryRow(ctx, `
-		SELECT id, name, city, latitude, longitude FROM venues
+		SELECT id, name, city, latitude, longitude, google_place_id FROM venues
 		WHERE id = $1 AND latitude IS NOT NULL AND longitude IS NOT NULL`, id).
-		Scan(&v.ID, &v.Name, &v.City, &v.Latitude, &v.Longitude)
+		Scan(&v.ID, &v.Name, &v.City, &v.Latitude, &v.Longitude, &v.GooglePlaceID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}

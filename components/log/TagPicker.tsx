@@ -2,10 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 
-import { DashedButton, Text } from "../ui";
-import { useApi } from "../../lib/api/client";
-import { queryKeys } from "../../lib/api/queryKeys";
-import type { TagSummary } from "../../lib/api/types";
+import { DashedButton, Text } from "@/components/ui";
+import { useApi, unwrap } from "@/lib/api/client";
+import { queryKeys } from "@/lib/api/queryKeys";
 import { INPUT_CLASS } from "./fields";
 
 // ---- The night overall -------------------------------------------------
@@ -35,7 +34,7 @@ export function TagPicker({
 
   const { data: library } = useQuery({
     queryKey: queryKeys.tags.list(""),
-    queryFn: () => api.get<TagSummary[]>("/tags", { limit: 50 }),
+    queryFn: () => unwrap(api.GET("/api/tags", { params: { query: { limit: 50 } } })),
   });
 
   const atMax = tags.length >= MAX_TAGS;
@@ -70,7 +69,7 @@ export function TagPicker({
                 selected ? "border-paper bg-paper" : "border-paper/50"
               } ${disabled ? "opacity-40" : ""}`}
             >
-              <Text className={`font-display text-base uppercase leading-5 ${selected ? "text-ink" : "text-paper/80"}`}>
+              <Text variant="display" className={`text-base leading-5 ${selected ? "text-ink" : "text-paper/80"}`}>
                 {tag}
               </Text>
             </Pressable>
@@ -78,7 +77,7 @@ export function TagPicker({
         })}
         {!atMax && !typing && <DashedButton label="Tag" onPress={() => setTyping(true)} />}
       </View>
-      {atMax && <Text className="mt-2 text-xs text-paper/60">That's the max of {MAX_TAGS} tags.</Text>}
+      {atMax && <Text className="mt-2 text-xs text-paper/60">That&apos;s the max of {MAX_TAGS} tags.</Text>}
       {!atMax && typing && (
         <View className="mt-2 flex-row items-center gap-2">
           <TextInput

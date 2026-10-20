@@ -2,10 +2,11 @@ import { useSignIn } from "@clerk/expo";
 import { Link, router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
-import { AuthScreen } from "../../components/AuthScreen";
-import { Button, FormMessage, Text, TextField } from "../../components/ui";
+import { AuthScreen } from "@/components/AuthScreen";
+import { Button, FormMessage, Text, TextField } from "@/components/ui";
 
-import { ROUTES } from "../../lib/routes";
+import { clerkErrorMessage } from "@/lib/clerk";
+import { ROUTES } from "@/lib/routes";
 
 export default function ForgotPasswordScreen() {
   const params = useLocalSearchParams<{ email?: string }>();
@@ -27,12 +28,12 @@ export default function ForgotPasswordScreen() {
     }
     const { error: createError } = await signIn.create({ identifier: email.trim() });
     if (createError) {
-      setError(createError.longMessage ?? createError.message);
+      setError(clerkErrorMessage(createError));
       return;
     }
     const { error: sendError } = await signIn.resetPasswordEmailCode.sendCode();
     if (sendError) {
-      setError(sendError.longMessage ?? sendError.message);
+      setError(clerkErrorMessage(sendError));
       return;
     }
     setCode("");
@@ -60,7 +61,7 @@ export default function ForgotPasswordScreen() {
         code: code.trim(),
       });
       if (verifyError) {
-        setError(verifyError.longMessage ?? verifyError.message);
+        setError(clerkErrorMessage(verifyError));
         return;
       }
     }
@@ -69,7 +70,7 @@ export default function ForgotPasswordScreen() {
       signOutOfOtherSessions: true,
     });
     if (submitError) {
-      setError(submitError.longMessage ?? submitError.message);
+      setError(clerkErrorMessage(submitError));
       return;
     }
 

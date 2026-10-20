@@ -1,7 +1,7 @@
 import type { Href } from "expo-router";
 
 import type { LineupEntry, Review } from "./api/types";
-import { formatCardDate, formatLogTiming } from "./format";
+import { formatCardDate, formatDayNight } from "./format";
 import { ROUTES } from "./routes";
 
 type Night = Pick<Review, "event" | "venue" | "venueId" | "lineup">;
@@ -35,7 +35,7 @@ export function nightDateParts(
   { wholeNight = false, withYear = false }: { wholeNight?: boolean; withYear?: boolean } = {},
 ): string[] {
   const date = formatCardDate(review.seenAt);
-  const parts = [withYear ? `${date} ${new Date(review.seenAt).getFullYear()}` : date, formatLogTiming(review)];
+  const parts = [withYear ? `${date} ${new Date(review.seenAt).getFullYear()}` : date, formatDayNight(review)];
   if (wholeNight) parts.push("Whole night");
   return parts;
 }
@@ -77,7 +77,13 @@ export function reviewSubject(
 } {
   if (set) {
     const { dj } = set;
-    return { name: dj.name, imageUrl: dj.imageUrl, href: ROUTES.DJ(dj.slug), where: nightWhere(review), isNight: false };
+    return {
+      name: dj.name,
+      imageUrl: dj.imageUrl,
+      href: ROUTES.DJ(dj.slug),
+      where: nightWhere(review),
+      isNight: false,
+    };
   }
   const solo = review.lineup.length === 1 ? review.lineup[0].dj : null;
   return {

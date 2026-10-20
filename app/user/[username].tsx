@@ -1,15 +1,15 @@
 import { useLocalSearchParams } from "expo-router";
 import { FlatList, View } from "react-native";
-import { Button, EmptyState, Text, TornCardSeparator, usePageContentStyle } from "../../components/ui";
+import { Button, EmptyState, Text, TornCardSeparator, usePageContentStyle } from "@/components/ui";
 
-import { DetailPage } from "../../components/DetailPage";
-import { FollowButton } from "../../components/FollowButton";
-import { ModerationButton } from "../../components/ModerationSheet";
-import { ProfileHeader } from "../../components/ProfileHeader";
-import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
-import { useCurrentUser } from "../../lib/auth";
-import { useBlockedUsers, useSetBlocked, useUserProfile, useUserReviews } from "../../lib/api/hooks";
-import type { UserProfile } from "../../lib/api/types";
+import { DetailPage } from "@/components/DetailPage";
+import { FollowButton } from "@/components/FollowButton";
+import { ModerationButton } from "@/components/ModerationSheet";
+import { ProfileHeader } from "@/components/ProfileHeader";
+import { ReviewCard, ReviewCardSkeleton } from "@/components/ReviewCard";
+import { useCurrentUser } from "@/lib/auth";
+import { useBlockedUsers, useSetBlocked, useUserProfile, useUserReviews } from "@/lib/api/hooks";
+import type { UserProfile } from "@/lib/api/types";
 
 function UserProfileSkeleton() {
   const contentStyle = usePageContentStyle("roomy");
@@ -81,9 +81,9 @@ function UserProfileList({ profile }: { profile: UserProfile }) {
             </Button>
           </View>
         ) : reviews ? (
-          <View className="mt-10" >
+          <View className="mt-10">
             <EmptyState message="No reviews yet." />
-          </View > 
+          </View>
         ) : (
           <ReviewCardSkeleton count={3} />
         )

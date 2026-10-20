@@ -1,8 +1,9 @@
 import * as Clipboard from "expo-clipboard";
 import * as Sharing from "expo-sharing";
 import type { RefObject } from "react";
-import { Platform, type View } from "react-native";
+import { type View } from "react-native";
 import { captureRef } from "react-native-view-shot";
+import { isWeb } from "@/lib/platform";
 
 // Public web origin for links printed on / copied alongside shared images.
 // The web export is served here; review pages are viewable signed out.
@@ -12,18 +13,13 @@ export const WEB_URL = (process.env.EXPO_PUBLIC_WEB_URL ?? "https://beatboxd.com
 const STORY_WIDTH = 1080;
 const STORY_HEIGHT = 1920;
 
-export type CapturedStory =
-  | { platform: "native"; uri: string }
-  | { platform: "web"; dataUri: string; file: File };
+export type CapturedStory = { platform: "native"; uri: string } | { platform: "web"; dataUri: string; file: File };
 
 // Rasterizes `ref` to a full-resolution story PNG. On web this runs
 // html2canvas-pro, which can take a moment — capture ahead of the tap where
 // possible, since navigator.share() needs the tap's user activation.
-export async function captureStory(
-  ref: RefObject<View | null>,
-  filename: string,
-): Promise<CapturedStory> {
-  if (Platform.OS === "web") {
+export async function captureStory(ref: RefObject<View | null>, filename: string): Promise<CapturedStory> {
+  if (isWeb) {
     // Called directly rather than through view-shot's web shim, which renders
     // at the on-screen size and then upscales (blurry). html2canvas-pro also
     // fixes html2canvas's text baseline drift with custom fonts. Imported
@@ -53,10 +49,7 @@ export async function captureStory(
 // "Stories"). Instagram doesn't let a shared image carry a tappable link, so
 // the link is copied first for the user to paste into a Link sticker.
 // Resolves "downloaded" on web browsers without file sharing (desktop).
-export async function shareStory(
-  story: CapturedStory,
-  link: string,
-): Promise<"shared" | "downloaded" | "cancelled"> {
+export async function shareStory(story: CapturedStory, link: string): Promise<"shared" | "downloaded" | "cancelled"> {
   await Clipboard.setStringAsync(link).catch(() => {});
 
   if (story.platform === "native") {

@@ -29,7 +29,7 @@ resource "aws_db_instance" "this" {
   db_subnet_group_name   = aws_db_subnet_group.this.name
   vpc_security_group_ids = [var.security_group_id]
   publicly_accessible    = false
-  multi_az                = false
+  multi_az               = false
 
   # Free-tier accounts cap backup retention below RDS's normal default;
   # 1 day is the safe minimum that still gets you same-day point-in-time
@@ -37,6 +37,9 @@ resource "aws_db_instance" "this" {
   backup_retention_period = 1
   backup_window           = "07:00-08:00"
   skip_final_snapshot     = false
+  # Refuses to delete the database (a stray destroy, or someone with the
+  # AWS keys); turn it off in a separate apply first to really remove it.
+  deletion_protection       = true
   final_snapshot_identifier = "${var.project}-db-final"
 
   tags = { Name = "${var.project}-db" }

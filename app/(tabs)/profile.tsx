@@ -1,12 +1,12 @@
 import { router } from "expo-router";
 import { FlatList, Pressable, View } from "react-native";
 
-import { EmptyState, Icon, Page, TornCardSeparator, usePageContentStyle } from "../../components/ui";
-import { ProfileHeader } from "../../components/ProfileHeader";
-import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
-import { useUserProfile, useUserReviews } from "../../lib/api/hooks";
-import { useCurrentUser } from "../../lib/auth";
-import { ROUTES } from "../../lib/routes";
+import { EmptyState, Icon, Page, TornCardSeparator, usePageContentStyle } from "@/components/ui";
+import { ProfileHeader } from "@/components/ProfileHeader";
+import { ReviewCard, ReviewCardSkeleton } from "@/components/ReviewCard";
+import { useUserProfile, useUserReviews } from "@/lib/api/hooks";
+import { useCurrentUser } from "@/lib/auth";
+import { ROUTES } from "@/lib/routes";
 
 export default function ProfileScreen() {
   const contentStyle = usePageContentStyle("flush");

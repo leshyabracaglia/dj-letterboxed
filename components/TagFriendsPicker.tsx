@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 
 import { Avatar, DashedButton, Icon, Text, TextField } from "./ui";
-import { useUserSearch } from "../lib/api/hooks";
-import { useCurrentUser } from "../lib/auth";
-import type { User } from "../lib/api/types";
+import { useUserSearch } from "@/lib/api/hooks";
+import { useCurrentUser } from "@/lib/auth";
+import type { User } from "@/lib/api/types";
 
 function TaggedUserChip({
   taggedUser,
@@ -20,7 +20,9 @@ function TaggedUserChip({
       className="flex-row items-center gap-1.5 bg-zine-purple px-2 py-1 active:opacity-80"
     >
       <Avatar uri={taggedUser.avatarUrl} name={taggedUser.username} size={18} />
-      <Text className="font-display text-base uppercase leading-5 text-paper">@{taggedUser.username}</Text>
+      <Text variant="display" className="text-base leading-5 text-paper">
+        @{taggedUser.username}
+      </Text>
       <Icon name="close" size={14} className="text-paper" />
     </Pressable>
   );

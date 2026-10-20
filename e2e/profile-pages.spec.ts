@@ -17,7 +17,12 @@ const text = (page: Page, value: string) => shown(page.getByText(value, { exact:
 const link = (page: Page, name: string) => shown(page.getByRole("link", { name, exact: true }));
 // A "Recent logs" row on a DJ page: a link naming the night and who logged it.
 const logRow = (page: Page, night: string, username: string) =>
-  shown(page.getByRole("link").filter({ hasText: night }).filter({ hasText: `@${username}` }));
+  shown(
+    page
+      .getByRole("link")
+      .filter({ hasText: night })
+      .filter({ hasText: `@${username}` }),
+  );
 
 test("DJ page lists every log of that DJ", async ({ page }) => {
   await page.goto("/dj/dixon");

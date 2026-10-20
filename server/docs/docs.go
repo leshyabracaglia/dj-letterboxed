@@ -41,7 +41,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "The venue must have coordinates, and latitude/longitude must be within 150m of it (up to 400m for a less accurate fix). Only the distance is stored, not the coordinates. A repeat check-in the same night is a no-op.",
+                "description": "At a saved venue (venueId) or a Google place (placeId, saved as a venue on check-in). The venue must have coordinates, and latitude/longitude must be within 150m of it (up to 400m for a less accurate fix). Only the distance is stored, not the coordinates. A repeat check-in the same night is a no-op.",
                 "consumes": [
                     "application/json"
                 ],
@@ -51,7 +51,7 @@ const docTemplate = `{
                 "tags": [
                     "check-ins"
                 ],
-                "summary": "Check in at a venue, so the caller's log of it tonight shows as verified",
+                "summary": "Check in at a venue, so the caller's review of it tonight shows as verified",
                 "parameters": [
                     {
                         "description": "the venue and where the caller is",
@@ -104,7 +104,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Saved venues with coordinates within a few hundred meters of lat/lng. The coordinates aren't stored.",
+                "description": "Saved venues with coordinates and Google Places venues (clubs, bars, event spaces) within a few hundred meters of lat/lng, up to 5. A Google place already saved is listed once, as the saved venue. The coordinates aren't stored.",
                 "produces": [
                     "application/json"
                 ],
@@ -481,7 +481,7 @@ const docTemplate = `{
                 "tags": [
                     "feed"
                 ],
-                "summary": "Following feed: followed users' nights out, newest logged first",
+                "summary": "Following feed: your own and followed users' nights out, newest logged first",
                 "parameters": [
                     {
                         "type": "string",
@@ -1721,6 +1721,84 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/users/me/settings": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get the caller's own settings",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/UserSettings"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Change the caller's own settings; omitted ones stay as they are",
+                "parameters": [
+                    {
+                        "description": "settings to change",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/updateSettingsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/UserSettings"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/api/users/search": {
             "get": {
                 "produces": [
@@ -1770,7 +1848,7 @@ const docTemplate = `{
                 "tags": [
                     "moderation"
                 ],
-                "summary": "Block a user: hides each of you from the other and unfollows both ways",
+                "summary": "Block a user: hides each of you from the other, and unfollows and untags both ways",
                 "parameters": [
                     {
                         "type": "string",
@@ -2525,7 +2603,8 @@ const docTemplate = `{
                 "city",
                 "distanceM",
                 "id",
-                "name"
+                "name",
+                "placeId"
             ],
             "properties": {
                 "city": {
@@ -2536,10 +2615,15 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "id": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "name": {
                     "type": "string"
+                },
+                "placeId": {
+                    "type": "string",
+                    "x-nullable": true
                 }
             }
         },
@@ -2576,7 +2660,8 @@ const docTemplate = `{
                 },
                 "commentBody": {
                     "description": "The comment's text, on comments.",
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "createdAt": {
                     "type": "string"
@@ -2593,10 +2678,12 @@ const docTemplate = `{
                 },
                 "reviewId": {
                     "description": "The night out it's about (not on follows), and its title (see\nnightTitleSQL).",
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "subject": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "type": {
                     "type": "string",
@@ -3269,6 +3356,18 @@ const docTemplate = `{
                 }
             }
         },
+        "UserSettings": {
+            "type": "object",
+            "required": [
+                "reengagePush"
+            ],
+            "properties": {
+                "reengagePush": {
+                    "description": "Whether they get the \"people you follow logged nights\" push after\nbeing away (see httpapi/reengage.go).",
+                    "type": "boolean"
+                }
+            }
+        },
         "UserStatsResponse": {
             "type": "object",
             "required": [
@@ -3410,10 +3509,8 @@ const docTemplate = `{
         "checkInRequest": {
             "type": "object",
             "required": [
-                "accuracyM",
                 "latitude",
-                "longitude",
-                "venueId"
+                "longitude"
             ],
             "properties": {
                 "accuracyM": {
@@ -3426,7 +3523,11 @@ const docTemplate = `{
                 "longitude": {
                     "type": "number"
                 },
+                "placeId": {
+                    "type": "string"
+                },
                 "venueId": {
+                    "description": "One of venueId (a saved venue) or placeId (a Google place from\nGET /api/check-ins/nearby).",
                     "type": "string"
                 }
             }
@@ -3434,11 +3535,7 @@ const docTemplate = `{
         "createDjRequest": {
             "type": "object",
             "required": [
-                "bio",
-                "genres",
-                "imageUrl",
-                "name",
-                "spotifyId"
+                "name"
             ],
             "properties": {
                 "bio": {
@@ -3485,21 +3582,11 @@ const docTemplate = `{
         "createReviewRequest": {
             "type": "object",
             "required": [
-                "city",
-                "eventId",
-                "eventName",
-                "isDay",
-                "isNight",
                 "lineup",
-                "placeId",
-                "placeSessionToken",
                 "rating",
-                "reviewText",
                 "seenAt",
                 "taggedUserIds",
-                "tags",
-                "venue",
-                "venueId"
+                "tags"
             ],
             "properties": {
                 "city": {
@@ -3575,9 +3662,7 @@ const docTemplate = `{
         "lineupEntryInput": {
             "type": "object",
             "required": [
-                "djId",
-                "rating",
-                "reviewText"
+                "djId"
             ],
             "properties": {
                 "djId": {
@@ -3624,12 +3709,6 @@ const docTemplate = `{
         },
         "updateProfileRequest": {
             "type": "object",
-            "required": [
-                "avatarUrl",
-                "bio",
-                "displayName",
-                "username"
-            ],
             "properties": {
                 "avatarUrl": {
                     "type": "string"
@@ -3657,6 +3736,15 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "updateSettingsRequest": {
+            "type": "object",
+            "properties": {
+                "reengagePush": {
+                    "description": "Whether to get a push when people you follow log nights while you've\nbeen away.",
+                    "type": "boolean"
                 }
             }
         }

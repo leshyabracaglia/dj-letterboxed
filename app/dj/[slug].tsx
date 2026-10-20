@@ -25,13 +25,14 @@ import {
   useIsDesktopWeb,
   usePageContentStyle,
   usePageGutter,
-} from "../../components/ui";
-import { DetailPage } from "../../components/DetailPage";
-import { ReviewTags } from "../../components/ReviewTags";
-import { useDjDetail } from "../../lib/api/hooks";
-import type { DjDetail, Review } from "../../lib/api/types";
-import { getNightTitle, nightDateParts } from "../../lib/review";
-import { ROUTES } from "../../lib/routes";
+} from "@/components/ui";
+import { DetailPage } from "@/components/DetailPage";
+import { ReviewTags } from "@/components/ReviewTags";
+import { useDjDetail } from "@/lib/api/hooks";
+import type { DjDetail, Review } from "@/lib/api/types";
+import { getNightTitle, nightDateParts } from "@/lib/review";
+import { ROUTES } from "@/lib/routes";
+import { colors } from "@/lib/colors";
 
 const HERO_HEIGHT = 280;
 
@@ -88,7 +89,7 @@ function DjBio({ bio }: { bio: string }) {
       </View>
       {overflows && (
         <Pressable onPress={() => setExpanded((v) => !v)} hitSlop={8} className="mt-1 self-start active:opacity-70">
-          <Text className="font-display text-lg uppercase text-zine-red-ink">
+          <Text variant="display" className="text-lg text-zine-red-ink">
             {expanded ? "Show less" : "Read more"}
           </Text>
         </Pressable>
@@ -111,9 +112,11 @@ function SpotifyLink({ spotifyId }: { spotifyId: string }) {
       className="mt-3 flex-row items-center gap-2 self-start active:opacity-70"
     >
       <Svg width={20} height={20} viewBox="0 0 24 24">
-        <Path d={SPOTIFY_ICON_PATH} fill="#F6F6F9" />
+        <Path d={SPOTIFY_ICON_PATH} fill={colors.paper} />
       </Svg>
-      <Text className="font-display text-lg uppercase text-paper">Listen on Spotify</Text>
+      <Text variant="display" className="text-lg text-paper">
+        Listen on Spotify
+      </Text>
     </Pressable>
   );
 }
@@ -127,7 +130,7 @@ function NameBand({ data }: { data: DjDetail }) {
         {data.dj.name}
       </FitText>
       {!!data.dj.genres?.length && (
-        <Text className="mt-2 font-display text-xl uppercase text-zine-red-ink">
+        <Text variant="display" className="mt-2 text-xl text-zine-red-ink">
           {data.dj.genres.slice(0, 3).join(" · ")}
         </Text>
       )}
@@ -151,8 +154,12 @@ function RatingLevels({ counts, reviewCount }: { counts: number[]; reviewCount: 
   return (
     <Card tilt={0.6} className="gap-3 bg-zine-panel">
       <View className="flex-row justify-between">
-        <Text className="font-display text-xl uppercase text-paper/70">Rating levels</Text>
-        <Text className="font-display text-xl uppercase text-paper/70">Avg of {reviewCount}</Text>
+        <Text variant="display" className="text-xl text-paper/70">
+          Rating levels
+        </Text>
+        <Text variant="display" className="text-xl text-paper/70">
+          Avg of {reviewCount}
+        </Text>
       </View>
       <View className="gap-2">
         {[5, 4, 3, 2, 1].map((stars) => {
@@ -179,24 +186,23 @@ function RatingLevels({ counts, reviewCount }: { counts: number[]; reviewCount: 
 // A night the DJ was on the lineup of: the reviewer's rating and review of
 // the DJ's set, or - when they only rated the night as a whole - the
 // night's.
-function LogRow({ review, djId, index }: { review: Review; djId: string; index: number }) {
+function DjNightRow({ review, djId, index }: { review: Review; djId: string; index: number }) {
   const where = getNightTitle(review);
   const set = review.lineup.find((entry) => entry.dj.id === djId && entry.rating != null);
   const rating = set ? set.rating : review.rating;
   const reviewText = set ? set.reviewText : review.reviewText;
-  const meta = [
-    ...(review.user ? [`@${review.user.username}`] : []),
-    ...nightDateParts(review, { wholeNight: !set }),
-  ];
+  const meta = [...(review.user ? [`@${review.user.username}`] : []), ...nightDateParts(review, { wholeNight: !set })];
   const paper = paperAt(index);
   return (
     <Card href={ROUTES.REVIEW_DETAIL(review.id, { tint: paper.tint })} tint={paper.tint} tilt={tiltFor(review.id, 0.8)}>
       <View className="flex-row items-center gap-3">
         <View className="flex-1">
-          <Text className="font-display text-3xl uppercase leading-8 text-paper" numberOfLines={1}>
+          <Text variant="display" className="text-3xl leading-8 text-paper" numberOfLines={1}>
             {where}
           </Text>
-          <Text className={`font-display text-base uppercase ${paper.inkClassName}`}>{meta.join(" · ")}</Text>
+          <Text variant="display" className={`text-base ${paper.inkClassName}`}>
+            {meta.join(" · ")}
+          </Text>
         </View>
         <RatingStamp value={rating} size={52} />
       </View>
@@ -280,7 +286,7 @@ function DjProfileList({ data }: { data: DjDetail }) {
       }
       renderItem={({ item, index }) => (
         <View style={{ paddingHorizontal: contentStyle.paddingHorizontal }}>
-          <LogRow review={item} djId={data.dj.id} index={index} />
+          <DjNightRow review={item} djId={data.dj.id} index={index} />
         </View>
       )}
       ItemSeparatorComponent={CardSeparator}

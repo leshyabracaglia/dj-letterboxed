@@ -114,6 +114,13 @@ resource "aws_instance" "this" {
   })
   user_data_replace_on_change = true
 
+  # The AMI lookup finds a newer Amazon Linux every few weeks; without this
+  # any apply would replace the running server to pick it up. To move to a
+  # new AMI on purpose: terraform apply -replace=module.ec2.aws_instance.this
+  lifecycle {
+    ignore_changes = [ami]
+  }
+
   tags = { Name = "${var.project}-app" }
 }
 

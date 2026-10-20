@@ -1,9 +1,9 @@
-import { useAuth } from "@clerk/expo";
 import { Link, router, usePathname } from "expo-router";
 import { useState } from "react";
 import { Pressable, type PressableProps, View } from "react-native";
 
-import { ROUTES } from "../lib/routes";
+import { useCurrentUser } from "@/lib/auth";
+import { ROUTES } from "@/lib/routes";
 import { NotificationsBell } from "./NotificationsBell";
 import { BrandWordmark } from "./BrandWordmark";
 import { SignInPromptModal } from "./SignInPromptModal";
@@ -33,7 +33,9 @@ const NAV_ITEMS = [
 function KeyLabel({ label }: { label: string }) {
   return (
     <View className="rounded-xl bg-paper px-5 py-2 shadow-lg shadow-white/30">
-      <Text className="font-display text-xl uppercase leading-6 text-ink">{label}</Text>
+      <Text variant="display" className="text-xl leading-6 text-ink">
+        {label}
+      </Text>
     </View>
   );
 }
@@ -60,9 +62,7 @@ function NavItem({
       ) : (
         <>
           <GlowBar isActive={isActive} />
-          <Text
-            className={`mt-1.5 font-display text-xl uppercase leading-6 ${isActive ? "text-paper" : "text-paper/55"}`}
-          >
+          <Text variant="display" className={`mt-1.5 text-xl leading-6 ${isActive ? "text-paper" : "text-paper/55"}`}>
             {link.label}
           </Text>
         </>
@@ -76,7 +76,7 @@ function NavItem({
 // active link from the URL rather than from tab navigator state so it works
 // in either spot.
 export function WebNav() {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn } = useCurrentUser();
   const pathname = usePathname();
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
 
@@ -106,7 +106,9 @@ export function WebNav() {
               onPress={() => router.push(ROUTES.SIGN_IN)}
               className="rounded-xl border-2 border-paper/60 px-4 py-1.5 active:opacity-80"
             >
-              <Text className="font-display text-xl uppercase leading-6 text-paper">Log in</Text>
+              <Text variant="display" className="text-xl leading-6 text-paper">
+                Log in
+              </Text>
             </Pressable>
             <Pressable onPress={() => router.push(ROUTES.SIGN_UP)} className="active:opacity-80">
               <KeyLabel label="Sign up" />

@@ -23,10 +23,10 @@ type ReengageCandidate struct {
 	Count       int
 }
 
-// ListReengageCandidates returns users with a push token who haven't used
-// the app in `away` and haven't been nudged within it either, and whom
-// someone they follow has logged a night for since both. Nights already
-// nudged about don't count again.
+// ListReengageCandidates returns users with a push token and the push left
+// on who haven't used the app in `away` and haven't been nudged within it
+// either, and whom someone they follow has logged a night for since both.
+// Nights already nudged about don't count again.
 func ListReengageCandidates(ctx context.Context, q DBTX, away time.Duration) ([]ReengageCandidate, error) {
 	rows, err := q.Query(ctx, `
 		WITH due AS (
@@ -34,6 +34,7 @@ func ListReengageCandidates(ctx context.Context, q DBTX, away time.Duration) ([]
 			FROM users u
 			WHERE u.last_active_at < now() - make_interval(secs => $1)
 				AND (u.reengaged_at IS NULL OR u.reengaged_at < now() - make_interval(secs => $1))
+				AND u.reengage_push
 				AND EXISTS (SELECT 1 FROM push_tokens pt WHERE pt.user_id = u.id)
 		), fresh AS (
 			SELECT d.id AS user_id, r.user_id AS poster_id, r.created_at, COALESCE(`+nightTitleSQL("r", "e")+`, '') AS subject

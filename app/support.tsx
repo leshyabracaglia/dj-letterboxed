@@ -1,9 +1,9 @@
 import { Link } from "expo-router";
 import { View } from "react-native";
 
-import { SectionTitle, Text } from "../components/ui";
-import { ContactEmailLink, InfoPage, type InfoSection } from "../components/InfoPage";
-import { ROUTES } from "../lib/routes";
+import { SectionTitle, Text } from "@/components/ui";
+import { ContactEmailLink, InfoPage, type InfoSection } from "@/components/InfoPage";
+import { ROUTES } from "@/lib/routes";
 
 // The App Store support page (linked from App Store Connect as
 // https://beatboxd.com/support). Keep the answers in step with the app.
@@ -37,7 +37,8 @@ const SECTIONS: InfoSection[] = [
   {
     title: "Notifications",
     body: [
-      "Beatboxd can notify you about new followers, likes and comments. Turn them on or off in your phone's settings, under Notifications › Beatboxd.",
+      "Beatboxd can notify you about new followers, likes and comments, and when someone tags you at a night. Turn them on or off in your phone's settings, under Notifications › Beatboxd.",
+      "If you haven't opened Beatboxd in a couple of days, it can also let you know when people you follow log nights. Turn that off in Settings › Notifications.",
     ],
   },
   {
@@ -53,11 +54,14 @@ export default function SupportScreen() {
     <InfoPage title="Support" subtitle="Help with Beatboxd" sections={SECTIONS}>
       <SectionTitle>Contact us</SectionTitle>
       <Text className="mt-2 text-base leading-6 text-paper/80">
-        Something else, a bug, or feedback? Email <ContactEmailLink /> and we'll get back to you.
+        Something else, a bug, or feedback? Email <ContactEmailLink /> and we&apos;ll get back to you.
       </Text>
-      <View className="mt-4">
+      <View className="mt-4 flex-row gap-6">
         <Link href={ROUTES.PRIVACY}>
           <Text className="text-sm text-primary-dark underline">Privacy policy</Text>
+        </Link>
+        <Link href={ROUTES.TERMS}>
+          <Text className="text-sm text-primary-dark underline">Terms of service</Text>
         </Link>
       </View>
     </InfoPage>

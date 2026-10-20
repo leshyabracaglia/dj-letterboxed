@@ -2,16 +2,19 @@ import { useSignUp } from "@clerk/expo";
 import { Link, router } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
-import { AuthScreen } from "../../components/AuthScreen";
-import { Button, FormMessage, Text, TextField } from "../../components/ui";
+import { AuthScreen } from "@/components/AuthScreen";
+import { Button, Checkbox, FormMessage, Text, TextField } from "@/components/ui";
 
-import { ROUTES } from "../../lib/routes";
+import { clerkErrorMessage } from "@/lib/clerk";
+import { ROUTES } from "@/lib/routes";
 
 export default function SignUpScreen() {
   const { signUp, errors, fetchStatus } = useSignUp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
+  const [isOldEnough, setIsOldEnough] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [pendingVerification, setPendingVerification] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,9 +31,15 @@ export default function SignUpScreen() {
 
   const onSubmit = async () => {
     setError(null);
+    if (!isOldEnough || !acceptedTerms) {
+      setError("To sign up, confirm you're 16 or older and agree to the Terms of Service and Privacy Policy.");
+      return;
+    }
+    // legalAccepted records the agreement (legal_accepted_at) on the Clerk user.
     const { error: submitError } = await signUp.password({
       emailAddress: email,
       password,
+      legalAccepted: true,
     });
     if (submitError) return;
 
@@ -42,7 +51,7 @@ export default function SignUpScreen() {
     setError(null);
     const { error: verifyError } = await signUp.verifications.verifyEmailCode({ code });
     if (verifyError) {
-      setError(verifyError.longMessage ?? verifyError.message);
+      setError(clerkErrorMessage(verifyError));
       return;
     }
     if (signUp.status === "complete") {
@@ -79,8 +88,31 @@ export default function SignUpScreen() {
         onChangeText={setPassword}
         className="w-full"
       />
+      <View className="mt-2 w-full gap-3">
+        <Checkbox checked={isOldEnough} onCheckedChange={setIsOldEnough} label="I'm 16 or older">
+          <Text className="text-sm text-paper/80">I&apos;m 16 or older</Text>
+        </Checkbox>
+        <Checkbox
+          checked={acceptedTerms}
+          onCheckedChange={setAcceptedTerms}
+          label="I agree to the Terms of Service and Privacy Policy"
+        >
+          <Text className="text-sm text-paper/80">
+            I agree to the{" "}
+            <Link href={ROUTES.TERMS} className="text-primary-dark underline">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href={ROUTES.PRIVACY} className="text-primary-dark underline">
+              Privacy Policy
+            </Link>
+            , including the zero-tolerance rules for abusive content
+          </Text>
+        </Checkbox>
+      </View>
       <FormMessage>{errors.fields.emailAddress?.message}</FormMessage>
       <FormMessage>{errors.fields.password?.message}</FormMessage>
+      <FormMessage>{errors.fields.legalAccepted?.message}</FormMessage>
       <FormMessage>{error}</FormMessage>
       <View nativeID="clerk-captcha" />
       <Button onPress={onSubmit} disabled={fetchStatus === "fetching"} className="w-full py-3">

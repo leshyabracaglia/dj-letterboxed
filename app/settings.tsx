@@ -1,9 +1,8 @@
-import { Stack } from "expo-router";
-
-import { isClerkAPIResponseError, useUser } from "@clerk/expo";
-import { router } from "expo-router";
-import { useEffect, useState } from "react";
-import { Alert, Pressable, View } from "react-native";
+import { useUser } from "@clerk/expo";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { router, Stack } from "expo-router";
+import { useState } from "react";
+import { Pressable, Switch, View } from "react-native";
 
 import {
   Avatar,
@@ -15,33 +14,36 @@ import {
   Text,
   TextField,
   usePageContentStyle,
-} from "../components/ui";
-import { useCurrentUser, useUpdateProfile } from "../lib/auth";
-import { pickAndUploadAvatar } from "../lib/avatarUpload";
-import { useSignOut } from "../lib/push";
-import { ROUTES } from "../lib/routes";
-import { isWeb } from "@/lib/utils";
+} from "@/components/ui";
+import { errorMessage, useApi, unwrap } from "@/lib/api/client";
+import { queryKeys } from "@/lib/api/queryKeys";
+import type { UpdateSettingsInput, User } from "@/lib/api/types";
+import { useCurrentUser, useUpdateProfile } from "@/lib/auth";
+import { pickAndUploadAvatar } from "@/lib/avatarUpload";
+import { clerkErrorMessage } from "@/lib/clerk";
+import { confirmDestructive, showAlert } from "@/lib/dialog";
+import { useSignOut } from "@/lib/push";
+import { colors } from "@/lib/colors";
+import { ROUTES } from "@/lib/routes";
 
 const USERNAME_RE = /^[a-z0-9_]{3,32}$/;
 
 function EditProfile() {
+  const { me } = useCurrentUser();
+  return me ? <EditProfileForm key={me.id} me={me} /> : null;
+}
+
+// Starts from the saved profile, and takes back what the server saved (the
+// username lowercased, the bio trimmed) after each save.
+function EditProfileForm({ me }: { me: User }) {
   const { user: clerkUser } = useUser();
 
-  const { me } = useCurrentUser();
-
-  const [username, setUsername] = useState("");
-  const [bio, setBio] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(undefined);
+  const [username, setUsername] = useState(me.username);
+  const [bio, setBio] = useState(me.bio ?? "");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(me.avatarUrl ?? null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-
-  useEffect(() => {
-    if (!me) return;
-    setUsername(me.username);
-    setBio(me.bio ?? "");
-    setAvatarUrl(me.avatarUrl ?? null);
-  }, [me]);
 
   const displayUsername = username.trim().toLowerCase();
   const usernameValid = USERNAME_RE.test(displayUsername);
@@ -61,7 +63,11 @@ function EditProfile() {
   };
 
   const save = useUpdateProfile({
-    onSuccess: () => setSuccess(true),
+    onSuccess: (saved) => {
+      setUsername(saved.username);
+      setBio(saved.bio ?? "");
+      setSuccess(true);
+    },
     onError: setError,
   });
 
@@ -110,11 +116,51 @@ function EditProfile() {
   );
 }
 
-function clerkErrorMessage(err: unknown, fallback: string) {
-  if (isClerkAPIResponseError(err)) {
-    return err.errors[0]?.longMessage ?? err.errors[0]?.message ?? fallback;
-  }
-  return fallback;
+// Notifications about activity on your own account (follows, likes,
+// comments, tags) are controlled from the phone's settings; the
+// re-engagement push is optional on top of those, so it gets its own switch.
+function NotificationSettings() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+
+  const settings = useQuery({
+    queryKey: queryKeys.users.settings(),
+    queryFn: () => unwrap(api.GET("/api/users/me/settings")),
+  });
+  const update = useMutation({
+    mutationFn: (input: UpdateSettingsInput) => unwrap(api.PATCH("/api/users/me/settings", { body: input })),
+    onMutate: () => setError(null),
+    onSuccess: (saved) => queryClient.setQueryData(queryKeys.users.settings(), saved),
+    onError: (err) => setError(errorMessage(err, "Could not save that setting.")),
+  });
+
+  const reengagePush = update.isPending ? !!update.variables.reengagePush : (settings.data?.reengagePush ?? true);
+
+  return (
+    <View className="gap-2 border-t border-primary/15 pt-10">
+      <SectionTitle>Notifications</SectionTitle>
+      <View className="flex-row items-center gap-4">
+        <View className="flex-1">
+          <Text className="text-base text-paper">While you&apos;re away</Text>
+          <Text className="text-sm text-muted">
+            A heads-up when people you follow log nights and you haven&apos;t opened Beatboxd in a couple of days.
+          </Text>
+        </View>
+        <Switch
+          value={reengagePush}
+          onValueChange={(value) => update.mutate({ reengagePush: value })}
+          disabled={!settings.data || update.isPending}
+          trackColor={{ false: colors.muted, true: colors.primary }}
+          accessibilityLabel="Notify me when people I follow log nights while I'm away"
+        />
+      </View>
+      <Text className="text-xs text-muted">
+        Follows, likes, comments and tags are on or off in your phone&apos;s notification settings.
+      </Text>
+      <FormMessage>{error ?? (settings.isError && "Could not load your settings.")}</FormMessage>
+    </View>
+  );
 }
 
 function AccountSettings() {
@@ -179,22 +225,17 @@ function AccountSettings() {
       await user?.delete();
       router.replace(ROUTES.SIGN_IN);
     } catch (err) {
-      Alert.alert("Could not delete account", clerkErrorMessage(err, "Please try again."));
+      showAlert("Could not delete account", clerkErrorMessage(err, "Please try again."));
       setDeletePending(false);
     }
   };
 
-  const onDeletePress = () => {
-    if (isWeb) {
-      if (window.confirm("Delete your account? This can't be undone.")) {
-        deleteAccount();
-      }
-      return;
-    }
-    Alert.alert("Delete account", "This permanently deletes your account and all your reviews. This can't be undone.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: deleteAccount },
-    ]);
+  const onDeletePress = async () => {
+    const confirmed = await confirmDestructive({
+      title: "Delete account",
+      message: "This permanently deletes your account and all your reviews. This can't be undone.",
+    });
+    if (confirmed) deleteAccount();
   };
 
   return (
@@ -255,6 +296,9 @@ function AccountSettings() {
         <Pressable onPress={() => router.push(ROUTES.PRIVACY)}>
           <Text className="text-sm text-primary-dark">Privacy policy</Text>
         </Pressable>
+        <Pressable onPress={() => router.push(ROUTES.TERMS)}>
+          <Text className="text-sm text-primary-dark">Terms</Text>
+        </Pressable>
       </View>
 
       <Text className="mt-6 text-xl font-display text-danger-dark">Danger zone</Text>
@@ -280,6 +324,7 @@ export default function SettingsScreen() {
       <KeyboardScrollView contentContainerStyle={contentStyle}>
         <View className="mt-6 gap-6">
           <EditProfile />
+          <NotificationSettings />
           <AccountSettings />
         </View>
       </KeyboardScrollView>

@@ -22,6 +22,16 @@ func TestCreateReviewValidate(t *testing.T) {
 		wantRatedDj string
 	}{
 		{
+			name:    "slur in a DJ's review",
+			body:    `{"seenAt":"2026-10-04T12:00:00Z","rating":4,"lineup":[{"djId":"` + djA + `","rating":1,"reviewText":"what a f4ggot"}]}`,
+			wantErr: "that includes language that isn't allowed on Beatboxd",
+		},
+		{
+			name:    "slur in a tag",
+			body:    `{"seenAt":"2026-10-04T12:00:00Z","rating":4,"tags":["packed","kys"]}`,
+			wantErr: "that includes language that isn't allowed on Beatboxd",
+		},
+		{
 			name:    "night not rated",
 			body:    `{"seenAt":"2026-10-04T12:00:00Z","lineup":[{"djId":"` + djA + `","rating":5}]}`,
 			wantErr: "rate the night",

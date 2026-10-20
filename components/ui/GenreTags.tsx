@@ -6,7 +6,9 @@ import { Text } from "./Text";
 export function Chip({ label, className = "" }: { label: string; className?: string }) {
   return (
     <View className={`border-2 border-paper/90 px-1.5 py-0.5 ${className}`}>
-      <Text className="font-display text-sm uppercase leading-4 text-paper">{label}</Text>
+      <Text variant="display" className="text-sm leading-4 text-paper">
+        {label}
+      </Text>
     </View>
   );
 }

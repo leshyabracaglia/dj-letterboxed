@@ -1,13 +1,11 @@
 import { Pressable, View } from "react-native";
 
 import { Text } from "./Text";
+import { colors } from "@/lib/colors";
 
 const RING_TEXT = "BEATBOXD · RATED · BEATBOXD · RATED · ";
 
-const RING_COLORS = {
-  red: "#E5484D",
-  purple: "#B9A0F0",
-} as const;
+const RING_COLORS = colors.stamp;
 
 // Odd ratings stamp in red, even in purple, so a column of stamps alternates
 // like the mockup's 1-5 sheet.

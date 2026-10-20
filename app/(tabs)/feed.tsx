@@ -1,4 +1,3 @@
-import { useAuth } from "@clerk/expo";
 import { useState } from "react";
 import { FlatList, RefreshControl, View } from "react-native";
 
@@ -12,18 +11,20 @@ import {
   TornCardSeparator,
   useIsDesktopWeb,
   usePageContentStyle,
-} from "../../components/ui";
-import { BrandWordmark } from "../../components/BrandWordmark";
-import { NotificationsBell } from "../../components/NotificationsBell";
-import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
-import { useFeed, usePopularFeed } from "../../lib/api/hooks";
+} from "@/components/ui";
+import { BrandWordmark } from "@/components/BrandWordmark";
+import { NotificationsBell } from "@/components/NotificationsBell";
+import { ReviewCard, ReviewCardSkeleton } from "@/components/ReviewCard";
+import { useFeed, usePopularFeed } from "@/lib/api/hooks";
+import { useCurrentUser } from "@/lib/auth";
+import { colors } from "@/lib/colors";
 
 const FEED_TABS = {
   FOLLOWING: "following",
   POPULAR: "popular",
 } as const;
 
-type IFeedTab = (typeof FEED_TABS)[keyof typeof FEED_TABS];
+type FeedTab = (typeof FEED_TABS)[keyof typeof FEED_TABS];
 
 function usePullToRefresh(refetch: () => Promise<unknown>) {
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -37,17 +38,19 @@ function usePullToRefresh(refetch: () => Promise<unknown>) {
     }
   };
 
-  return <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor="#F6F6F9" colors={["#0B090A"]} />;
+  return (
+    <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={colors.paper} colors={[colors.chrome]} />
+  );
 }
 
-const FEED_TAB_OPTIONS: { value: IFeedTab; label: string }[] = [
+const FEED_TAB_OPTIONS: { value: FeedTab; label: string }[] = [
   { value: FEED_TABS.FOLLOWING, label: "Following" },
   { value: FEED_TABS.POPULAR, label: "Popular" },
 ];
 
 export default function FeedScreen() {
-  const { isSignedIn } = useAuth();
-  const [tab, setTab] = useState<IFeedTab>(FEED_TABS.FOLLOWING);
+  const { isSignedIn } = useCurrentUser();
+  const [tab, setTab] = useState<FeedTab>(FEED_TABS.FOLLOWING);
   const contentStyle = usePageContentStyle("roomy");
   const isDesktopWeb = useIsDesktopWeb();
 
@@ -57,7 +60,7 @@ export default function FeedScreen() {
   const items = pages.flatMap((page) => page.items);
   const followingCount = pages[0]?.followingCount ?? 0;
   const noFollowing = !isSignedIn || (!isLoading && followingCount === 0);
-  const effectiveTab: IFeedTab = !isSignedIn
+  const effectiveTab: FeedTab = !isSignedIn
     ? FEED_TABS.POPULAR
     : tab === FEED_TABS.FOLLOWING && noFollowing
       ? FEED_TABS.POPULAR

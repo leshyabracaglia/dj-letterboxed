@@ -16,7 +16,7 @@ export function formatRating(rating: number | null | undefined): string {
 }
 
 // Date-only: for when something was reviewed/seen, where the exact time isn't meaningful.
-export function formatDate(iso: string): string {
+function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
@@ -37,10 +37,10 @@ export function parseDateInputValue(value: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-/** When someone went, from their log's day/night flags. */
-export function formatLogTiming(log: { isDay: boolean; isNight: boolean }): string {
-  if (log.isDay && log.isNight) return "Day into night";
-  return log.isDay ? "Day" : "Night";
+/** When someone went, from their review's day/night flags. */
+export function formatDayNight(review: { isDay: boolean; isNight: boolean }): string {
+  if (review.isDay && review.isNight) return "Day into night";
+  return review.isDay ? "Day" : "Night";
 }
 
 /** Short day label for the zine cards: "Sat 14 Sep" (uppercased by the

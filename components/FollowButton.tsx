@@ -1,22 +1,20 @@
-import { useAuth } from "@clerk/expo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Pressable } from "react-native";
 
 import { Text } from "./ui";
-import { useCurrentUser } from "../lib/auth";
-import { useApi } from "../lib/api/client";
-import { queryKeys } from "../lib/api/queryKeys";
-import type { UserProfile } from "../lib/api/types";
-import { ROUTES } from "../lib/routes";
+import { useCurrentUser } from "@/lib/auth";
+import { useApi, unwrap } from "@/lib/api/client";
+import { queryKeys } from "@/lib/api/queryKeys";
+import type { UserProfile } from "@/lib/api/types";
+import { ROUTES } from "@/lib/routes";
 
 type FollowingSnapshot = { following: boolean } | undefined;
 
 /** `username` is optional so this still works anywhere we only have a userId;
  * pass it when available so the profile's follower count updates in step. */
 export function FollowButton({ userId, username }: { userId: string; username?: string }) {
-  const { isSignedIn } = useAuth();
-  const { me } = useCurrentUser();
+  const { isSignedIn, me } = useCurrentUser();
   const api = useApi();
   const queryClient = useQueryClient();
   const followingKey = queryKeys.follows.isFollowing(userId);
@@ -24,7 +22,7 @@ export function FollowButton({ userId, username }: { userId: string; username?: 
 
   const { data } = useQuery({
     queryKey: followingKey,
-    queryFn: () => api.get<{ following: boolean }>(`/follows/is-following/${userId}`),
+    queryFn: () => unwrap(api.GET("/api/follows/is-following/{userId}", { params: { path: { userId } } })),
     enabled: isSignedIn,
   });
 
@@ -68,13 +66,13 @@ export function FollowButton({ userId, username }: { userId: string; username?: 
   };
 
   const follow = useMutation({
-    mutationFn: () => api.post(`/follows/${userId}`),
+    mutationFn: () => unwrap(api.POST("/api/follows/{userId}", { params: { path: { userId } } })),
     onMutate: () => applyOptimistic(true),
     onError: (_err, _vars, ctx) => rollback(ctx),
     onSettled: invalidate,
   });
   const unfollow = useMutation({
-    mutationFn: () => api.del(`/follows/${userId}`),
+    mutationFn: () => unwrap(api.DELETE("/api/follows/{userId}", { params: { path: { userId } } })),
     onMutate: () => applyOptimistic(false),
     onError: (_err, _vars, ctx) => rollback(ctx),
     onSettled: invalidate,
@@ -87,13 +85,11 @@ export function FollowButton({ userId, username }: { userId: string; username?: 
     <Pressable
       disabled={pending}
       onPress={() => (isSignedIn ? (isFollowing ? unfollow.mutate() : follow.mutate()) : router.push(ROUTES.SIGN_IN))}
-      // Shadow classes on in both states (see SegmentedTabs): toggling a
-      // shadow color after the first render crashes NativeWind's remount.
       className={`rounded-lg px-4 py-2 shadow-md active:opacity-80 ${
         isFollowing ? "border-2 border-paper/60 shadow-transparent" : "bg-paper shadow-white/30"
       }`}
     >
-      <Text className={`font-display text-lg uppercase leading-5 ${isFollowing ? "text-paper" : "text-ink"}`}>
+      <Text variant="display" className={`text-lg leading-5 ${isFollowing ? "text-paper" : "text-ink"}`}>
         {isFollowing ? "Following" : "Follow"}
       </Text>
     </Pressable>

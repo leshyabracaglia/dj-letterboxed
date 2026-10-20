@@ -1,7 +1,11 @@
-import { SectionTitle, Text } from "../components/ui";
-import { ContactEmailLink, InfoPage, type InfoSection } from "../components/InfoPage";
+import { Link } from "expo-router";
+import { View } from "react-native";
 
-const EFFECTIVE_DATE = "October 12, 2026";
+import { SectionTitle, Text } from "@/components/ui";
+import { ContactEmailLink, InfoPage, type InfoSection } from "@/components/InfoPage";
+import { ROUTES } from "@/lib/routes";
+
+const EFFECTIVE_DATE = "October 15, 2026";
 
 // The App Store privacy policy (linked from App Store Connect as
 // https://beatboxd.com/privacy). Keep it in step with what the app actually
@@ -16,11 +20,12 @@ const SECTIONS: InfoSection[] = [
   {
     title: "What we collect",
     body: [
-      "Account details: your email address, username, and (if you add them) your display name, bio and profile photo. Sign-in is handled by Clerk, which stores your email, password (hashed) or sign-in provider, and profile photo on our behalf.",
+      "Account details: your email address, username, and (if you add them) your display name, bio and profile photo, plus when you agreed to our Terms of Service at sign-up, where you also confirm you’re 16 or older. Sign-in is handled by Clerk, which stores your email, password (hashed) or sign-in provider, and profile photo on our behalf.",
       "What you post: the nights you log (event, venue, date, DJs), your ratings, reviews, tags, comments and likes, the friends you tag, who you follow, and the reviews you showcase as favorites.",
       "Approximate location: when you open the log tab, the app uses your device’s location, at low accuracy, to find nights near you. On iPhone and Android your device turns it into a city name and only the city is sent to us; on the web, coordinates rounded to about 1km are sent and turned into a city. We use it for that search and don’t store it. You can decline location access and pick a city by hand instead.",
       "Check-ins: when you tap Check in on the log tab, the app takes one precise reading of your device’s location and sends it to us to find the venue you’re at. We compare it with the venue’s location and then discard it. We keep only that you checked in at that venue, when, and roughly how far from it you were, so your log of that night can show as verified. Nothing is read in the background.",
-      "Device push token: if you allow notifications, we store your device’s push token so we can tell you about new followers, likes and comments.",
+      "Device push token: if you allow notifications, we store your device’s push token so we can tell you about new followers, likes and comments, and when someone tags you at a night. If you haven’t opened Beatboxd in a couple of days, we may also send an occasional reminder that people you follow have logged nights (at most once every two days); you can turn that off in Settings.",
+      "Activity and server logs: we record when you last used the app (to decide when that reminder is due, if you have it on). Our servers log each request, including its IP address, device type and time, and count requests per account and IP address to stop spam and abuse. We use these logs only to keep Beatboxd running and secure.",
       "Safety reports and blocks: if you report a review, comment or user, we keep the report, including a copy of the reported text, and who you block.",
       "We don’t use advertising, analytics or crash-reporting SDKs, and we don’t track you across other apps or websites.",
     ],
@@ -35,7 +40,7 @@ const SECTIONS: InfoSection[] = [
   {
     title: "What’s public",
     body: [
-      "Beatboxd is a social app. Your username, display name, bio, profile photo, followers and following, and everything you post (logs, ratings, reviews, comments, tags and favorites) can be seen by anyone, including people who aren’t signed in. Friends you tag on a night are shown on it. Your email address is never shown.",
+      "Beatboxd is a social app. Your username, display name, bio, profile photo, followers and following, and everything you post (logs, ratings, reviews, comments, tags and favorites) can be seen by anyone, including people who aren’t signed in. Friends you tag on a night are shown on it; people you’ve blocked, or who’ve blocked you, can’t tag you. Your email address is never shown.",
     ],
   },
   {
@@ -50,7 +55,7 @@ const SECTIONS: InfoSection[] = [
     title: "Keeping and deleting your data",
     body: [
       "We keep your data while your account exists. You can delete your account at any time in Settings. That deletes your profile and everything you’ve posted (logs, ratings, reviews, comments, likes, follows, tags and favorites). DJs, events and venues you added to the shared database stay, without your name on them. Copies in backups are removed as the backups expire.",
-      "Safety reports are kept as long as we need them to deal with abuse.",
+      "Safety reports are kept as long as we need them to deal with abuse, including after the reported account is deleted: a report keeps the reported username and a copy of the reported text.",
     ],
   },
   {
@@ -62,7 +67,7 @@ const SECTIONS: InfoSection[] = [
   {
     title: "Age",
     body: [
-      "Beatboxd is meant for people 16 and older. We don’t knowingly collect data from anyone under 16; if you believe a child has made an account, contact us and we’ll delete it.",
+      "You must be 16 or older to use Beatboxd, and we ask you to confirm it when you sign up. We don’t knowingly collect data from anyone under 16; if you believe someone under 16 has made an account, contact us and we’ll delete it.",
     ],
   },
   {
@@ -80,6 +85,11 @@ export default function PrivacyScreen() {
       <Text className="mt-2 text-base leading-6 text-paper/80">
         Questions or requests about your data: <ContactEmailLink />
       </Text>
+      <View className="mt-4">
+        <Link href={ROUTES.TERMS}>
+          <Text className="text-sm text-primary-dark underline">Terms of service</Text>
+        </Link>
+      </View>
     </InfoPage>
   );
 }

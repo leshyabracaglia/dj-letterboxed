@@ -23,6 +23,7 @@ export const ROUTES = {
   PROFILE: "/(tabs)/profile" as Href,
   SETTINGS: "/settings" as Href,
   PRIVACY: "/privacy" as Href,
+  TERMS: "/terms" as Href,
   SUPPORT: "/support" as Href,
   NOTIFICATIONS: "/notifications" as Href,
   DJ: (slug: string): Href => `/dj/${slug}` as Href,

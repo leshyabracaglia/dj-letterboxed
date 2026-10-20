@@ -6,7 +6,11 @@ import { Text } from "./Text";
 
 /** The small right-aligned "CH 01 · FEED" label from the zine headers. */
 export function ChannelLabel({ label }: { label: string }) {
-  return <Text className="font-display text-base uppercase tracking-wider text-paper/80">{label}</Text>;
+  return (
+    <Text variant="display" className="text-base tracking-wider text-paper/80">
+      {label}
+    </Text>
+  );
 }
 
 // Top-of-page block aligned to the page gutter. Pass `title` for a standard

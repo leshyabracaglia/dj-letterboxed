@@ -106,6 +106,39 @@ so they can't change data. See `scripts/prod-db.sh`.
 - Fixing data still means writing as another role on purpose, e.g. the
   app's `DATABASE_URL` from the instance's `.env` via SSM.
 
+## Backups
+
+- **Daily AWS Backup snapshots** (`modules/database/backup.tf`): every day at
+  09:00 UTC into the `beatboxd-db` vault, each kept 14 days
+  (`backup_retention_days`). They're separate from the instance, so they
+  survive it being deleted. Restore from the console: AWS Backup → Backup
+  vaults → `beatboxd-db` → a recovery point → Restore, which makes a *new*
+  instance; point `DATABASE_URL` at it (see "Rotating secrets") or swap names.
+- **RDS automated backups** still run too (07:00 UTC, point-in-time restore
+  within the last day — the free plan caps retention at 1 day).
+- The instance has `deletion_protection` on; turn it off in its own apply
+  before deliberately destroying the database.
+- Take a manual snapshot before a risky migration, as before
+  (`aws rds create-db-snapshot`); manual snapshots are kept until deleted.
+
+The EC2 instance ignores AMI changes (a newer Amazon Linux shows up every few
+weeks and would otherwise replace the server on any apply). To move to a new
+AMI on purpose: `terraform apply -replace=module.ec2.aws_instance.this`.
+
+## State
+
+Terraform state lives in the S3 bucket `beatboxd-terraform-state-132955065057`
+(key `prod/terraform.tfstate`; versioned, encrypted, public access blocked,
+HTTPS only), configured in `envs/prod/versions.tf`. It's locked with an S3
+lock file while a plan/apply runs, so two applies can't collide. The state
+holds secrets in plain text, so keep the bucket private. A bad apply that
+corrupts state can be rolled back by restoring an earlier object version in
+the S3 console.
+
+The bucket was created once with the AWS CLI (not by Terraform, since it
+holds Terraform's own state). On a new machine, `terraform init` in
+`envs/prod` is all it takes.
+
 ## Rotating secrets
 
 `user_data` only writes `/opt/beatboxd/.env` on first boot, and changing a
@@ -141,9 +174,7 @@ concern, this got rescoped to the cheapest reasonable option:
 - **Default VPC instead of a custom one**: no NAT Gateway needed since the
   instance sits in a public subnet directly (with a tight security group);
   removes the single priciest line item from the original design.
-- **Local Terraform state** (no S3 backend configured yet): fine solo, at
-  this scale. Move to an S3 backend before collaborating with anyone else
-  or running `apply` from more than one machine.
+- **Terraform state in S3**: see "State" below.
 
 If traffic ever outgrows a single instance, the original ECS/Aurora/ALB
 module designs (VPC with NAT, ECS Fargate service, Aurora Serverless v2,

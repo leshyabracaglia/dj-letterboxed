@@ -2,18 +2,17 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
 
-import { Button, Icon, KEYBOARD_DISMISS_PROPS, Sheet, Text } from "../ui";
-import { useApi } from "../../lib/api/client";
-import { useEventSearch, useVenueSearch } from "../../lib/api/hooks";
-import { queryKeys } from "../../lib/api/queryKeys";
-import type { PlaceSuggestion } from "../../lib/api/types";
-import { parseDateInputValue, toDateInputValue } from "../../lib/format";
-import { useDebouncedValue } from "../../lib/utils";
+import { Button, Icon, KEYBOARD_DISMISS_PROPS, Sheet, Text } from "@/components/ui";
+import { useApi, unwrap } from "@/lib/api/client";
+import { useEventSearch, useVenueSearch } from "@/lib/api/hooks";
+import { queryKeys } from "@/lib/api/queryKeys";
+import { parseDateInputValue, toDateInputValue } from "@/lib/format";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import {
   addDays,
   eventPickName,
-  type IEventPick,
-  type IVenuePick,
+  type EventPick,
+  type VenuePick,
   nightsLogged,
   shortDayLabel,
   startOfToday,
@@ -39,8 +38,8 @@ export function EventSheet({
   onPick,
   onClose,
 }: {
-  current?: IEventPick;
-  onPick: (pick: IEventPick) => void;
+  current?: EventPick;
+  onPick: (pick: EventPick) => void;
   onClose: () => void;
 }) {
   const [value, setValue] = useState(eventPickName(current) ?? "");
@@ -157,9 +156,7 @@ export function DateSheet({
                   isSelected ? "border-paper bg-paper" : "border-paper/80"
                 }`}
               >
-                <Text
-                  className={`font-display text-base uppercase leading-5 ${isSelected ? "text-ink" : "text-paper"}`}
-                >
+                <Text variant="display" className={`text-base leading-5 ${isSelected ? "text-ink" : "text-paper"}`}>
                   {label}
                 </Text>
               </Pressable>
@@ -168,7 +165,7 @@ export function DateSheet({
         </View>
         <View className="gap-2">
           <View className="flex-row items-center justify-between">
-            <Text className="font-display text-xl uppercase text-paper">
+            <Text variant="display" className="text-xl text-paper">
               {month.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
             </Text>
             <View className="flex-row gap-4">
@@ -189,7 +186,9 @@ export function DateSheet({
           <View className="flex-row flex-wrap">
             {WEEKDAYS.map((day) => (
               <View key={day} className="w-[14.28%] items-center py-1">
-                <Text className="font-display text-sm uppercase text-paper/50">{day}</Text>
+                <Text variant="display" className="text-sm text-paper/50">
+                  {day}
+                </Text>
               </View>
             ))}
             {cells.map((date, i) => {
@@ -235,9 +234,9 @@ export function VenueSheet({
   onPick,
   onClose,
 }: {
-  current?: IVenuePick;
+  current?: VenuePick;
   initialQuery?: string;
-  onPick: (pick: IVenuePick) => void;
+  onPick: (pick: VenuePick) => void;
   onClose: () => void;
 }) {
   const api = useApi();
@@ -254,7 +253,8 @@ export function VenueSheet({
   const { data: localResults, isFetching: isLocalFetching } = useVenueSearch(query, { suggest: true });
   const { data: placeResults, isFetching: isPlacesFetching } = useQuery({
     queryKey: queryKeys.venues.placesSearch(placesQuery),
-    queryFn: () => api.get<PlaceSuggestion[]>("/venues/places-search", { q: placesQuery, sessionToken }),
+    queryFn: () =>
+      unwrap(api.GET("/api/venues/places-search", { params: { query: { q: placesQuery, sessionToken } } })),
     enabled: enabled && placesQuery.length > 1,
     // Place search is optional (503 when the server has no API key); fall
     // back to saved and typed venues instead of retrying.
@@ -293,7 +293,9 @@ export function VenueSheet({
             onPress={() => onPick({ ...typing, name: typing.name.trim(), city: typing.city.trim() })}
             className="py-3"
           >
-            <Text className="font-display text-xl uppercase text-paper">Use this venue</Text>
+            <Text variant="display" className="text-xl text-paper">
+              Use this venue
+            </Text>
           </Button>
         </View>
       </Sheet>

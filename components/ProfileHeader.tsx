@@ -2,10 +2,10 @@ import { Link } from "expo-router";
 import { useState, type ReactNode } from "react";
 import { Image, Modal, Pressable, useWindowDimensions, View } from "react-native";
 
-import { useUserStats } from "../lib/api/hooks";
-import { pluralWord } from "../lib/format";
-import type { User, UserProfile } from "../lib/api/types";
-import { ROUTES } from "../lib/routes";
+import { useUserStats } from "@/lib/api/hooks";
+import { pluralWord } from "@/lib/format";
+import type { User, UserProfile } from "@/lib/api/types";
+import { ROUTES } from "@/lib/routes";
 import { StatsSummary } from "./StatsSummary";
 import { Avatar, ChannelLabel, FadeInView, FitText, Icon, Skeleton, Text } from "./ui";
 
@@ -99,7 +99,7 @@ function AvatarViewer({ uri, visible, onClose }: { uri: string; visible: boolean
 
 function Count({ value, label }: { value: number; label: string }) {
   return (
-    <Text className="font-display text-base uppercase text-paper/60">
+    <Text variant="display" className="text-base text-paper/60">
       <Text className="font-numeric text-3xl text-paper">{value}</Text> {label}
     </Text>
   );

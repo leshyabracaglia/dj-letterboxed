@@ -1,7 +1,10 @@
 package httpapi
 
 import (
+	"log"
 	"net/http"
+	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -31,10 +34,13 @@ func NewRouter(cfg RouterConfig) http.Handler {
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
+	r.Use(clientIP)
+	r.Use(requestLogger)
 	r.Use(middleware.Recoverer)
+	r.Use(limitBody(maxBodyBytes))
 	r.Use(corsMiddleware)
+	// After CORS, so a 429 still reaches the web app readably.
+	r.Use(limitByIP(1000, time.Minute))
 
 	r.Get("/healthz", func(w http.ResponseWriter, req *http.Request) {
 		if err := cfg.Pool.Ping(req.Context()); err != nil {
@@ -53,7 +59,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Get("/app-version", h.GetAppVersion)
 			r.Get("/djs/search", h.SearchDjs)
-			r.Get("/djs/spotify-search", h.SearchSpotify)
+			r.With(limitByIP(60, time.Minute)).Get("/djs/spotify-search", h.SearchSpotify)
 			r.Get("/events", h.ListEvents)
 			r.Get("/venues/search", h.SearchVenues)
 			r.Get("/venues/{id}", h.GetVenueByID)
@@ -82,34 +88,45 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		// Protected (auth required)
 		r.Group(func(r chi.Router) {
 			r.Use(a.RequireAuth)
+			r.Use(writesOnly(limitByUser(60, time.Minute)))
 
-			r.Post("/djs", h.CreateDj)
-			r.Get("/check-ins/nearby", h.NearbyVenues)
-			r.Post("/check-ins", h.CheckIn)
-			r.Get("/ra/areas", h.SearchRAAreas)
-			r.Get("/ra/events", h.ListRAEvents)
-			r.Get("/ra/events/{id}/match", h.MatchRAEvent)
-			// Auth-only (unlike Spotify search) since every call is billed.
-			r.Get("/venues/places-search", h.SearchPlaces)
+			r.With(limitByUser(30, time.Hour)).Post("/djs", h.CreateDj)
+			// Google calls (Nearby Search; Place Details for a place not
+			// saved yet), so capped by the day as well.
+			r.With(limitByUser(20, time.Hour), limitByUser(50, 24*time.Hour)).Get("/check-ins/nearby", h.NearbyVenues)
+			r.With(limitByUser(30, time.Hour), limitByUser(50, 24*time.Hour)).Post("/check-ins", h.CheckIn)
+			r.Group(func(r chi.Router) {
+				// These can call Google too (geocoding, matching a venue),
+				// cached, but still capped by the day.
+				r.Use(limitByUser(60, time.Minute), limitByUser(500, 24*time.Hour))
+				r.Get("/ra/areas", h.SearchRAAreas)
+				r.Get("/ra/events", h.ListRAEvents)
+				r.Get("/ra/events/{id}/match", h.MatchRAEvent)
+			})
+			// Auth-only (unlike Spotify search) since every call is billed;
+			// the daily cap bounds what one account can cost.
+			r.With(limitByUser(60, time.Minute), limitByUser(500, 24*time.Hour)).Get("/venues/places-search", h.SearchPlaces)
 
 			r.Get("/follows/is-following/{userId}", h.IsFollowing)
 			r.Post("/follows/{userId}", h.Follow)
 			r.Delete("/follows/{userId}", h.Unfollow)
 
-			r.Post("/reviews", h.CreateReview)
+			r.With(limitByUser(20, time.Hour)).Post("/reviews", h.CreateReview)
 			r.Patch("/reviews/{id}", h.UpdateReview)
 			r.Delete("/reviews/{id}", h.DeleteReview)
 			r.Post("/reviews/{id}/like", h.LikeReview)
 			r.Delete("/reviews/{id}/like", h.UnlikeReview)
-			r.Post("/reviews/{id}/comments", h.AddComment)
+			r.With(limitByUser(100, time.Hour)).Post("/reviews/{id}/comments", h.AddComment)
 			r.Delete("/comments/{id}", h.DeleteComment)
 
 			r.Get("/users/me", h.Me)
 			r.Get("/users/me/blocks", h.ListBlockedUsers)
 			r.Post("/users/{userId}/block", h.BlockUser)
 			r.Delete("/users/{userId}/block", h.UnblockUser)
-			r.Post("/reports", h.CreateReport)
+			r.With(limitByUser(20, time.Hour)).Post("/reports", h.CreateReport)
 			r.Patch("/users/me", h.UpdateProfile)
+			r.Get("/users/me/settings", h.GetSettings)
+			r.Patch("/users/me/settings", h.UpdateSettings)
 			r.Patch("/users/me/favorites", h.SetFavoriteReviews)
 			r.Post("/users/me/push-tokens", h.RegisterPushToken)
 			r.Delete("/users/me/push-tokens", h.UnregisterPushToken)
@@ -144,4 +161,33 @@ func corsMiddleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// maxBodyBytes is the largest request body the API reads; a review with a
+// long text and a big lineup is a few KB.
+const maxBodyBytes = 1 << 20
+
+// limitBody makes reading more than n bytes of a request body fail, so a
+// huge upload can't tie up memory.
+func limitBody(n int64) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r.Body = http.MaxBytesReader(w, r.Body, n)
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// requestLogger is chi's request log without query strings, which carry
+// people's coordinates (check-ins, the RA search) and what they searched for.
+var requestLogger = middleware.RequestLogger(pathOnlyLogFormatter{
+	&middleware.DefaultLogFormatter{Logger: log.New(os.Stdout, "", log.LstdFlags)},
+})
+
+type pathOnlyLogFormatter struct{ middleware.LogFormatter }
+
+func (f pathOnlyLogFormatter) NewLogEntry(r *http.Request) middleware.LogEntry {
+	logged := *r
+	logged.RequestURI = r.URL.Path
+	return f.LogFormatter.NewLogEntry(&logged)
 }

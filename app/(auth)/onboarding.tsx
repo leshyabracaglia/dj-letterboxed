@@ -3,13 +3,13 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Keyboard, Pressable, View } from "react-native";
 
-import { AuthScreen } from "../../components/AuthScreen";
-import { Avatar, Button, FormMessage, Text, TextField } from "../../components/ui";
+import { AuthScreen } from "@/components/AuthScreen";
+import { Avatar, Button, FormMessage, Text, TextField } from "@/components/ui";
 
-import { useCurrentUser, useUpdateProfile } from "../../lib/auth";
-import { pickAndUploadAvatar } from "../../lib/avatarUpload";
-import { useSignOut } from "../../lib/push";
-import { ROUTES } from "../../lib/routes";
+import { useCurrentUser, useUpdateProfile } from "@/lib/auth";
+import { pickAndUploadAvatar } from "@/lib/avatarUpload";
+import { useSignOut } from "@/lib/push";
+import { ROUTES } from "@/lib/routes";
 
 const USERNAME_RE = /^[a-z0-9_]{3,32}$/;
 

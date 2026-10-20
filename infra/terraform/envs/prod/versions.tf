@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.9"
+  required_version = ">= 1.10"
 
   required_providers {
     aws = {
@@ -16,9 +16,17 @@ terraform {
     }
   }
 
-  # Local state to start (matches the project's current scale — no
-  # collaborators yet). Migrate to an S3 backend before that changes:
-  # https://developer.hashicorp.com/terraform/language/backend/s3
+  # State lives in S3 (versioned, encrypted, private; created once by hand,
+  # see README "State"), so it survives losing this machine. use_lockfile
+  # locks it with an S3 object while a plan/apply runs (no DynamoDB table).
+  backend "s3" {
+    bucket       = "beatboxd-terraform-state-132955065057"
+    key          = "prod/terraform.tfstate"
+    region       = "us-east-1"
+    profile      = "beatboxd"
+    encrypt      = true
+    use_lockfile = true
+  }
 }
 
 provider "aws" {

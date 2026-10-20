@@ -58,7 +58,7 @@ func (h *Handlers) blockedWith(ctx context.Context, w http.ResponseWriter, userI
 
 // BlockUser godoc
 //
-//	@Summary	Block a user: hides each of you from the other and unfollows both ways
+//	@Summary	Block a user: hides each of you from the other, and unfollows and untags both ways
 //	@Tags		moderation
 //	@Produce	json
 //	@Param		userId	path		string	true	"user id to block"

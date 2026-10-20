@@ -9,7 +9,7 @@ import (
 
 // GetActivity godoc
 //
-//	@Summary	Following feed: followed users' nights out, newest logged first
+//	@Summary	Following feed: your own and followed users' nights out, newest logged first
 //	@Tags		feed
 //	@Produce	json
 //	@Param		cursor	query		string	false	"pagination cursor (opaque, encodes the last item's createdAt)"
@@ -37,7 +37,11 @@ func (h *Handlers) GetActivity(w http.ResponseWriter, r *http.Request) {
 	limit := queryLimit(r, 20, 50)
 	cursor := domain.DecodeCursor(r.URL.Query().Get("cursor"))
 
-	reviews, err := queries.ListReviewsByUserIDs(r.Context(), h.Pool, followedIDs, cursor.CreatedAt, limit)
+	// Your own nights show alongside the people you follow. FollowingCount
+	// stays just the people you follow, since the client uses it to decide
+	// whether there's a Following feed to show at all.
+	authorIDs := append([]string{user.ID}, followedIDs...)
+	reviews, err := queries.ListReviewsByUserIDs(r.Context(), h.Pool, authorIDs, cursor.CreatedAt, limit)
 	if err != nil {
 		InternalError(w, err)
 		return

@@ -3,12 +3,12 @@ import { Tabs, type BottomTabBarProps } from "expo-router/js-tabs";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 
-import { SignInPromptModal } from "../../components/SignInPromptModal";
-import { GlowBar, Text, useIsDesktopWeb } from "../../components/ui";
-import { WebNav } from "../../components/WebNav";
-import { useCurrentUser } from "../../lib/auth";
-import { ROUTES } from "../../lib/routes";
-import { needsOnboarding } from "../../lib/user";
+import { SignInPromptModal } from "@/components/SignInPromptModal";
+import { GlowBar, Text, useIsDesktopWeb } from "@/components/ui";
+import { WebNav } from "@/components/WebNav";
+import { useCurrentUser } from "@/lib/auth";
+import { ROUTES } from "@/lib/routes";
+import { needsOnboarding } from "@/lib/user";
 
 const TAB_LABELS: Record<string, string> = {
   feed: "Feed",
@@ -48,15 +48,16 @@ function ZineTabBar({ state, descriptors, navigation, insets }: BottomTabBarProp
                 className="rounded-xl bg-paper px-5 py-3"
                 style={{ boxShadow: "0 0 14px 1px rgba(246,246,249,0.3)" }}
               >
-                <Text className="font-display text-xl uppercase leading-6 text-ink">{TAB_LABELS[route.name]}</Text>
+                <Text variant="display" className="text-xl leading-6 text-ink">
+                  {TAB_LABELS[route.name]}
+                </Text>
               </View>
             ) : (
               <>
                 <GlowBar isActive={isFocused} />
                 <Text
-                  className={`mt-2 font-display text-lg uppercase leading-5 ${
-                    isFocused ? "text-paper" : "text-paper/55"
-                  }`}
+                  variant="display"
+                  className={`mt-2 text-lg leading-5 ${isFocused ? "text-paper" : "text-paper/55"}`}
                 >
                   {TAB_LABELS[route.name]}
                 </Text>

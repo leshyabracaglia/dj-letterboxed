@@ -10,6 +10,7 @@ import (
 
 	"beatboxd/server/internal/db"
 	"beatboxd/server/internal/db/queries"
+	"beatboxd/server/internal/domain"
 )
 
 var usernameRe = regexp.MustCompile(`^[a-z0-9_]{3,32}$`)
@@ -136,10 +137,10 @@ func (h *Handlers) GetUserStats(w http.ResponseWriter, r *http.Request) {
 }
 
 type updateProfileRequest struct {
-	Username    *string `json:"username"`
-	DisplayName *string `json:"displayName"`
-	Bio         *string `json:"bio"`
-	AvatarURL   *string `json:"avatarUrl"`
+	Username    *string `json:"username,omitempty"`
+	DisplayName *string `json:"displayName,omitempty"`
+	Bio         *string `json:"bio,omitempty"`
+	AvatarURL   *string `json:"avatarUrl,omitempty"`
 }
 
 // UpdateProfile godoc
@@ -170,6 +171,10 @@ func (h *Handlers) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		BadRequest(w, "username must be 3-32 characters: lowercase letters, numbers, underscores")
 		return
 	}
+	if domain.IsObjectionable(deref(req.Username), deref(req.DisplayName), deref(req.Bio)) {
+		BadRequest(w, domain.ErrObjectionable.Error())
+		return
+	}
 
 	updated, err := queries.UpdateUserProfile(r.Context(), h.Pool, user.ID, req.Username, req.DisplayName, req.Bio, req.AvatarURL)
 	if err != nil {
@@ -181,6 +186,64 @@ func (h *Handlers) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, updated)
+}
+
+// GetSettings godoc
+//
+//	@Summary	Get the caller's own settings
+//	@Tags		users
+//	@Produce	json
+//	@Success	200	{object}	queries.UserSettings
+//	@Failure	401	{object}	errorEnvelope
+//	@Security	BearerAuth
+//	@Router		/api/users/me/settings [get]
+func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
+	user, ok := mustUser(w, r)
+	if !ok {
+		return
+	}
+	settings, err := queries.GetUserSettings(r.Context(), h.Pool, user.ID)
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, settings)
+}
+
+type updateSettingsRequest struct {
+	// Whether to get a push when people you follow log nights while you've
+	// been away.
+	ReengagePush *bool `json:"reengagePush,omitempty"`
+}
+
+// UpdateSettings godoc
+//
+//	@Summary	Change the caller's own settings; omitted ones stay as they are
+//	@Tags		users
+//	@Accept		json
+//	@Produce	json
+//	@Param		body	body		updateSettingsRequest	true	"settings to change"
+//	@Success	200		{object}	queries.UserSettings
+//	@Failure	400		{object}	errorEnvelope
+//	@Failure	401		{object}	errorEnvelope
+//	@Security	BearerAuth
+//	@Router		/api/users/me/settings [patch]
+func (h *Handlers) UpdateSettings(w http.ResponseWriter, r *http.Request) {
+	user, ok := mustUser(w, r)
+	if !ok {
+		return
+	}
+	var req updateSettingsRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		BadRequest(w, "invalid request body")
+		return
+	}
+	settings, err := queries.UpdateUserSettings(r.Context(), h.Pool, user.ID, req.ReengagePush)
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, settings)
 }
 
 // Follow godoc

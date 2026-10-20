@@ -4,13 +4,13 @@ import { useState } from "react";
 import { Modal, Pressable, ScrollView, View } from "react-native";
 import { Avatar, Button, Skeleton, Text } from "./ui";
 
-import { useApi } from "../lib/api/client";
-import { useFavoriteReviews } from "../lib/api/hooks";
-import { queryKeys } from "../lib/api/queryKeys";
-import type { FavoriteReviewsResponse, Review, SetFavoritesInput } from "../lib/api/types";
-import { formatRating } from "../lib/format";
-import { reviewSubject, soloSet } from "../lib/review";
-import { ROUTES } from "../lib/routes";
+import { useApi, unwrap } from "@/lib/api/client";
+import { useFavoriteReviews } from "@/lib/api/hooks";
+import { queryKeys } from "@/lib/api/queryKeys";
+import type { FavoriteReviewsResponse, Review, SetFavoritesInput } from "@/lib/api/types";
+import { formatRating } from "@/lib/format";
+import { reviewSubject, soloSet } from "@/lib/review";
+import { ROUTES } from "@/lib/routes";
 
 const MAX_FAVORITES = 3;
 
@@ -79,7 +79,11 @@ export function FavoritesShowcase({
               onPress={() => router.push(ROUTES.REVIEW_DETAIL(review.id))}
               className="w-[72px] items-center"
             >
-              <Avatar uri={reviewSubject(review, soloSet(review)).imageUrl} name={reviewSubject(review, soloSet(review)).name} size={48} />
+              <Avatar
+                uri={reviewSubject(review, soloSet(review)).imageUrl}
+                name={reviewSubject(review, soloSet(review)).name}
+                size={48}
+              />
               <Text className="mt-1 text-center text-xs text-paper" numberOfLines={2}>
                 {reviewSubject(review, soloSet(review)).name}
               </Text>
@@ -131,7 +135,7 @@ function EditFavoritesModal({
     setSaving(true);
     try {
       const input: SetFavoritesInput = { reviewIds: selected };
-      const result = await api.patch<FavoriteReviewsResponse>("/users/me/favorites", input);
+      const result = await unwrap(api.PATCH("/api/users/me/favorites", { body: input }));
       queryClient.setQueryData(queryKeys.users.favorites(username), result);
       onClose();
     } finally {
@@ -164,7 +168,11 @@ function EditFavoritesModal({
                       isSelected ? "border-primary bg-primary-dark/15" : "border-primary/15"
                     }`}
                   >
-                    <Avatar uri={reviewSubject(review, soloSet(review)).imageUrl} name={reviewSubject(review, soloSet(review)).name} size={32} />
+                    <Avatar
+                      uri={reviewSubject(review, soloSet(review)).imageUrl}
+                      name={reviewSubject(review, soloSet(review)).name}
+                      size={32}
+                    />
                     <View className="flex-1">
                       <Text className="text-paper">{reviewSubject(review, soloSet(review)).name}</Text>
                       <Text className="text-xs text-muted">{formatRating((soloSet(review) ?? review).rating)}</Text>

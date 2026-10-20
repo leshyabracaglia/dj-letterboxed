@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 
-import { MissingState } from "../components/DetailPage";
-import { Page } from "../components/ui";
+import { MissingState } from "@/components/DetailPage";
+import { Page } from "@/components/ui";
 
 export default function NotFoundScreen() {
   return (

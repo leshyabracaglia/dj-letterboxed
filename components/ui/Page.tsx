@@ -14,7 +14,7 @@ import { PageHeader } from "./PageHeader";
 // SafeAreaView in the app gets it, not just Page's.
 cssInterop(SafeAreaView, { className: "style" });
 
-const WALL = require("../../assets/concrete-wall.jpg");
+const WALL = require("@/assets/concrete-wall.jpg");
 
 /** The concrete wall every screen sits on: the (white) wall photo under a
  * heavy warm-black wash, so its cracks and pitting read as faint texture,

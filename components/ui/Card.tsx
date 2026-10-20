@@ -5,14 +5,15 @@ import { Pressable, View } from "react-native";
 
 import { LoadingFade } from "./Skeleton";
 import { TornEdge } from "./TornEdge";
+import { colors } from "@/lib/colors";
 
 // Zine panels: square-cornered paper in the card palette, tacked to the
 // wall at a slight angle. `neutral` is the near-black panel (rating levels,
 // people, form sections); `primary`/`accent` are the purple and red paper.
 const TINTS = {
-  neutral: { className: "bg-zine-panel/90 border border-white/10", color: "#0E0B0C" },
-  primary: { className: "bg-zine-purple", color: "#7E4FC6" },
-  accent: { className: "bg-zine-red", color: "#A5363E" },
+  neutral: { className: "bg-zine-panel/90 border border-white/10", color: colors.zine.panel },
+  primary: { className: "bg-zine-purple", color: colors.zine.purple },
+  accent: { className: "bg-zine-red", color: colors.zine.red },
 } as const;
 
 // Loading placeholders: the same papers, faded to unprinted stock.
@@ -97,7 +98,7 @@ export function Card({
   children: ReactNode;
 }) {
   const { className: tintClass, color } = (blank ? BLANK_TINTS : TINTS)[tint];
-  
+
   const paper = (
     <View className={`p-4 ${tintClass} ${className}`}>
       {torn && <TornEdge color={color} />}
@@ -113,7 +114,7 @@ export function Card({
       </LoadingFade>
     );
   }
-  
+
   if (!href) {
     return (
       <View className="shadow-lg shadow-black/60" style={{ transform }}>

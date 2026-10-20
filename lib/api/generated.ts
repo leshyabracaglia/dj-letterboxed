@@ -50,8 +50,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Check in at a venue, so the caller's log of it tonight shows as verified
-         * @description The venue must have coordinates, and latitude/longitude must be within 150m of it (up to 400m for a less accurate fix). Only the distance is stored, not the coordinates. A repeat check-in the same night is a no-op.
+         * Check in at a venue, so the caller's review of it tonight shows as verified
+         * @description At a saved venue (venueId) or a Google place (placeId, saved as a venue on check-in). The venue must have coordinates, and latitude/longitude must be within 150m of it (up to 400m for a less accurate fix). Only the distance is stored, not the coordinates. A repeat check-in the same night is a no-op.
          */
         post: {
             parameters: {
@@ -129,7 +129,7 @@ export interface paths {
         };
         /**
          * Venues the caller is at, to check in at, nearest first
-         * @description Saved venues with coordinates within a few hundred meters of lat/lng. The coordinates aren't stored.
+         * @description Saved venues with coordinates and Google Places venues (clubs, bars, event spaces) within a few hundred meters of lat/lng, up to 5. A Google place already saved is listed once, as the saved venue. The coordinates aren't stored.
          */
         get: {
             parameters: {
@@ -584,7 +584,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Following feed: followed users' nights out, newest logged first */
+        /** Following feed: your own and followed users' nights out, newest logged first */
         get: {
             parameters: {
                 query?: {
@@ -2013,6 +2013,94 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users/me/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the caller's own settings */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserSettings"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change the caller's own settings; omitted ones stay as they are */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description settings to change */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["updateSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserSettings"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/users/search": {
         parameters: {
             query?: never;
@@ -2063,7 +2151,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Block a user: hides each of you from the other and unfollows both ways */
+        /** Block a user: hides each of you from the other, and unfollows and untags both ways */
         post: {
             parameters: {
                 query?: never;
@@ -2686,8 +2774,9 @@ export interface components {
         NearbyVenue: {
             city: string | null;
             distanceM: number;
-            id: string;
+            id: string | null;
             name: string;
+            placeId: string | null;
         };
         NearbyVenuesResponse: {
             venues: components["schemas"]["NearbyVenue"][];
@@ -2695,7 +2784,7 @@ export interface components {
         Notification: {
             actor: components["schemas"]["User"];
             /** @description The comment's text, on comments. */
-            commentBody: string;
+            commentBody: string | null;
             createdAt: string;
             id: string;
             isUnread: boolean;
@@ -2708,8 +2797,8 @@ export interface components {
              * @description The night out it's about (not on follows), and its title (see
              *     nightTitleSQL).
              */
-            reviewId: string;
-            subject: string;
+            reviewId: string | null;
+            subject: string | null;
             /** @enum {string} */
             type: "follow" | "like" | "comment" | "tag";
         };
@@ -2902,6 +2991,13 @@ export interface components {
             reviewCount: number;
             user: components["schemas"]["User"];
         };
+        UserSettings: {
+            /**
+             * @description Whether they get the "people you follow logged nights" push after
+             *     being away (see httpapi/reengage.go).
+             */
+            reengagePush: boolean;
+        };
         UserStatsResponse: {
             recentDjs: components["schemas"]["RecentDj"][];
             topDjs: components["schemas"]["TopDj"][];
@@ -2937,17 +3033,22 @@ export interface components {
         };
         checkInRequest: {
             /** @description How accurate the device says the fix is, in meters. */
-            accuracyM: number;
+            accuracyM?: number;
             latitude: number;
             longitude: number;
-            venueId: string;
+            placeId?: string;
+            /**
+             * @description One of venueId (a saved venue) or placeId (a Google place from
+             *     GET /api/check-ins/nearby).
+             */
+            venueId?: string;
         };
         createDjRequest: {
-            bio: string;
-            genres: string[];
-            imageUrl: string;
+            bio?: string;
+            genres?: string[];
+            imageUrl?: string;
             name: string;
-            spotifyId: string;
+            spotifyId?: string;
         };
         createReportRequest: {
             commentId?: string;
@@ -2957,32 +3058,32 @@ export interface components {
             userId?: string;
         };
         createReviewRequest: {
-            city: string;
-            eventId: string;
-            eventName: string;
+            city?: string;
+            eventId?: string;
+            eventName?: string;
             /** @description When you went: day, night, or both. Neither given means night. */
-            isDay: boolean;
-            isNight: boolean;
+            isDay?: boolean;
+            isNight?: boolean;
             lineup: components["schemas"]["lineupEntryInput"][];
-            placeId: string;
-            placeSessionToken: string;
+            placeId?: string;
+            placeSessionToken?: string;
             /** @description The night as a whole, 1-5. Required. */
             rating: number;
-            reviewText: string;
+            reviewText?: string;
             seenAt: string;
             taggedUserIds: string[];
             /** @description Descriptive tag names ("packed"), and friends who were there. */
             tags: string[];
-            venue: string;
-            venueId: string;
+            venue?: string;
+            venueId?: string;
         };
         errorEnvelope: {
             error: components["schemas"]["apiError"];
         };
         lineupEntryInput: {
             djId: string;
-            rating: number;
-            reviewText: string;
+            rating?: number;
+            reviewText?: string;
         };
         pushTokenRequest: {
             /** @description "ios" or "android"; ignored on unregister. */
@@ -2994,14 +3095,21 @@ export interface components {
             reviewIds: string[];
         };
         updateProfileRequest: {
-            avatarUrl: string;
-            bio: string;
-            displayName: string;
-            username: string;
+            avatarUrl?: string;
+            bio?: string;
+            displayName?: string;
+            username?: string;
         };
         updateReviewRequest: {
             /** @description Replaces the tagged friends; [] clears them. */
             taggedUserIds: string[];
+        };
+        updateSettingsRequest: {
+            /**
+             * @description Whether to get a push when people you follow log nights while you've
+             *     been away.
+             */
+            reengagePush?: boolean;
         };
     };
     responses: never;

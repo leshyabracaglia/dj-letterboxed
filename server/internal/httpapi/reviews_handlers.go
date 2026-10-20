@@ -40,8 +40,8 @@ func parseSeenAt(s string, now time.Time) (time.Time, string) {
 // A DJ you saw. Rate them to review their set; reviewText needs a rating.
 type lineupEntryInput struct {
 	DjID       string  `json:"djId"`
-	Rating     *int16  `json:"rating"`
-	ReviewText *string `json:"reviewText"`
+	Rating     *int16  `json:"rating,omitempty"`
+	ReviewText *string `json:"reviewText,omitempty"`
 }
 
 // One night out: which event (optional), where and when, whether you went
@@ -50,20 +50,20 @@ type lineupEntryInput struct {
 // by name); neither means a night with no event name, just the venue. The
 // venue is required and given as in venueInput.
 type createReviewRequest struct {
-	EventID           *string `json:"eventId"`
-	EventName         *string `json:"eventName"`
-	Venue             string  `json:"venue"`
-	VenueID           *string `json:"venueId"`
-	PlaceID           *string `json:"placeId"`
-	PlaceSessionToken *string `json:"placeSessionToken"`
-	City              *string `json:"city"`
+	EventID           *string `json:"eventId,omitempty"`
+	EventName         *string `json:"eventName,omitempty"`
+	Venue             string  `json:"venue,omitempty"`
+	VenueID           *string `json:"venueId,omitempty"`
+	PlaceID           *string `json:"placeId,omitempty"`
+	PlaceSessionToken *string `json:"placeSessionToken,omitempty"`
+	City              *string `json:"city,omitempty"`
 	SeenAt            string  `json:"seenAt"`
 	// When you went: day, night, or both. Neither given means night.
-	IsDay   bool `json:"isDay"`
-	IsNight bool `json:"isNight"`
+	IsDay   bool `json:"isDay,omitempty"`
+	IsNight bool `json:"isNight,omitempty"`
 	// The night as a whole, 1-5. Required.
 	Rating     int16              `json:"rating"`
-	ReviewText *string            `json:"reviewText"`
+	ReviewText *string            `json:"reviewText,omitempty"`
 	Lineup     []lineupEntryInput `json:"lineup"`
 	// Descriptive tag names ("packed"), and friends who were there.
 	Tags          []string `json:"tags"`
@@ -124,12 +124,21 @@ func (req createReviewRequest) validate() (seenAt time.Time, lineup []queries.Li
 	if err != nil {
 		return time.Time{}, nil, nil, err.Error()
 	}
+
+	texts := append([]string{deref(req.ReviewText), deref(req.EventName), req.Venue, deref(req.City)}, tagNames...)
+	for _, e := range lineup {
+		texts = append(texts, deref(e.ReviewText))
+	}
+	if domain.IsObjectionable(texts...) {
+		return time.Time{}, nil, nil, domain.ErrObjectionable.Error()
+	}
 	return t, lineup, tagNames, ""
 }
 
-// validateTaggedUsers checks a tagged-friends list and returns it deduped,
-// with each user's row keyed by id, or a 400 message.
-func (h *Handlers) validateTaggedUsers(ctx context.Context, ids []string) ([]string, map[string]db.User, string, error) {
+// validateTaggedUsers checks the tagged-friends list callerID sent and
+// returns it deduped, with each user's row keyed by id, or a 400 message.
+// Nobody blocked either way can be tagged.
+func (h *Handlers) validateTaggedUsers(ctx context.Context, callerID string, ids []string) ([]string, map[string]db.User, string, error) {
 	ids = queries.DedupeStrings(ids)
 	if len(ids) > maxTaggedUsers {
 		return nil, nil, "too many tagged friends", nil
@@ -145,6 +154,15 @@ func (h *Handlers) validateTaggedUsers(ctx context.Context, ids []string) ([]str
 	}
 	if len(users) != len(ids) {
 		return nil, nil, "unknown user in taggedUserIds", nil
+	}
+	hidden, err := queries.HiddenUserIDs(ctx, h.Pool, callerID)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	for _, id := range ids {
+		if hidden[id] {
+			return nil, nil, "you can't tag @" + users[id].Username, nil
+		}
 	}
 	return ids, users, "", nil
 }
@@ -178,7 +196,7 @@ func (h *Handlers) CreateReview(w http.ResponseWriter, r *http.Request) {
 		BadRequest(w, errMsg)
 		return
 	}
-	taggedIDs, _, errMsg, err := h.validateTaggedUsers(ctx, req.TaggedUserIDs)
+	taggedIDs, _, errMsg, err := h.validateTaggedUsers(ctx, user.ID, req.TaggedUserIDs)
 	if err != nil {
 		InternalError(w, err)
 		return
@@ -273,14 +291,14 @@ func (h *Handlers) CreateReview(w http.ResponseWriter, r *http.Request) {
 }
 
 // writeResolveError reports a resolveVenue/resolveEvent failure: bad input
-// as a 400, Places being unconfigured as a 503, anything else as a 500.
+// as a 400, Places being unavailable (no key, or over budget) as a 503, anything else as a 500.
 func writeResolveError(w http.ResponseWriter, err error) {
 	var inputErr errBadInput
 	switch {
 	case errors.As(err, &inputErr):
 		BadRequest(w, inputErr.msg)
-	case errors.Is(err, domain.ErrPlacesNotConfigured):
-		WriteError(w, http.StatusServiceUnavailable, "UNAVAILABLE", "place search is not configured")
+	case domain.PlacesUnavailable(err):
+		WriteError(w, http.StatusServiceUnavailable, "UNAVAILABLE", "place search is unavailable right now")
 	default:
 		InternalError(w, err)
 	}
@@ -390,7 +408,7 @@ func (h *Handlers) UpdateReview(w http.ResponseWriter, r *http.Request) {
 		BadRequest(w, "taggedUserIds is required")
 		return
 	}
-	userIDs, users, errMsg, err := h.validateTaggedUsers(ctx, req.TaggedUserIDs)
+	userIDs, users, errMsg, err := h.validateTaggedUsers(ctx, user.ID, req.TaggedUserIDs)
 	if err != nil {
 		InternalError(w, err)
 		return
@@ -637,6 +655,10 @@ func (h *Handlers) AddComment(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Body == "" || len(req.Body) > 500 {
 		BadRequest(w, "body must be 1-500 characters")
+		return
+	}
+	if domain.IsObjectionable(req.Body) {
+		BadRequest(w, domain.ErrObjectionable.Error())
 		return
 	}
 

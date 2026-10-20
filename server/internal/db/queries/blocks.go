@@ -6,13 +6,17 @@ import (
 	"beatboxd/server/internal/db"
 )
 
-// Block blocks blockedID for blockerID and drops any follows between them,
-// either way.
+// Block blocks blockedID for blockerID and drops any follows and tags
+// between them, either way.
 func Block(ctx context.Context, q DBTX, blockerID, blockedID string) error {
 	_, err := q.Exec(ctx, `
 		WITH unfollow AS (
 			DELETE FROM follows
 			WHERE (follower_id = $1 AND following_id = $2) OR (follower_id = $2 AND following_id = $1)
+		), untag AS (
+			DELETE FROM review_tags rt USING reviews r
+			WHERE r.id = rt.review_id
+				AND ((r.user_id = $1 AND rt.tagged_user_id = $2) OR (r.user_id = $2 AND rt.tagged_user_id = $1))
 		)
 		INSERT INTO blocks (blocker_id, blocked_id) VALUES ($1, $2)
 		ON CONFLICT DO NOTHING`, blockerID, blockedID)
@@ -77,11 +81,13 @@ type CreateReportParams struct {
 	Content        *string
 }
 
+// CreateReport records a report, keeping the reported user's current
+// username so it still says who it was about once their account is deleted.
 func CreateReport(ctx context.Context, q DBTX, p CreateReportParams) (string, error) {
 	var id string
 	err := q.QueryRow(ctx, `
-		INSERT INTO reports (reporter_id, reported_user_id, review_id, comment_id, reason, content)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO reports (reporter_id, reported_user_id, reported_username, review_id, comment_id, reason, content)
+		VALUES ($1, $2, (SELECT username FROM users WHERE id = $2), $3, $4, $5, $6)
 		RETURNING id`, p.ReporterID, p.ReportedUserID, p.ReviewID, p.CommentID, p.Reason, p.Content).Scan(&id)
 	return id, err
 }

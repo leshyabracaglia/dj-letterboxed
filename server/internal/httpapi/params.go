@@ -55,6 +55,14 @@ func queryTimeCursor(r *http.Request, param string) *time.Time {
 	return &t
 }
 
+// deref returns *s, or "" for nil.
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
 // requireQueryParam reads a required query param, writing a 400 and
 // returning ok=false if it's missing.
 func requireQueryParam(w http.ResponseWriter, r *http.Request, name string) (string, bool) {

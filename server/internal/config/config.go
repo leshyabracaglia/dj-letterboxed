@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 )
 
 type Config struct {
@@ -17,6 +18,9 @@ type Config struct {
 	// Optional: without it place search returns 503 and venues can only be
 	// typed in by hand.
 	GooglePlacesAPIKey string
+	// GooglePlacesDailyLimit caps Google calls (Places and Geocoding) a day
+	// across all users; 0 for no cap.
+	GooglePlacesDailyLimit int
 	// Optional: only needed if the Expo project has enhanced push security
 	// turned on. Push notifications send without it otherwise.
 	ExpoAccessToken string
@@ -40,6 +44,7 @@ func Load() (*Config, error) {
 		SpotifyClientID:           os.Getenv("SPOTIFY_CLIENT_ID"),
 		SpotifyClientSecret:       os.Getenv("SPOTIFY_CLIENT_SECRET"),
 		GooglePlacesAPIKey:        os.Getenv("GOOGLE_PLACES_API_KEY"),
+		GooglePlacesDailyLimit:    getEnvInt("GOOGLE_PLACES_DAILY_LIMIT", 2000),
 		ExpoAccessToken:           os.Getenv("EXPO_ACCESS_TOKEN"),
 		ResendAPIKey:              os.Getenv("RESEND_API_KEY"),
 		ReportsEmail:              os.Getenv("REPORTS_EMAIL"),
@@ -77,6 +82,13 @@ func Load() (*Config, error) {
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return fallback
+}
+
+func getEnvInt(key string, fallback int) int {
+	if n, err := strconv.Atoi(os.Getenv(key)); err == nil {
+		return n
 	}
 	return fallback
 }

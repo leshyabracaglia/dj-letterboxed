@@ -32,3 +32,9 @@ variable "instance_class" {
   default     = "db.t3.micro"
   description = "db.t3.micro (not db.t4g.micro) to stay inside the standard 12-month RDS Free Tier's most broadly eligible class."
 }
+
+variable "backup_retention_days" {
+  description = "How many days each daily AWS Backup snapshot of the database is kept."
+  type        = number
+  default     = 14
+}

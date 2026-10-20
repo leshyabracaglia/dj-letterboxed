@@ -1,13 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { skipToken, useQuery } from "@tanstack/react-query";
 import { Link, Stack, useLocalSearchParams } from "expo-router";
 import { FlatList, Pressable, View } from "react-native";
 
 import { Avatar, EmptyState, Page, RowSeparator, Skeleton, Text, usePageContentStyle } from "./ui";
-import { useApi } from "../lib/api/client";
-import { useUserProfile } from "../lib/api/hooks";
-import { queryKeys } from "../lib/api/queryKeys";
-import type { User } from "../lib/api/types";
-import { ROUTES } from "../lib/routes";
+import { unwrap, useApi } from "@/lib/api/client";
+import { useUserProfile } from "@/lib/api/hooks";
+import { queryKeys } from "@/lib/api/queryKeys";
+import { ROUTES } from "@/lib/routes";
 
 const USER_LIST_TYPES = {
   FOLLOWING: "following",
@@ -27,13 +26,20 @@ export function UserListScreen({ userListMode }: { userListMode: UserListType })
   const contentStyle = usePageContentStyle("roomy");
 
   const { data: profile } = useUserProfile(username);
+  const userId = profile?.user.id;
+  const isFollowers = userListMode === USER_LIST_TYPES.FOLLOWERS;
   const { data: list } = useQuery({
-    queryKey:
-      userListMode === USER_LIST_TYPES.FOLLOWERS
-        ? queryKeys.users.followers(profile?.user.id ?? "")
-        : queryKeys.users.following(profile?.user.id ?? ""),
-    queryFn: () => api.get<User[]>(`/users/${profile?.user.id}/${userListMode}`),
-    enabled: !!profile,
+    queryKey: isFollowers ? queryKeys.users.followers(userId ?? "") : queryKeys.users.following(userId ?? ""),
+    queryFn: userId
+      ? () => {
+          const init = { params: { path: { userId } } };
+          return unwrap(
+            isFollowers
+              ? api.GET("/api/users/{userId}/followers", init)
+              : api.GET("/api/users/{userId}/following", init),
+          );
+        }
+      : skipToken,
   });
 
   const { title, empty } = USER_LIST_TYPE_COPY[userListMode];
@@ -58,7 +64,7 @@ export function UserListScreen({ userListMode }: { userListMode: UserListType })
         ItemSeparatorComponent={RowSeparator}
         ListEmptyComponent={
           list ? (
-            <View className="mt-10" >
+            <View className="mt-10">
               <EmptyState message={empty} />
             </View>
           ) : (

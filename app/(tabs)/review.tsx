@@ -1,30 +1,28 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Animated, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
+import { Animated, Pressable, ScrollView, TextInput, View } from "react-native";
 
 import {
-  artistPickKey,
   artistPickName,
   draftFromRA,
   draftFromReview,
   draftProblem,
   emptyDraft,
-  type IArtistPick,
-  type IBlankSeed,
-  type IEventPick,
-  type ILineupEntry,
-  type IReviewDraft,
-  type ISheet,
-} from "../../components/log/draft";
-import { FieldLabel, LinedInput, SectionHeading } from "../../components/log/fields";
-import { FindTheNight } from "../../components/log/FindTheNight";
-import { ArtistSearchInput, CaughtChecklist, CreateArtistSheet, LineupCard } from "../../components/log/lineup";
-import { NightPoster, PosterCaption } from "../../components/log/NightPoster";
-import { DateSheet, EventSheet, VenueSheet } from "../../components/log/sheets";
-import { TagPicker } from "../../components/log/TagPicker";
-import { useLogNight } from "../../components/log/useLogNight";
-import { TagFriendsPicker } from "../../components/TagFriendsPicker";
+  type BlankSeed,
+  type EventPick,
+  type DraftLineupEntry,
+  type ReviewDraft,
+} from "@/components/log/draft";
+import { FieldLabel, LinedInput, SectionHeading } from "@/components/log/fields";
+import { FindTheNight } from "@/components/log/FindTheNight";
+import { ArtistSearchInput, CaughtChecklist, CreateArtistSheet, LineupCard } from "@/components/log/lineup";
+import { NightPoster, PosterCaption } from "@/components/log/NightPoster";
+import { DateSheet, EventSheet, VenueSheet } from "@/components/log/sheets";
+import { TagPicker } from "@/components/log/TagPicker";
+import { useLogForm } from "@/components/log/useLogForm";
+import { useLogNight } from "@/components/log/useLogNight";
+import { TagFriendsPicker } from "@/components/TagFriendsPicker";
 import {
   Button,
   Card,
@@ -36,226 +34,164 @@ import {
   Text,
   TORN_CARD_GAP,
   usePageContentStyle,
-} from "../../components/ui";
-import { errorMessage, useApi } from "../../lib/api/client";
-import { queryKeys } from "../../lib/api/queryKeys";
-import type { RAEvent, RAEventMatch, Review, VenueDetail } from "../../lib/api/types";
-import { useCurrentUser } from "../../lib/auth";
-import { plural } from "../../lib/format";
-import { ROUTES } from "../../lib/routes";
+} from "@/components/ui";
+import { errorMessage, useApi, unwrap } from "@/lib/api/client";
+import { queryKeys } from "@/lib/api/queryKeys";
+import type { RAEvent } from "@/lib/api/types";
+import { useCurrentUser } from "@/lib/auth";
+import { plural } from "@/lib/format";
+import { ROUTES } from "@/lib/routes";
+import { isWeb } from "@/lib/platform";
 
 // The log tab: find the night, then fill in its poster and rate it. The
-// form's pieces live in components/log/.
+// form's pieces (and its state, useLogForm) live in components/log/.
 export default function CreateReviewScreen() {
   const api = useApi();
   const queryClient = useQueryClient();
   const contentStyle = usePageContentStyle();
   const scrollRef = useRef<ScrollView>(null);
   const djInputRef = useRef<TextInput>(null);
-  const shake = useRef(new Animated.Value(0)).current;
+  const [shake] = useState(() => new Animated.Value(0));
 
   const { me } = useCurrentUser();
   const { logNight, pending } = useLogNight();
-
-  // The log opens on the search; picking a night (or a blank poster) moves
-  // on to the poster form.
-  const [stage, setStage] = useState<"search" | "form">("search");
-  // The RA night being matched to DJs and a venue, while it loads.
-  const [matchingId, setMatchingId] = useState<string>();
-  const [filledFrom, setFilledFrom] = useState<string>();
-  // The review a poster was filled in from (ROUTES.REVIEW_FROM), while it
-  // loads and then until it's logged.
+  const { state, dispatch, caught, listedLineup, editingEntry } = useLogForm();
+  const { draft, lineup } = state;
   const { fromReview } = useLocalSearchParams<{ fromReview?: string }>();
-  const [sourceReviewId, setSourceReviewId] = useState<string>();
-  const [prefilling, setPrefilling] = useState(false);
-  const [venueSheetQuery, setVenueSheetQuery] = useState("");
-  const [sheet, setSheet] = useState<ISheet>();
-  const [addingDj, setAddingDj] = useState(false);
-  const [djQuery, setDjQuery] = useState("");
-  const [lineup, setLineup] = useState<ILineupEntry[]>([]);
-  // Open for a new artist (null) or to edit a hand-made one in the lineup (its key).
-  const [artistSheet, setArtistSheet] = useState<{ editingKey: string | null }>();
-  const [draft, setDraft] = useState<IReviewDraft>(emptyDraft);
-  const [venueMissing, setVenueMissing] = useState(false);
-  const [nightMissing, setNightMissing] = useState(false);
-  const [error, setError] = useState<string>();
 
-  const updateDraft = (changes: Partial<IReviewDraft>) => setDraft((prev) => ({ ...prev, ...changes }));
-  const updateEntry = (key: string, changes: Partial<ILineupEntry>) =>
-    setLineup((prev) => prev.map((e) => (e.key === key ? { ...e, ...changes } : e)));
-
-  // Move on to the poster form, starting from `next`.
-  const openForm = (next: { draft: IReviewDraft; lineup?: ILineupEntry[]; filledFrom?: string; error?: string }) => {
-    setDraft(next.draft);
-    setLineup(next.lineup ?? []);
-    setFilledFrom(next.filledFrom);
-    setError(next.error);
-    setStage("form");
-  };
-
-  const resetForm = () => {
-    setStage("search");
-    setFilledFrom(undefined);
-    setSourceReviewId(undefined);
-    setMatchingId(undefined);
-    setSheet(undefined);
-    setDjQuery("");
-    setAddingDj(false);
-    setLineup([]);
-    setDraft(emptyDraft());
-    setVenueMissing(false);
-    setNightMissing(false);
-    setError(undefined);
-  };
-
-  const addToLineup = (pick: IArtistPick) => {
-    const key = artistPickKey(pick);
-    // Adding a DJ who's on the RA lineup ticks them off.
-    setLineup((prev) =>
-      prev.some((e) => e.key === key)
-        ? prev.map((e) => (e.key === key ? { ...e, caught: true } : e))
-        : [...prev, { key, pick, reviewText: "", reviewing: false, caught: true }],
-    );
-    setDjQuery("");
-    setAddingDj(false);
-  };
+  const updateDraft = (changes: Partial<ReviewDraft>) => dispatch({ type: "updateDraft", changes });
+  const updateEntry = (key: string, changes: Partial<DraftLineupEntry>) =>
+    dispatch({ type: "updateEntry", key, changes });
+  const closeSheet = () => dispatch({ type: "closeSheet" });
 
   // "+ Who played" on the poster: open the DJ search below and focus it
   // (which scrolls it into view).
-  const startAddingDj = () => {
-    setAddingDj(true);
+  const startAddingDj = (query?: string) => {
+    dispatch({ type: "startAddingDj", query });
     requestAnimationFrame(() => djInputRef.current?.focus());
   };
 
   // A missing venue shakes the poster's venue strip and outlines it, rather
   // than an error under the form.
-  const flagMissingVenue = () => {
-    setVenueMissing(true);
+  const shakeVenue = () => {
     scrollRef.current?.scrollTo({ y: 0, animated: true });
-    const useNativeDriver = Platform.OS !== "web";
+    const useNativeDriver = !isWeb;
     shake.setValue(0);
     Animated.sequence(
       [10, -10, 8, -8, 4, -4, 0].map((toValue) => Animated.timing(shake, { toValue, duration: 50, useNativeDriver })),
     ).start();
   };
 
-  const caught = lineup.filter((e) => e.caught);
-  const listedLineup = lineup.filter((e) => e.listed);
-
   // Fill the poster from an RA night: its DJs matched to Beatboxd/Spotify
   // and its venue to Google Places by the server.
-  const pickRAEvent = async (event: RAEvent) => {
-    setMatchingId(event.id);
-    try {
-      const match = await queryClient.fetchQuery({
+  const matchRAEvent = useMutation({
+    mutationFn: (event: RAEvent) =>
+      queryClient.fetchQuery({
         queryKey: queryKeys.ra.match(event.id),
-        queryFn: () => api.get<RAEventMatch>(`/ra/events/${event.id}/match`),
+        queryFn: () => unwrap(api.GET("/api/ra/events/{id}/match", { params: { path: { id: event.id } } })),
         staleTime: 5 * 60 * 1000,
-      });
-      openForm({ ...draftFromRA(match), filledFrom: "Resident Advisor" });
-    } catch (err) {
-      // Still get them logging: a poster seeded with what RA listed.
-      openForm({
+      }),
+    onSuccess: (match) => dispatch({ type: "openForm", ...draftFromRA(match), filledFrom: "Resident Advisor" }),
+    // Still get them logging: a poster seeded with what RA listed.
+    onError: (err, event) =>
+      dispatch({
+        type: "openForm",
         draft: {
           ...emptyDraft(),
           venuePick: event.venue.name ? { type: "typed", name: event.venue.name, city: event.venue.area } : undefined,
         },
         error: `Couldn't fill this in from Resident Advisor (${errorMessage(err, "try again")}). Fill in the rest below.`,
-      });
-    } finally {
-      setMatchingId(undefined);
-    }
-  };
+      }),
+  });
+  const matchingId = matchRAEvent.isPending ? matchRAEvent.variables.id : undefined;
 
-  // Fill the poster from a night someone tagged you in. The param is
-  // cleared once read, so coming back to the tab doesn't refill it.
+  // Fill the poster from a night someone tagged you in.
+  const prefill = useMutation({
+    mutationFn: async ({ reviewId, userId }: { reviewId: string; userId: string }) => {
+      const review = await queryClient.fetchQuery({
+        queryKey: queryKeys.reviews.byId(reviewId),
+        queryFn: () => unwrap(api.GET("/api/reviews/{id}", { params: { path: { id: reviewId } } })),
+      });
+      const venueId = review.venueId;
+      const venue = venueId
+        ? await queryClient.fetchQuery({
+            queryKey: queryKeys.venues.byId(venueId),
+            queryFn: () => unwrap(api.GET("/api/venues/{id}", { params: { path: { id: venueId } } })),
+          })
+        : undefined;
+      return { review, ...draftFromReview(review, venue?.venue, userId) };
+    },
+    onSuccess: ({ review, ...filled }) =>
+      dispatch({
+        type: "openForm",
+        ...filled,
+        filledFrom: review.user ? `@${review.user.username}'s log` : "their log",
+        sourceReviewId: review.id,
+      }),
+    onError: (err) =>
+      dispatch({ type: "setError", error: `Couldn't fill in that night (${errorMessage(err, "try again")}).` }),
+  });
+  // The param is cleared once read, so coming back to the tab doesn't
+  // refill it.
+  const { mutate: prefillFrom } = prefill;
   useEffect(() => {
     if (!fromReview || !me) return;
     router.setParams({ fromReview: undefined });
-    setPrefilling(true);
-    (async () => {
-      try {
-        const review = await queryClient.fetchQuery({
-          queryKey: queryKeys.reviews.byId(fromReview),
-          queryFn: () => api.get<Review>(`/reviews/${fromReview}`),
-        });
-        const venueId = review.venueId;
-        const venue = venueId
-          ? await queryClient.fetchQuery({
-              queryKey: queryKeys.venues.byId(venueId),
-              queryFn: () => api.get<VenueDetail>(`/venues/${venueId}`),
-            })
-          : undefined;
-        openForm({
-          ...draftFromReview(review, venue?.venue, me.id),
-          filledFrom: review.user ? `@${review.user.username}'s log` : "their log",
-        });
-        setSourceReviewId(review.id);
-      } catch (err) {
-        setError(`Couldn't fill in that night (${errorMessage(err, "try again")}).`);
-      } finally {
-        setPrefilling(false);
-      }
-    })();
-  }, [fromReview, me, api, queryClient]);
+    prefillFrom({ reviewId: fromReview, userId: me.id });
+  }, [fromReview, me, prefillFrom]);
 
-  const startBlank = (seed?: IBlankSeed, eventPick?: IEventPick) => {
-    openForm({
+  const startBlank = (seed?: BlankSeed, eventPick?: EventPick) => {
+    dispatch({
+      type: "openForm",
       draft: {
         ...emptyDraft(),
         eventPick: eventPick ?? (seed?.type === "event" ? { type: "new", name: seed.text } : undefined),
       },
     });
-    if (seed?.type === "dj") {
-      setDjQuery(seed.text);
-      startAddingDj();
-    } else if (seed?.type === "venue") {
-      setVenueSheetQuery(seed.text);
-      setSheet("venue");
-    }
+    if (seed?.type === "dj") startAddingDj(seed.text);
+    else if (seed?.type === "venue") dispatch({ type: "openSheet", sheet: "venue", venueQuery: seed.text });
   };
 
   const onSubmit = async () => {
     const problem = draftProblem(draft, caught);
-    setError(problem?.message);
-    if (problem?.field === "venue") flagMissingVenue();
-    if (problem?.field === "night") setNightMissing(true);
+    dispatch({ type: "setError", error: problem?.message });
+    if (problem?.field) dispatch({ type: "flagMissing", field: problem.field });
+    if (problem?.field === "venue") shakeVenue();
     if (problem) return;
 
     try {
       const reviewId = await logNight(draft, caught, {
-        sourceReviewId,
+        sourceReviewId: state.sourceReviewId,
         onDjSaved: (key, dj) => updateEntry(key, { pick: { type: "existing", dj } }),
       });
       // The tab stays mounted behind the review page, so clear it for the
       // next log rather than leaving this one's answers filled in on back.
-      resetForm();
+      dispatch({ type: "reset" });
       router.push(ROUTES.REVIEW_DETAIL(reviewId, { justLogged: true }));
     } catch (err) {
-      setError(errorMessage(err, "Could not save your review"));
+      dispatch({ type: "setError", error: errorMessage(err, "Could not save your review") });
     }
   };
 
-  const editingEntry = lineup.find((e) => e.key === artistSheet?.editingKey);
-  const closeSheet = () => setSheet(undefined);
-
-  if (prefilling) {
+  if (prefill.isPending) {
     return (
       <Page title="Log a night" channel="CH 03 · Log">
         <View className="flex-1 items-center justify-center">
-          <Text className="font-display text-xl uppercase text-paper/70">Filling in the night…</Text>
+          <Text variant="display" className="text-xl text-paper/70">
+            Filling in the night…
+          </Text>
         </View>
       </Page>
     );
   }
 
-  if (stage === "search") {
+  if (state.stage === "search") {
     return (
       <Page title="Log a night" channel="CH 03 · Log">
-        {!!error && <Text className="mx-6 text-stamp-red">{error}</Text>}
+        {!!state.error && <Text className="mx-6 text-stamp-red">{state.error}</Text>}
         <FindTheNight
           matchingId={matchingId}
-          onPickRA={pickRAEvent}
+          onPickRA={(event) => matchRAEvent.mutate(event)}
           onPickEvent={(event) => startBlank(undefined, { type: "existing", event })}
           onStartBlank={startBlank}
         />
@@ -267,27 +203,29 @@ export default function CreateReviewScreen() {
     <Page title="Log a night" channel="CH 03 · Log">
       <KeyboardScrollView ref={scrollRef} contentContainerStyle={contentStyle}>
         <Pressable
-          onPress={resetForm}
+          onPress={() => dispatch({ type: "reset" })}
           hitSlop={8}
           accessibilityLabel="Back to search"
           className="mt-1 flex-row items-center gap-1 self-start active:opacity-70"
         >
           <Icon name="chevron-back" size={16} className="text-paper/70" />
-          <Text className="font-display text-base uppercase text-paper/70">Search again</Text>
+          <Text variant="display" className="text-base text-paper/70">
+            Search again
+          </Text>
         </Pressable>
         <View className="mt-2">
           <NightPoster
             draft={draft}
             lineup={lineup.map((e) => ({ name: artistPickName(e.pick), dim: !e.caught }))}
             username={me?.username}
-            venueMissing={venueMissing}
+            venueMissing={state.venueMissing}
             shake={shake}
-            onEdit={setSheet}
-            onAddDj={startAddingDj}
+            onEdit={(sheet) => dispatch({ type: "openSheet", sheet })}
+            onAddDj={() => startAddingDj()}
             onToggle={(field) => updateDraft({ [field]: !draft[field] })}
           />
           <View className="-mt-2" />
-          <PosterCaption draft={draft} username={me?.username} filledFrom={filledFrom} />
+          <PosterCaption draft={draft} username={me?.username} filledFrom={state.filledFrom} />
         </View>
 
         {!!listedLineup.length && (
@@ -326,36 +264,30 @@ export default function CreateReviewScreen() {
                 // Only hand-made artists (not yet saved, not from Spotify) are editable.
                 onEdit={
                   entry.pick.type === "new" && !entry.pick.input.spotifyId
-                    ? () => setArtistSheet({ editingKey: entry.key })
+                    ? () => dispatch({ type: "openArtistSheet", editingKey: entry.key })
                     : undefined
                 }
-                // A listed DJ is unticked (still listed above); one you added goes.
-                onRemove={() =>
-                  entry.listed
-                    ? updateEntry(entry.key, { caught: false })
-                    : setLineup((prev) => prev.filter((e) => e.key !== entry.key))
-                }
+                onRemove={() => dispatch({ type: "removeEntry", key: entry.key })}
               />
             ))}
-            {addingDj ? (
+            {state.addingDj ? (
               <ArtistSearchInput
                 inputRef={djInputRef}
-                value={djQuery}
-                onChangeText={setDjQuery}
-                onSelect={addToLineup}
-                onCreate={() => setArtistSheet({ editingKey: null })}
-                onCancel={() => {
-                  setAddingDj(false);
-                  setDjQuery("");
-                }}
+                value={state.djQuery}
+                onChangeText={(query) => dispatch({ type: "setDjQuery", query })}
+                onSelect={(pick) => dispatch({ type: "addToLineup", pick })}
+                onCreate={() => dispatch({ type: "openArtistSheet", editingKey: null })}
+                onCancel={() => dispatch({ type: "cancelAddingDj" })}
               />
             ) : (
               <Pressable
-                onPress={startAddingDj}
+                onPress={() => startAddingDj()}
                 className="flex-row items-center gap-2 border border-dashed border-paper/50 bg-black/30 px-4 py-3 active:opacity-70"
               >
                 <Icon name="add" size={18} className="text-paper/80" />
-                <Text className="font-display text-xl uppercase text-paper/80">Add a DJ: search Spotify</Text>
+                <Text variant="display" className="text-xl text-paper/80">
+                  Add a DJ: search Spotify
+                </Text>
               </Pressable>
             )}
           </View>
@@ -367,28 +299,21 @@ export default function CreateReviewScreen() {
             title="The night overall"
             numberClassName="text-stamp-red"
             aside="Required"
-            asideClassName={nightMissing ? "text-danger-dark" : "text-paper/50"}
+            asideClassName={state.nightMissing ? "text-danger-dark" : "text-paper/50"}
           />
           <Card tint="neutral" className="gap-5 pb-5">
             <Tape style={{ top: -10, right: 32 }} rotate={5} />
             <View className="gap-2">
               <FieldLabel>Your rating</FieldLabel>
-              <RatingStampPicker
-                value={draft.rating}
-                onChange={(rating) => {
-                  updateDraft({ rating });
-                  setNightMissing(false);
-                }}
-                size={48}
-              />
-              {nightMissing && <Text className="text-sm text-danger-dark">Rate the night to pin it up</Text>}
+              <RatingStampPicker value={draft.rating} onChange={(rating) => updateDraft({ rating })} size={48} />
+              {state.nightMissing && <Text className="text-sm text-danger-dark">Rate the night to pin it up</Text>}
             </View>
             <View className="gap-2">
               <FieldLabel>What was it like</FieldLabel>
               <TagPicker
                 tags={draft.tags}
-                onAdd={(tag) => setDraft((prev) => ({ ...prev, tags: [...prev.tags, tag] }))}
-                onRemove={(tag) => setDraft((prev) => ({ ...prev, tags: prev.tags.filter((t) => t !== tag) }))}
+                onAdd={(tag) => updateDraft({ tags: [...draft.tags, tag] })}
+                onRemove={(tag) => updateDraft({ tags: draft.tags.filter((t) => t !== tag) })}
               />
             </View>
             <View className="gap-1">
@@ -404,9 +329,9 @@ export default function CreateReviewScreen() {
               <FieldLabel>Who you went with</FieldLabel>
               <TagFriendsPicker
                 taggedUsers={draft.taggedUsers}
-                onAdd={(user) => setDraft((prev) => ({ ...prev, taggedUsers: [...prev.taggedUsers, user] }))}
+                onAdd={(user) => updateDraft({ taggedUsers: [...draft.taggedUsers, user] })}
                 onRemoveTaggedUser={(userId) =>
-                  setDraft((prev) => ({ ...prev, taggedUsers: prev.taggedUsers.filter((u) => u.id !== userId) }))
+                  updateDraft({ taggedUsers: draft.taggedUsers.filter((u) => u.id !== userId) })
                 }
               />
             </View>
@@ -414,9 +339,9 @@ export default function CreateReviewScreen() {
         </View>
 
         <View className="mt-6 gap-3">
-          {!!error && <Text className="text-danger-dark">{error}</Text>}
+          {!!state.error && <Text className="text-danger-dark">{state.error}</Text>}
           <Button disabled={pending} onPress={onSubmit} className="flex-row gap-2 py-3">
-            <Text className="font-display text-2xl uppercase text-paper">
+            <Text variant="display" className="text-2xl text-paper">
               {pending ? "Pinning it up…" : "Pin it to the wall"}
             </Text>
             {!pending && <Icon name="arrow-forward" size={20} className="text-paper" />}
@@ -424,7 +349,7 @@ export default function CreateReviewScreen() {
         </View>
       </KeyboardScrollView>
 
-      {sheet === "event" && (
+      {state.sheet === "event" && (
         <EventSheet
           current={draft.eventPick}
           onPick={(eventPick) => {
@@ -434,7 +359,7 @@ export default function CreateReviewScreen() {
           onClose={closeSheet}
         />
       )}
-      {sheet === "date" && (
+      {state.sheet === "date" && (
         <DateSheet
           value={draft.seenAt}
           onPick={(seenAt) => {
@@ -444,34 +369,22 @@ export default function CreateReviewScreen() {
           onClose={closeSheet}
         />
       )}
-      {sheet === "venue" && (
+      {state.sheet === "venue" && (
         <VenueSheet
           current={draft.venuePick}
-          initialQuery={venueSheetQuery}
+          initialQuery={state.venueSheetQuery}
           onPick={(venuePick) => {
             updateDraft({ venuePick });
-            setVenueMissing(false);
-            setVenueSheetQuery("");
             closeSheet();
           }}
-          onClose={() => {
-            setVenueSheetQuery("");
-            closeSheet();
-          }}
+          onClose={closeSheet}
         />
       )}
-      {artistSheet && (
+      {state.artistSheet && (
         <CreateArtistSheet
-          initial={editingEntry?.pick.type === "new" ? editingEntry.pick.input : { name: djQuery.trim() }}
-          onClose={() => setArtistSheet(undefined)}
-          onSave={(input) => {
-            if (editingEntry) {
-              updateEntry(editingEntry.key, { pick: { type: "new", input } });
-            } else {
-              addToLineup({ type: "new", input });
-            }
-            setArtistSheet(undefined);
-          }}
+          initial={editingEntry?.pick.type === "new" ? editingEntry.pick.input : { name: state.djQuery.trim() }}
+          onClose={() => dispatch({ type: "closeArtistSheet" })}
+          onSave={(input) => dispatch({ type: "saveArtist", input })}
         />
       )}
     </Page>

@@ -2,8 +2,8 @@ import { router } from "expo-router";
 import { Pressable, View } from "react-native";
 
 import { Icon, Text } from "./ui";
-import { useUnreadNotificationCount } from "../lib/api/hooks";
-import { ROUTES } from "../lib/routes";
+import { useUnreadNotificationCount } from "@/lib/api/hooks";
+import { ROUTES } from "@/lib/routes";
 
 const MAX_UNREAD_NOTIFICATIONS = 20;
 

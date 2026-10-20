@@ -18,12 +18,12 @@ import {
   Tape,
   Text,
   tiltFor,
-} from "../ui";
-import { useApi } from "../../lib/api/client";
-import { useDjSearch } from "../../lib/api/hooks";
-import { queryKeys } from "../../lib/api/queryKeys";
-import type { Dj, SpotifyArtist } from "../../lib/api/types";
-import { artistPickName, type IArtistPick, type ICreateDjInput, type ILineupEntry } from "./draft";
+} from "@/components/ui";
+import { useApi, unwrap } from "@/lib/api/client";
+import { useDjSearch } from "@/lib/api/hooks";
+import { queryKeys } from "@/lib/api/queryKeys";
+import type { CreateDjInput, Dj } from "@/lib/api/types";
+import { artistPickName, type ArtistPick, type DraftLineupEntry } from "./draft";
 import { CircleIcon, FieldLabel, INPUT_CLASS, LinedInput, NO_WEB_OUTLINE, SheetRow } from "./fields";
 
 // The night's DJs: ticking off a listed lineup, adding artists, and rating
@@ -35,7 +35,7 @@ const VISIBLE_RESULT_ROWS = 5;
 
 // "Who did you catch?": the listed lineup as checkboxes. Ticked DJs go on the
 // log and get a card below to rate their set.
-export function CaughtChecklist({ lineup, onToggle }: { lineup: ILineupEntry[]; onToggle: (key: string) => void }) {
+export function CaughtChecklist({ lineup, onToggle }: { lineup: DraftLineupEntry[]; onToggle: (key: string) => void }) {
   return (
     <View className="border border-white/10 bg-zine-panel/90">
       {lineup.map((entry) => (
@@ -53,7 +53,7 @@ export function CaughtChecklist({ lineup, onToggle }: { lineup: ILineupEntry[]; 
           >
             {entry.caught && <Icon name="checkmark" size={16} className="text-paper" />}
           </View>
-          <Text numberOfLines={1} className="flex-1 font-display text-xl uppercase leading-6 text-paper">
+          <Text numberOfLines={1} variant="display" className="flex-1 text-xl leading-6 text-paper">
             {artistPickName(entry.pick)}
           </Text>
         </Pressable>
@@ -92,7 +92,7 @@ function ArtistResultRow({
     >
       <Avatar uri={imageUrl} name={name} size={40} />
       <View className="flex-1">
-        <Text numberOfLines={1} className="font-display text-lg uppercase leading-5 text-paper">
+        <Text numberOfLines={1} variant="display" className="text-lg leading-5 text-paper">
           {name}
         </Text>
         {!!subtitle && (
@@ -115,7 +115,7 @@ export function ArtistSearchInput({
 }: {
   value: string;
   onChangeText: (text: string) => void;
-  onSelect: (pick: IArtistPick) => void;
+  onSelect: (pick: ArtistPick) => void;
   onCreate: () => void;
   onCancel: () => void;
   inputRef: Ref<TextInput>;
@@ -127,7 +127,7 @@ export function ArtistSearchInput({
   const { data: localResults, isFetching: isLocalFetching } = useDjSearch(query, { enabled });
   const { data: spotifyResults, isFetching: isSpotifyFetching } = useQuery({
     queryKey: queryKeys.djs.spotifySearch(query),
-    queryFn: () => api.get<SpotifyArtist[]>("/djs/spotify-search", { q: query }),
+    queryFn: () => unwrap(api.GET("/api/djs/spotify-search", { params: { query: { q: query } } })),
     enabled,
   });
 
@@ -136,9 +136,11 @@ export function ArtistSearchInput({
   // re-created); community-added DJs with no Spotify match go last.
   const locals = localResults ?? [];
   const localBySpotifyId = new Map(locals.filter((dj) => dj.spotifyId).map((dj) => [dj.spotifyId, dj]));
-  const rows: IArtistPick[] = (spotifyResults ?? []).map((artist) => {
+  const rows: ArtistPick[] = (spotifyResults ?? []).map((artist) => {
     const dj = localBySpotifyId.get(artist.spotifyId);
-    return dj ? { type: "existing", dj } : { type: "new", input: artist };
+    return dj
+      ? { type: "existing", dj }
+      : { type: "new", input: { ...artist, imageUrl: artist.imageUrl ?? undefined } };
   });
   const listedDjIds = new Set(rows.flatMap((row) => (row.type === "existing" ? [row.dj.id] : [])));
   const remaining = locals.filter((dj) => !listedDjIds.has(dj.id));
@@ -233,7 +235,9 @@ function PhotoLightbox({ uri, name, onClose }: { uri: string; name: string; onCl
         className="flex-1 items-center justify-center bg-ink/90"
       >
         <Photo uri={uri} width={size} height={size} framed rotate={-2} />
-        <Text className="mt-6 px-6 text-center font-display text-4xl uppercase text-paper">{name}</Text>
+        <Text variant="display" className="mt-6 px-6 text-center text-4xl text-paper">
+          {name}
+        </Text>
       </Pressable>
     </Modal>
   );
@@ -248,9 +252,9 @@ export function LineupCard({
   onEdit,
   onRemove,
 }: {
-  entry: ILineupEntry;
+  entry: DraftLineupEntry;
   index: number;
-  onChange: (changes: Partial<ILineupEntry>) => void;
+  onChange: (changes: Partial<DraftLineupEntry>) => void;
   onEdit?: () => void;
   onRemove: () => void;
 }) {
@@ -268,13 +272,15 @@ export function LineupCard({
       <View className="flex-row gap-3">
         <View className="flex-1">
           <View className="flex-row items-center gap-3">
-            <Text className={`font-display text-sm uppercase ${paper.inkClassName}`}>
+            <Text variant="display" className={`text-sm ${paper.inkClassName}`}>
               DJ {number}
               {!entry.rating && " · Tap a stamp to rate"}
             </Text>
             {onEdit && (
               <Pressable onPress={onEdit} hitSlop={8}>
-                <Text className={`font-display text-sm uppercase underline ${paper.inkClassName}`}>Edit</Text>
+                <Text variant="display" className={`text-sm underline ${paper.inkClassName}`}>
+                  Edit
+                </Text>
               </Pressable>
             )}
           </View>
@@ -284,7 +290,7 @@ export function LineupCard({
             </FitText>
           </View>
           {!!genres.length && (
-            <Text numberOfLines={1} className={`font-display text-sm uppercase ${paper.inkClassName}`}>
+            <Text numberOfLines={1} variant="display" className={`text-sm ${paper.inkClassName}`}>
               {genres.slice(0, 2).join(" · ")}
             </Text>
           )}
@@ -317,7 +323,9 @@ export function LineupCard({
 
       {entry.reviewing || !!entry.reviewText ? (
         <View className="mt-3 gap-1 bg-black/20 p-3">
-          <Text className={`font-display text-sm uppercase ${paper.inkClassName}`}>Your review of {name}</Text>
+          <Text variant="display" className={`text-sm ${paper.inkClassName}`}>
+            Your review of {name}
+          </Text>
           <LinedInput
             value={entry.reviewText}
             onChangeText={(reviewText) => onChange({ reviewText })}
@@ -343,9 +351,9 @@ export function CreateArtistSheet({
   onClose,
   onSave,
 }: {
-  initial: ICreateDjInput;
+  initial: CreateDjInput;
   onClose: () => void;
-  onSave: (draft: ICreateDjInput) => void;
+  onSave: (draft: CreateDjInput) => void;
 }) {
   const [name, setName] = useState(initial.name);
   const [imageUrl, setImageUrl] = useState(initial.imageUrl ?? undefined);
@@ -427,7 +435,9 @@ export function CreateArtistSheet({
 
         {!!error && <Text className="text-danger-dark">{error}</Text>}
         <Button onPress={save} className="mt-1 py-3">
-          <Text className="font-display text-xl uppercase text-paper">Add artist</Text>
+          <Text variant="display" className="text-xl text-paper">
+            Add artist
+          </Text>
         </Button>
       </ScrollView>
     </Sheet>

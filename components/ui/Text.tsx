@@ -20,7 +20,20 @@ function resolveFontFamily(className: string): string | undefined {
   return FONT_BY_WEIGHT_CLASS[weightClass ?? ""] ?? "Roboto_400Regular";
 }
 
-export function Text({ className = "", style, ...props }: TextProps & { className?: string }) {
-  const fontFamily = resolveFontFamily(className);
-  return <RNText className={className} style={fontFamily ? [{ fontFamily }, style] : style} {...props} />;
+// `display` is the zine's heading and label type: Jersey 10, uppercased.
+// Size, leading and color stay in className.
+const VARIANT_CLASS = {
+  body: "",
+  display: "font-display uppercase",
+} as const;
+
+export function Text({
+  variant = "body",
+  className = "",
+  style,
+  ...props
+}: TextProps & { variant?: keyof typeof VARIANT_CLASS; className?: string }) {
+  const classes = `${VARIANT_CLASS[variant]} ${className}`.trim();
+  const fontFamily = resolveFontFamily(classes);
+  return <RNText className={classes} style={fontFamily ? [{ fontFamily }, style] : style} {...props} />;
 }

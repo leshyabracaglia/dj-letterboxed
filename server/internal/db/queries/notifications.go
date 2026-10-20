@@ -47,10 +47,10 @@ type Notification struct {
 	Actor     db.User   `json:"actor"`
 	// The night out it's about (not on follows), and its title (see
 	// nightTitleSQL).
-	ReviewID *string `json:"reviewId"`
-	Subject  *string `json:"subject"`
+	ReviewID *string `json:"reviewId" extensions:"x-nullable"`
+	Subject  *string `json:"subject" extensions:"x-nullable"`
 	// The comment's text, on comments.
-	CommentBody *string `json:"commentBody"`
+	CommentBody *string `json:"commentBody" extensions:"x-nullable"`
 	// On tags: whether the recipient has logged the night themselves (see
 	// sameNightLoggedCond), so the app only prompts them to if not.
 	NightLogged bool `json:"nightLogged"`

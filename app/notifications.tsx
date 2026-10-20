@@ -3,13 +3,13 @@ import { Link, router, Stack } from "expo-router";
 import { useEffect, useRef } from "react";
 import { FlatList, Pressable, View } from "react-native";
 
-import { Avatar, EmptyState, Page, RowSeparator, Skeleton, Text, usePageContentStyle } from "../components/ui";
-import { useApi } from "../lib/api/client";
-import { queryKeys } from "../lib/api/queryKeys";
-import type { Notification, NotificationsResponse, UnreadNotificationsResponse } from "../lib/api/types";
-import { useCurrentUser } from "../lib/auth";
-import { formatTimeAgo } from "../lib/format";
-import { ROUTES } from "../lib/routes";
+import { Avatar, EmptyState, Page, RowSeparator, Skeleton, Text, usePageContentStyle } from "@/components/ui";
+import { useApi, unwrap } from "@/lib/api/client";
+import { queryKeys } from "@/lib/api/queryKeys";
+import type { Notification, UnreadNotificationsResponse } from "@/lib/api/types";
+import { useCurrentUser } from "@/lib/auth";
+import { formatTimeAgo } from "@/lib/format";
+import { ROUTES } from "@/lib/routes";
 
 export default function NotificationsScreen() {
   const api = useApi();
@@ -20,7 +20,7 @@ export default function NotificationsScreen() {
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: queryKeys.notifications.list(),
     queryFn: ({ pageParam }: { pageParam?: string }) =>
-      api.get<NotificationsResponse>("/notifications", { cursor: pageParam, limit: 30 }),
+      unwrap(api.GET("/api/notifications", { params: { query: { cursor: pageParam, limit: 30 } } })),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     enabled: !!isSignedIn,
@@ -33,8 +33,7 @@ export default function NotificationsScreen() {
   useEffect(() => {
     if (!data || markedSeen.current) return;
     markedSeen.current = true;
-    api
-      .post("/notifications/seen")
+    unwrap(api.POST("/api/notifications/seen"))
       .then(() =>
         queryClient.setQueryData<UnreadNotificationsResponse>(queryKeys.notifications.unreadCount(), { count: 0 }),
       )
@@ -127,7 +126,9 @@ function NotificationRow({ notification: n }: { notification: Notification }) {
               }}
               className="mt-2 self-start rounded-xl bg-accent px-3 py-1.5 active:opacity-80"
             >
-              <Text className="font-display text-lg uppercase leading-5 text-paper">Log it too</Text>
+              <Text variant="display" className="text-lg leading-5 text-paper">
+                Log it too
+              </Text>
             </Pressable>
           )}
         </View>

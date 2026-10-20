@@ -1,9 +1,9 @@
 import { Link, router, useLocalSearchParams } from "expo-router";
 import { FlatList, Pressable, View } from "react-native";
 
-import { DetailPage } from "../../components/DetailPage";
-import { Poster, POSTER_RECORD_STYLE } from "../../components/Poster";
-import { ReviewCard, ReviewCardSkeleton } from "../../components/ReviewCard";
+import { DetailPage } from "@/components/DetailPage";
+import { Poster, POSTER_RECORD_STYLE } from "@/components/Poster";
+import { ReviewCard, ReviewCardSkeleton } from "@/components/ReviewCard";
 import {
   Avatar,
   EmptyState,
@@ -14,11 +14,11 @@ import {
   Text,
   TornCardSeparator,
   usePageContentStyle,
-} from "../../components/ui";
-import { useEventDetail } from "../../lib/api/hooks";
-import type { Dj, EventDetail } from "../../lib/api/types";
-import { plural } from "../../lib/format";
-import { ROUTES } from "../../lib/routes";
+} from "@/components/ui";
+import { useEventDetail } from "@/lib/api/hooks";
+import type { Dj, EventDetail } from "@/lib/api/types";
+import { plural } from "@/lib/format";
+import { ROUTES } from "@/lib/routes";
 import { ReactNode } from "react";
 
 // How many of the most-logged DJs the poster lists as its lineup.
@@ -34,13 +34,13 @@ function EventSkeleton() {
   );
 }
 
-export function DjAvatarRow({ items }: { items: { dj: Dj; caption?: ReactNode }[] }) {
+function DjAvatarRow({ items }: { items: { dj: Dj; caption?: ReactNode }[] }) {
   return (
     <View className="flex-row flex-wrap gap-3">
       {items.map(({ dj, caption }) => (
         <Pressable key={dj.id} onPress={() => router.push(ROUTES.DJ(dj.slug))} className="w-20 items-center">
           <Avatar uri={dj.imageUrl} name={dj.name} size={56} />
-          <Text className="mt-1 text-center font-display text-base uppercase leading-5 text-paper" numberOfLines={1}>
+          <Text variant="display" className="mt-1 text-center text-base leading-5 text-paper" numberOfLines={1}>
             {dj.name}
           </Text>
           {caption}
@@ -61,12 +61,18 @@ function EventPoster({ data }: { data: EventDetail }) {
   return (
     <Poster>
       <View className="flex-row items-center justify-between px-3 pt-3">
-        <Text className="font-display text-sm uppercase tracking-widest text-paper/80">Beatboxd presents</Text>
-        <Text className="font-display text-sm uppercase text-stamp-red">Event</Text>
+        <Text variant="display" className="text-sm tracking-widest text-paper/80">
+          Beatboxd presents
+        </Text>
+        <Text variant="display" className="text-sm text-stamp-red">
+          Event
+        </Text>
       </View>
 
       <View style={POSTER_RECORD_STYLE} className="items-center justify-center bg-zine-purple">
-        <Text className="font-display text-sm uppercase leading-4 text-paper/80">Avg</Text>
+        <Text variant="display" className="text-sm leading-4 text-paper/80">
+          Avg
+        </Text>
         <Text className="font-numeric text-4xl leading-9 text-paper">
           {event.avgRating == null ? "–" : event.avgRating.toFixed(1)}
         </Text>
@@ -80,7 +86,7 @@ function EventPoster({ data }: { data: EventDetail }) {
           </FitText>
         </View>
         {!!lineup.length && (
-          <Text className="mt-3 font-display text-lg uppercase leading-5 text-paper">
+          <Text variant="display" className="mt-3 text-lg leading-5 text-paper">
             {lineup.map(({ dj }, i) => (
               <Text key={dj.id} className="font-display text-paper">
                 {!!i && " · "}
@@ -96,13 +102,13 @@ function EventPoster({ data }: { data: EventDetail }) {
 
       <View className="flex-row border-t border-white/15">
         <View className="flex-1 border-r border-white/15 p-3">
-          <Text className="font-display text-sm uppercase leading-4 text-paper/60">
+          <Text variant="display" className="text-sm leading-4 text-paper/60">
             {data.venues.length > 1 ? `${data.venues.length} venues` : "Venue"}
           </Text>
           {venue ? (
             <Link href={ROUTES.VENUE(venue.id)} asChild>
               <Pressable className="active:opacity-70">
-                <Text numberOfLines={2} className="mt-1 font-display text-xl uppercase leading-5 text-paper">
+                <Text numberOfLines={2} variant="display" className="mt-1 text-xl leading-5 text-paper">
                   {venue.name}
                 </Text>
                 {!!venue.city && (
@@ -113,12 +119,16 @@ function EventPoster({ data }: { data: EventDetail }) {
               </Pressable>
             </Link>
           ) : (
-            <Text className="mt-1 font-display text-xl uppercase leading-5 text-paper/40">TBA</Text>
+            <Text variant="display" className="mt-1 text-xl leading-5 text-paper/40">
+              TBA
+            </Text>
           )}
         </View>
         <View className="p-3">
-          <Text className="font-display text-sm uppercase leading-4 text-paper/60">Logged</Text>
-          <Text className="mt-1 font-display text-xl uppercase leading-5 text-paper">
+          <Text variant="display" className="text-sm leading-4 text-paper/60">
+            Logged
+          </Text>
+          <Text variant="display" className="mt-1 text-xl leading-5 text-paper">
             {plural(event.reviewCount, "night")}
           </Text>
         </View>
@@ -169,7 +179,9 @@ function EventDetailList({ data }: { data: EventDetail }) {
                 items={data.djs.map(({ dj, reviewCount }) => ({
                   dj,
                   caption: (
-                    <Text className="font-display text-sm uppercase text-paper/60">{plural(reviewCount, "night")}</Text>
+                    <Text variant="display" className="text-sm text-paper/60">
+                      {plural(reviewCount, "night")}
+                    </Text>
                   ),
                 }))}
               />
@@ -183,7 +195,7 @@ function EventDetailList({ data }: { data: EventDetail }) {
                 {data.venues.map((venue) => (
                   <Link key={venue.id} href={ROUTES.VENUE(venue.id)} asChild>
                     <Pressable className="py-1 active:opacity-70">
-                      <Text className="font-display text-xl uppercase text-paper">
+                      <Text variant="display" className="text-xl text-paper">
                         {venue.name}
                         <Text className="text-paper/60">
                           {venue.city ? ` · ${venue.city}` : ""} · {plural(venue.reviewCount, "night")}

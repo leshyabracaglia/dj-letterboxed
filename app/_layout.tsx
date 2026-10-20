@@ -1,4 +1,4 @@
-import "../global.css";
+import "@/global.css";
 
 import { ClerkProvider } from "@clerk/expo";
 import { Jersey10_400Regular } from "@expo-google-fonts/jersey-10";
@@ -12,17 +12,18 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
 import { useEffect, type ReactNode } from "react";
-import { AppState, Linking, Platform, View } from "react-native";
+import { AppState, Linking, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { Button, Page, Text, useIsDesktopWeb } from "../components/ui";
-import { WebNav } from "../components/WebNav";
-import { ApiError, useApi } from "../lib/api/client";
-import { queryKeys } from "../lib/api/queryKeys";
-import type { AppVersion } from "../lib/api/types";
-import { AuthProvider } from "../lib/auth";
-import { usePushNotifications } from "../lib/push";
-import { tokenCache } from "../lib/clerk-token-cache";
+import { Button, Page, Text, useIsDesktopWeb } from "@/components/ui";
+import { WebNav } from "@/components/WebNav";
+import { ApiError, useApi, unwrap } from "@/lib/api/client";
+import { queryKeys } from "@/lib/api/queryKeys";
+import { AuthProvider } from "@/lib/auth";
+import { usePushNotifications } from "@/lib/push";
+import { tokenCache } from "@/lib/clerk-token-cache";
+import { isIos } from "@/lib/platform";
+import { colors } from "@/lib/colors";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -50,11 +51,11 @@ const queryClient = new QueryClient({
 // to React Navigation's light-gray default theme.
 const NAV_THEME = {
   ...DarkTheme,
-  colors: { ...DarkTheme.colors, background: "#000000", card: "#0B0809", border: "rgba(255,255,255,0.06)" },
+  colors: { ...DarkTheme.colors, background: colors.ink, card: colors.chrome, border: "rgba(255,255,255,0.06)" },
 };
 
 // iOS build number of this binary (CFBundleVersion); null on web/Android.
-const iosBuild = Platform.OS === "ios" ? Number(Application.nativeBuildVersion) : NaN;
+const iosBuild = isIos ? Number(Application.nativeBuildVersion) : NaN;
 
 // Blocks the app behind an "update required" screen when this iOS build is
 // older than the server's minimum (minIOSBuild in
@@ -66,7 +67,7 @@ function ForceUpdateGate({ children }: { children: ReactNode }) {
   const enabled = Number.isFinite(iosBuild);
   const { data, refetch } = useQuery({
     queryKey: queryKeys.appVersion(),
-    queryFn: () => api.get<AppVersion>("/app-version"),
+    queryFn: () => unwrap(api.GET("/api/app-version")),
     enabled,
   });
 
@@ -143,8 +144,8 @@ export default function RootLayout() {
                     // instead of a per-page title bar; phone-width web and native keep
                     // the standard themed header with a back chevron.
                     header: isDesktopWeb ? () => <WebNav /> : undefined,
-                    headerStyle: { backgroundColor: "#0B0809" },
-                    headerTintColor: "#F6F6F9",
+                    headerStyle: { backgroundColor: colors.chrome },
+                    headerTintColor: colors.paper,
                     headerTitleStyle: { fontFamily: "Jersey10_400Regular", fontSize: 24 },
                     // Chevron only: the default back title is the previous route's
                     // name, which for anything pushed from the tabs reads "(tabs)".
@@ -152,7 +153,7 @@ export default function RootLayout() {
                     // none is set.)
                     headerBackButtonDisplayMode: "minimal",
                     headerShadowVisible: false,
-                    contentStyle: { backgroundColor: "#000000" },
+                    contentStyle: { backgroundColor: colors.ink },
                   }}
                 >
                   <Stack.Screen name="index" options={{ headerShown: false }} />

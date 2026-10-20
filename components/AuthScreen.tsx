@@ -5,9 +5,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { BrandWordmark } from "./BrandWordmark";
 import { KeyboardScrollView, Text, WallView } from "./ui";
 
-/** The layout every sign-in/sign-up step shares: centered on the wall, the
- * wordmark (when `wordmark`), a big title and an optional line under it, then
- * the form (`children`) in a phone-width column, spaced gap-3. */
 export function AuthScreen({
   title,
   subtitle,
@@ -25,7 +22,8 @@ export function AuthScreen({
         <KeyboardScrollView className="flex-1" contentContainerClassName="flex-grow items-center justify-center p-6">
           {wordmark && <BrandWordmark />}
           <Text
-            className={`${wordmark ? "mt-6" : ""} text-center font-display text-5xl uppercase leading-[48px] text-paper`}
+            variant="display"
+            className={`${wordmark ? "mt-6" : ""} text-center text-5xl leading-[48px] text-paper`}
           >
             {title}
           </Text>
