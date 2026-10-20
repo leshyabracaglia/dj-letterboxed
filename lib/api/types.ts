@@ -19,17 +19,16 @@ export type Dj = Schemas["Dj"];
  * dates, and collects every review of it. */
 export type Event = Schemas["Event"];
 /** One person's night out, and the post: its event (null for a night with
- * no event name), venue, day and day/night, their rating and review of the
- * night, the DJs they saw (`lineup`, each with their review of that DJ's set
- * if they rated it), tags, tagged friends, likes and comments. `rating` is
- * null only on nights logged before nights were rated; `venue`/`venueId`
- * only on nights migrated from reviews that never had one. */
+ * no event name), venue, day and day/night, their review of the night, the
+ * DJs they saw (`lineup`, each with their review of that DJ's set if they
+ * wrote one), tags, tagged friends, likes and comments. `venue`/`venueId`
+ * are null only on nights migrated from reviews that never had one. */
 export type Review = Schemas["ReviewDTO"];
 /** A review fetched by id (GET /reviews/{id}), which always includes who
  * posted it. */
 export type ReviewDetail = Review & { user: User };
-/** A DJ seen on a night, with `rating`/`reviewText` when they were rated
- * (a DJ review). */
+/** A DJ seen on a night, with `reviewText` when someone wrote about their
+ * set (a DJ review). */
 export type LineupEntry = Schemas["LineupEntry"];
 export type ReviewComment = Schemas["ReviewComment"];
 export type PlaceSuggestion = Schemas["PlaceSuggestion"];
@@ -40,7 +39,6 @@ export type Paginated<T> = {
 };
 
 export type DjDetail = Schemas["DjDetailResponse"];
-/** `avgRating` is null for an event with no ratings yet. */
 export type EventSummary = Schemas["EventSummary"];
 export type EventDetail = Schemas["EventDetailResponse"];
 export type VenueSummary = Schemas["VenueSummary"];
@@ -77,8 +75,8 @@ export type NearbyVenue = Schemas["NearbyVenue"];
  * venue - `venueId` (a saved venue), `placeId` (a Google Places result, saved
  * on first use; send the autocomplete session token with it), or `venue` (a
  * typed-in name), checked in that order - the day and day/night (neither
- * means night), the night's `rating` and review, the DJs seen (rate one to
- * review their set; text needs a rating), tags and tagged friends. */
+ * means night), the night's review, the DJs seen (each with an optional
+ * review of their set), tags and tagged friends. */
 export type CreateReviewInput = Schemas["createReviewRequest"];
 
 /** PATCH /reviews/{id}: a review is fixed once logged except for who you

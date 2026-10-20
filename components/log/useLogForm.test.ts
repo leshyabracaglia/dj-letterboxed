@@ -54,13 +54,13 @@ describe("logFormReducer", () => {
   });
 
   it("clears a missing field's outline once it's filled in", () => {
-    const flagged = run({ type: "flagMissing", field: "venue" }, { type: "flagMissing", field: "night" });
-    expect(flagged).toMatchObject({ venueMissing: true, nightMissing: true });
+    const flagged = run({ type: "flagMissing", field: "venue" });
+    expect(flagged).toMatchObject({ venueMissing: true });
 
-    const rated = logFormReducer(flagged, { type: "updateDraft", changes: { rating: 4 } });
-    expect(rated).toMatchObject({ venueMissing: true, nightMissing: false });
+    const written = logFormReducer(flagged, { type: "updateDraft", changes: { reviewText: "Great" } });
+    expect(written).toMatchObject({ venueMissing: true });
 
-    const placed = logFormReducer(rated, {
+    const placed = logFormReducer(written, {
       type: "updateDraft",
       changes: { venuePick: { type: "typed", name: "Basement", city: "" } },
     });

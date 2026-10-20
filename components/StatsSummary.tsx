@@ -1,9 +1,10 @@
 import { type ReactNode, useState } from "react";
 import { Pressable, View } from "react-native";
-import { Avatar, Skeleton, Text } from "./ui";
+import { Avatar, Skeleton, Stamp, Text } from "./ui";
 import { router } from "expo-router";
 
 import { useUserStats } from "@/lib/api/hooks";
+import { plural } from "@/lib/format";
 import type { UserStats } from "@/lib/api/types";
 import { ROUTES } from "@/lib/routes";
 
@@ -77,7 +78,73 @@ function SeenDjs({ stats }: { stats: UserStats }) {
   );
 }
 
-/** Profile stats below the counts row: recently/most seen DJs and top venues. The
+// How many passport stamps show before "+N".
+const PASSPORT_SHOWN = 8;
+const PASSPORT_STAMP_SIZE = 76;
+// Stamps land a little crooked, each its own way.
+const PASSPORT_TILTS = [-8, 5, -3, 9, -6, 3];
+
+/** A venue's name for the middle of its stamp, a word to a line (three at
+ * most). */
+function stampLines(name: string): string[] {
+  const words = name.split(/\s+/).filter(Boolean);
+  return words.length <= 3 ? words : [...words.slice(0, 2), words.slice(2).join(" ")];
+}
+
+// Every club they've logged a night at, as stamps in a passport, first visit
+// first.
+function Passport({ stamps }: { stamps: UserStats["passport"] }) {
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded ? stamps : stamps.slice(0, PASSPORT_SHOWN);
+  const hidden = stamps.length - shown.length;
+  const cities = new Set(stamps.map((stamp) => stamp.city?.split(",")[0].trim().toLowerCase()).filter(Boolean));
+  return (
+    <View>
+      <Text variant="display" className="text-xl text-paper/85">
+        Passport · {plural(stamps.length, "club")}
+        {!!cities.size && ` · ${cities.size} ${cities.size === 1 ? "city" : "cities"}`}
+      </Text>
+      <View className="mt-2 flex-row flex-wrap gap-2">
+        {shown.map((stamp, i) => (
+          <Pressable
+            key={stamp.venueId}
+            onPress={() => router.push(ROUTES.VENUE(stamp.venueId))}
+            accessibilityRole="link"
+            className="active:opacity-80"
+          >
+            <Stamp
+              label={stampLines(stamp.name)}
+              rim={`${stamp.city?.split(",")[0] ?? "BEATBOXD"} · `}
+              size={PASSPORT_STAMP_SIZE}
+              color={i % 2 ? "purple" : "red"}
+              rotate={PASSPORT_TILTS[i % PASSPORT_TILTS.length]}
+              accessibilityLabel={`${stamp.name}: ${plural(stamp.nights, "night")}`}
+            />
+          </Pressable>
+        ))}
+        {!!hidden && (
+          <Pressable
+            onPress={() => setExpanded(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Show ${plural(hidden, "more club")}`}
+            className="active:opacity-80"
+          >
+            <Stamp
+              label={`+${hidden}`}
+              size={PASSPORT_STAMP_SIZE}
+              color="purple"
+              rotate={0}
+              accessibilityLabel={`${hidden} more`}
+            />
+          </Pressable>
+        )}
+      </View>
+    </View>
+  );
+}
+
+/** Profile stats below the counts row: recently/most seen DJs and the
+ * passport of venues they've been to. The
  * optional `favorites` slot (FavoritesShowcase, currently unused) renders
  * above them. */
 export function StatsSummary({ username, favorites }: { username: string; favorites?: ReactNode }) {
@@ -97,7 +164,7 @@ export function StatsSummary({ username, favorites }: { username: string; favori
   }
 
   const hasDjs = !!stats.recentDjs?.length || !!stats.topDjs.length;
-  if (!favorites && !hasDjs && !stats.topVenues.length) return null;
+  if (!favorites && !hasDjs && !stats.passport.length) return null;
 
   return (
     <View className="border-t border-white/10 pt-3">
@@ -109,16 +176,9 @@ export function StatsSummary({ username, favorites }: { username: string; favori
         </View>
       )}
 
-      {!!stats.topVenues.length && (
-        <View className="mt-3 gap-1">
-          <Text variant="display" className="text-xl text-paper/85">
-            Top venues
-          </Text>
-          {stats.topVenues.map((row) => (
-            <Text key={row.venue} variant="display" className="text-lg text-paper/70">
-              {row.venue} · <Text className="font-numeric text-lg text-paper">{row.reviewCount}</Text>
-            </Text>
-          ))}
+      {!!stats.passport.length && (
+        <View className="mt-3">
+          <Passport stamps={stats.passport} />
         </View>
       )}
     </View>

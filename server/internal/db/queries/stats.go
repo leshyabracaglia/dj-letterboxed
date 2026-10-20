@@ -38,7 +38,7 @@ type UserTotals struct {
 
 func GetUserTotals(ctx context.Context, q DBTX, userID string) (*UserTotals, error) {
 	var t UserTotals
-	// DJs seen are everyone on their nights' lineups, rated or not.
+	// DJs seen are everyone on their nights' lineups, written about or not.
 	err := q.QueryRow(ctx, `
 		SELECT
 			(SELECT COUNT(*) FROM reviews WHERE user_id = $1),
@@ -56,7 +56,7 @@ type TopDj struct {
 }
 
 // GetTopDjsForUser returns the 3 DJs userID has seen the most (on the lineup
-// of their nights, rated or not), like GetRecentDjsForUser.
+// of their nights), like GetRecentDjsForUser.
 func GetTopDjsForUser(ctx context.Context, q DBTX, userID string) ([]TopDj, error) {
 	rows, err := q.Query(ctx, `
 		SELECT d.id, d.name, d.slug, d.bio, d.genres, d.image_url, d.spotify_id, d.created_by_user_id, d.created_at, d.updated_at, COUNT(*) AS times_seen
@@ -80,7 +80,7 @@ type RecentDj struct {
 }
 
 // GetRecentDjsForUser returns the last 3 DJs userID saw (on the lineup of
-// any of their nights, rated or not), most recent night first.
+// any of their nights), most recent night first.
 func GetRecentDjsForUser(ctx context.Context, q DBTX, userID string) ([]RecentDj, error) {
 	rows, err := q.Query(ctx, `
 		SELECT d.id, d.name, d.slug, d.bio, d.genres, d.image_url, d.spotify_id, d.created_by_user_id, d.created_at, d.updated_at, MAX(r.seen_at) AS last_seen_at
@@ -112,4 +112,27 @@ func GetTopVenuesForUser(ctx context.Context, q DBTX, userID string) ([]TopVenue
 		ORDER BY review_count DESC
 		LIMIT 5`, userID)
 	return collect(rows, err, pgx.RowToStructByPos[TopVenue])
+}
+
+// PassportStamp is a venue someone has logged a night at, for the passport
+// on their profile.
+type PassportStamp struct {
+	VenueID      string    `json:"venueId"`
+	Name         string    `json:"name"`
+	City         *string   `json:"city" extensions:"x-nullable"`
+	Nights       int64     `json:"nights"`
+	FirstVisitAt time.Time `json:"firstVisitAt"`
+}
+
+// GetPassportForUser returns every venue userID has logged a night at, in
+// the order they first went.
+func GetPassportForUser(ctx context.Context, q DBTX, userID string) ([]PassportStamp, error) {
+	rows, err := q.Query(ctx, `
+		SELECT v.id, v.name, v.city, COUNT(*), MIN(reviews.seen_at)
+		FROM reviews
+		JOIN venues v ON v.id = reviews.venue_id
+		WHERE reviews.user_id = $1
+		GROUP BY v.id
+		ORDER BY MIN(reviews.seen_at), v.name`, userID)
+	return collect(rows, err, pgx.RowToStructByPos[PassportStamp])
 }

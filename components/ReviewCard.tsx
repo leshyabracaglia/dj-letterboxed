@@ -11,7 +11,6 @@ import {
   paperAt,
   type Paper,
   Photo,
-  RatingStamp,
   Skeleton,
   Tape,
   Text,
@@ -20,8 +19,9 @@ import {
 
 import type { LineupEntry, Review, User } from "@/lib/api/types";
 import { pluralWord } from "@/lib/format";
-import { nightDateParts, ratedSets, reviewSubject, soloSet } from "@/lib/review";
+import { nightDateParts, reviewedSets, reviewSubject, soloSet } from "@/lib/review";
 import { ROUTES } from "@/lib/routes";
+import { NightStamp } from "./NightStamp";
 import { ReviewTags } from "./ReviewTags";
 import { colors } from "@/lib/colors";
 
@@ -30,7 +30,8 @@ const LINEUP_SHOWN = 3;
 // How many DJ reviews a night card in a list shows before "+N more".
 const SETS_SHOWN = 3;
 
-/** "SAT 14 SEP · NIGHT" (plus "· WHOLE NIGHT" on a rated night). */
+/** "SAT 14 SEP · NIGHT" (plus "· WHOLE NIGHT" when the night itself is
+ * written about). */
 function cardLabel(review: Review, wholeNight: boolean): string {
   return nightDateParts(review, { wholeNight }).join(" · ");
 }
@@ -239,8 +240,8 @@ function Polaroid({ uri, paper, rotate }: { uri?: string | null; paper: Paper; r
 
 // One DJ's set (purple or red paper, see paperAt), for a post that's just
 // that DJ's review (see soloSet): big name, and their photo as a polaroid
-// clipped to the card's top edge on the right, the rating stamped over the
-// bottom corner.
+// clipped to the card's top edge on the right, the night's passport stamp
+// over the bottom corner.
 function DjReviewCard({ review, set, paper, expanded, actions }: CardProps & { set: LineupEntry }) {
   const subject = reviewSubject(review, set);
   return (
@@ -296,15 +297,15 @@ function DjReviewCard({ review, set, paper, expanded, actions }: CardProps & { s
         <CardFooter review={review} expanded={expanded} actions={actions} />
       </View>
       <View className="absolute -bottom-5 right-1">
-        <RatingStamp value={set.rating} size={76} />
+        <NightStamp review={review} size={76} />
         <Tape style={{ bottom: 2, right: -12 }} width={56} rotate={-14} />
       </View>
     </Card>
   );
 }
 
-// One row per DJ reviewed on a night out: photo, name, what was said and
-// the rating. A list card shows the first SETS_SHOWN.
+// One row per DJ reviewed on a night out: photo, name and what was said. A
+// list card shows the first SETS_SHOWN.
 function SetReviews({ sets, paper, expanded }: { sets: LineupEntry[]; paper: Paper; expanded: boolean }) {
   const shown = expanded ? sets : sets.slice(0, SETS_SHOWN);
   const hidden = sets.length - shown.length;
@@ -340,7 +341,6 @@ function SetReviews({ sets, paper, expanded }: { sets: LineupEntry[]; paper: Pap
               </Text>
             )}
           </View>
-          <RatingStamp value={set.rating} size={expanded ? 56 : 48} />
         </View>
       ))}
       {!!hidden && (
@@ -353,14 +353,12 @@ function SetReviews({ sets, paper, expanded }: { sets: LineupEntry[]; paper: Pap
 }
 
 // A whole night out (purple or red paper): the night's name (or, with no
-// event name, its lineup), its rating and review, then each DJ rated on it -
-// or, with none rated, its lineup as a row of photos. A night from before
-// nights were rated has no stamp of its own.
+// event name, its lineup), its passport stamp and review, then each DJ
+// written about on it - or, with none, its lineup as a row of photos.
 function NightReviewCard({ review, paper, expanded, actions }: CardProps) {
-  const isRated = review.rating != null;
-  const sets = ratedSets(review);
+  const sets = reviewedSets(review);
   const lineup = review.lineup.map((entry) => entry.dj);
-  const unreviewed = review.lineup.filter((entry) => entry.rating == null).map((entry) => entry.dj);
+  const unreviewed = review.lineup.filter((entry) => !entry.reviewText).map((entry) => entry.dj);
   // The review's own page shows the whole lineup, LINEUP_SHOWN to a row.
   const shown = !sets.length ? (expanded ? lineup : lineup.slice(0, LINEUP_SHOWN)) : [];
   const hidden = sets.length ? 0 : lineup.length - shown.length;
@@ -387,7 +385,7 @@ function NightReviewCard({ review, paper, expanded, actions }: CardProps) {
       <View className="pr-20">
         <View className="flex-row flex-wrap items-center gap-2">
           <Text variant="display" className={`text-base ${paper.inkClassName}`}>
-            {cardLabel(review, isRated)}
+            {cardLabel(review, !!review.reviewText)}
           </Text>
           {review.isPopular && <PopularMark />}
         </View>
@@ -411,11 +409,9 @@ function NightReviewCard({ review, paper, expanded, actions }: CardProps) {
           </Text>
         )}
       </View>
-      {isRated && (
-        <View className="absolute right-3 top-3">
-          <RatingStamp value={review.rating} size={64} />
-        </View>
-      )}
+      <View className="absolute right-3 top-3">
+        <NightStamp review={review} size={64} />
+      </View>
       {rows.map((row, r) => (
         <View key={r} className="mt-3 flex-row gap-3">
           {row.map((dj) => (

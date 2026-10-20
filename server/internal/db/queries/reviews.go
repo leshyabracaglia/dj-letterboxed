@@ -12,7 +12,9 @@ import (
 )
 
 // A review is one person's night out, and the post; the DJs they saw (each
-// optionally rated) are its lineup in review_lineup.
+// with anything they said about the set) are its lineup in review_lineup.
+// The rating columns on both tables are left over from when nights and sets
+// were rated, and no longer read or written.
 
 // reviewVerifiedExpr is whether the review's person checked in at its venue
 // during its night: from the start of the day logged until 8am the next
@@ -28,13 +30,13 @@ const reviewVerifiedExpr = `EXISTS (
 // reviewCols is qualified, so it can be selected FROM reviews joined to
 // tables with columns of the same name (favorite_reviews' user_id).
 const reviewCols = `reviews.id, reviews.user_id, reviews.event_id, reviews.venue, reviews.venue_id, reviews.city,
-	reviews.seen_at, reviews.is_day, reviews.is_night, reviews.rating, reviews.review_text,
+	reviews.seen_at, reviews.is_day, reviews.is_night, reviews.review_text,
 	reviews.created_at, reviews.updated_at, ` + reviewVerifiedExpr
 
 func scanReview(row pgx.Row) (*db.Review, error) {
 	var r db.Review
 	err := row.Scan(&r.ID, &r.UserID, &r.EventID, &r.Venue, &r.VenueID, &r.City,
-		&r.SeenAt, &r.IsDay, &r.IsNight, &r.Rating, &r.ReviewText,
+		&r.SeenAt, &r.IsDay, &r.IsNight, &r.ReviewText,
 		&r.CreatedAt, &r.UpdatedAt, &r.Verified)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -50,50 +52,45 @@ func collectReviews(rows pgx.Rows, err error) ([]db.Review, error) {
 }
 
 type CreateReviewParams struct {
-	UserID  string
-	EventID *string
-	Venue   *db.Venue
-	City    *string
-	SeenAt  time.Time
-	IsDay   bool
-	IsNight bool
-	// Rating is required of new nights (the handler enforces it); only
-	// seeded stand-ins for nights from before nights were rated leave it nil.
-	Rating     *int16
+	UserID     string
+	EventID    *string
+	Venue      *db.Venue
+	City       *string
+	SeenAt     time.Time
+	IsDay      bool
+	IsNight    bool
 	ReviewText *string
 }
 
 // CreateReview stores venue.Name as the review's denormalized venue name.
 func CreateReview(ctx context.Context, q DBTX, p CreateReviewParams) (*db.Review, error) {
 	return scanReview(q.QueryRow(ctx, `
-		INSERT INTO reviews (user_id, event_id, venue, venue_id, city, seen_at, is_day, is_night, rating, review_text)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		INSERT INTO reviews (user_id, event_id, venue, venue_id, city, seen_at, is_day, is_night, review_text)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING `+reviewCols,
-		p.UserID, p.EventID, p.Venue.Name, p.Venue.ID, p.City, p.SeenAt, p.IsDay, p.IsNight, p.Rating, p.ReviewText))
+		p.UserID, p.EventID, p.Venue.Name, p.Venue.ID, p.City, p.SeenAt, p.IsDay, p.IsNight, p.ReviewText))
 }
 
-// LineupInput is a DJ seen on a night, rated or not.
+// LineupInput is a DJ seen on a night, and what was said about their set.
 type LineupInput struct {
 	DjID       string
-	Rating     *int16
 	ReviewText *string
 }
 
 // AddReviewLineup records the DJs someone saw on their night out and what
-// they thought of any they rated.
+// they said about any of their sets.
 func AddReviewLineup(ctx context.Context, q DBTX, reviewID string, lineup []LineupInput) error {
 	if len(lineup) == 0 {
 		return nil
 	}
 	djIDs := make([]string, len(lineup))
-	ratings := make([]*int16, len(lineup))
 	texts := make([]*string, len(lineup))
 	for i, e := range lineup {
-		djIDs[i], ratings[i], texts[i] = e.DjID, e.Rating, e.ReviewText
+		djIDs[i], texts[i] = e.DjID, e.ReviewText
 	}
 	_, err := q.Exec(ctx, `
-		INSERT INTO review_lineup (review_id, dj_id, rating, review_text)
-		SELECT $1, * FROM unnest($2::uuid[], $3::smallint[], $4::text[])`, reviewID, djIDs, ratings, texts)
+		INSERT INTO review_lineup (review_id, dj_id, review_text)
+		SELECT $1, * FROM unnest($2::uuid[], $3::text[])`, reviewID, djIDs, texts)
 	return err
 }
 
@@ -105,7 +102,7 @@ func GetLineupsByReviewIDs(ctx context.Context, q DBTX, reviewIDs []string) (map
 	}
 	rows, err := q.Query(ctx, `
 		SELECT rl.review_id, d.id, d.name, d.slug, d.bio, d.genres, d.image_url, d.spotify_id, d.created_by_user_id, d.created_at, d.updated_at,
-			rl.rating, rl.review_text
+			rl.review_text
 		FROM review_lineup rl
 		JOIN djs d ON d.id = rl.dj_id
 		WHERE rl.review_id = ANY($1)
@@ -114,7 +111,7 @@ func GetLineupsByReviewIDs(ctx context.Context, q DBTX, reviewIDs []string) (map
 		var k keyed[db.LineupEntry]
 		d := &k.Value.Dj
 		err := row.Scan(&k.Key, &d.ID, &d.Name, &d.Slug, &d.Bio, &d.Genres, &d.ImageURL, &d.SpotifyID, &d.CreatedByUserID, &d.CreatedAt, &d.UpdatedAt,
-			&k.Value.Rating, &k.Value.ReviewText)
+			&k.Value.ReviewText)
 		return k, err
 	})
 }

@@ -7,7 +7,7 @@ import { useCurrentUser } from "@/lib/auth";
 import { parseDateInputValue } from "@/lib/format";
 import type { DraftLineupEntry, EventPick, ReviewDraft, VenuePick } from "./draft";
 
-type WhereAndWhen = Omit<CreateReviewInput, "rating" | "reviewText" | "lineup" | "tags" | "taggedUserIds">;
+type WhereAndWhen = Omit<CreateReviewInput, "reviewText" | "lineup" | "tags" | "taggedUserIds">;
 
 // The event part of the POST /reviews body: an existing event, one to
 // create by name, or none.
@@ -88,11 +88,10 @@ export function useLogNight() {
     // The response is the whole post, as the feed and profiles show it.
     const post = await createReview.mutateAsync({
       ...whereAndWhen(draft),
-      rating: draft.rating!,
       reviewText: draft.reviewText.trim() || undefined,
       lineup: caught.map((e) => ({
         djId: djFor(e).id,
-        ...(e.rating ? { rating: e.rating, reviewText: e.reviewText.trim() || undefined } : {}),
+        reviewText: e.reviewText.trim() || undefined,
       })),
       tags: draft.tags,
       taggedUserIds: draft.taggedUsers.map((u) => u.id),

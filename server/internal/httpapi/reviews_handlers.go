@@ -37,10 +37,9 @@ func parseSeenAt(s string, now time.Time) (time.Time, string) {
 	return t, ""
 }
 
-// A DJ you saw. Rate them to review their set; reviewText needs a rating.
+// A DJ you saw, with what you thought of their set (if anything).
 type lineupEntryInput struct {
 	DjID       string  `json:"djId"`
-	Rating     *int16  `json:"rating,omitempty"`
 	ReviewText *string `json:"reviewText,omitempty"`
 }
 
@@ -61,8 +60,7 @@ type createReviewRequest struct {
 	// When you went: day, night, or both. Neither given means night.
 	IsDay   bool `json:"isDay,omitempty"`
 	IsNight bool `json:"isNight,omitempty"`
-	// The night as a whole, 1-5. Required.
-	Rating     int16              `json:"rating"`
+	// What you thought of the night as a whole.
 	ReviewText *string            `json:"reviewText,omitempty"`
 	Lineup     []lineupEntryInput `json:"lineup"`
 	// Descriptive tag names ("packed"), and friends who were there.
@@ -70,10 +68,7 @@ type createReviewRequest struct {
 	TaggedUserIDs []string `json:"taggedUserIds"`
 }
 
-func validateRatingAndText(rating int16, text *string) string {
-	if rating < 1 || rating > 5 {
-		return "rating must be 1-5"
-	}
+func validateReviewText(text *string) string {
 	if text != nil && len(*text) > 5000 {
 		return "reviewText too long"
 	}
@@ -87,10 +82,7 @@ func (req createReviewRequest) validate() (seenAt time.Time, lineup []queries.Li
 	if errMsg != "" {
 		return time.Time{}, nil, nil, errMsg
 	}
-	if req.Rating == 0 {
-		return time.Time{}, nil, nil, "rate the night"
-	}
-	if msg := validateRatingAndText(req.Rating, req.ReviewText); msg != "" {
+	if msg := validateReviewText(req.ReviewText); msg != "" {
 		return time.Time{}, nil, nil, msg
 	}
 
@@ -110,14 +102,10 @@ func (req createReviewRequest) validate() (seenAt time.Time, lineup []queries.Li
 		if text != nil && *text == "" {
 			text = nil
 		}
-		if e.Rating == nil {
-			if text != nil {
-				return time.Time{}, nil, nil, "rate a DJ to review their set"
-			}
-		} else if msg := validateRatingAndText(*e.Rating, text); msg != "" {
+		if msg := validateReviewText(text); msg != "" {
 			return time.Time{}, nil, nil, msg
 		}
-		lineup = append(lineup, queries.LineupInput{DjID: e.DjID, Rating: e.Rating, ReviewText: text})
+		lineup = append(lineup, queries.LineupInput{DjID: e.DjID, ReviewText: text})
 	}
 
 	tagNames, err := domain.NormalizeTags(req.Tags)
@@ -169,7 +157,7 @@ func (h *Handlers) validateTaggedUsers(ctx context.Context, callerID string, ids
 
 // CreateReview godoc
 //
-//	@Summary	Log a night out: the event (picked, or found or created by name), venue, day, rating, the DJs seen and any DJ reviews, tags and friends, in one go
+//	@Summary	Log a night out: the event (picked, or found or created by name), venue, day, review, the DJs seen and anything said about their sets, tags and friends, in one go
 //	@Tags		reviews
 //	@Accept		json
 //	@Produce	json
@@ -254,7 +242,7 @@ func (h *Handlers) CreateReview(w http.ResponseWriter, r *http.Request) {
 	review, err := queries.CreateReview(ctx, tx, queries.CreateReviewParams{
 		UserID: user.ID, EventID: eventID, Venue: venue, City: city,
 		SeenAt: seenAt, IsDay: req.IsDay, IsNight: req.IsNight || !req.IsDay,
-		Rating: &req.Rating, ReviewText: req.ReviewText,
+		ReviewText: req.ReviewText,
 	})
 	if err != nil {
 		InternalError(w, err)
@@ -381,7 +369,7 @@ type UpdateReviewResponse struct {
 // UpdateReview godoc
 //
 //	@Summary		Change who was tagged as being at a night out owned by the caller (404, never 403, if not owned/found)
-//	@Description	The rest of a review - event, venue, date, ratings, lineup, text and tags - is fixed once logged.
+//	@Description	The rest of a review - event, venue, date, lineup, text and tags - is fixed once logged.
 //	@Tags			reviews
 //	@Accept			json
 //	@Produce		json

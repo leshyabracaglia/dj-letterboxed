@@ -54,22 +54,21 @@ func GetEventsByIDs(ctx context.Context, q DBTX, ids []string) (map[string]db.Ev
 }
 
 // EventSummary is an event with how many nights out of it people have
-// logged, and their average rating of those nights.
+// logged.
 type EventSummary struct {
 	db.Event
-	ReviewCount int64    `json:"reviewCount"`
-	AvgRating   *float64 `json:"avgRating" extensions:"x-nullable"`
+	ReviewCount int64 `json:"reviewCount"`
 }
 
 const eventSummarySelect = `
 	SELECT e.id, e.name, e.slug, e.created_by_user_id, e.created_at,
-		COUNT(r.id) AS review_count, AVG(r.rating)::float8
+		COUNT(r.id) AS review_count
 	FROM events e
 	LEFT JOIN reviews r ON r.event_id = e.id`
 
 func scanEventSummary(row pgx.Row) (*EventSummary, error) {
 	var s EventSummary
-	err := row.Scan(&s.ID, &s.Name, &s.Slug, &s.CreatedByUserID, &s.CreatedAt, &s.ReviewCount, &s.AvgRating)
+	err := row.Scan(&s.ID, &s.Name, &s.Slug, &s.CreatedByUserID, &s.CreatedAt, &s.ReviewCount)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound

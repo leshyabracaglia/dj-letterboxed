@@ -29,7 +29,6 @@ import {
   Icon,
   KeyboardScrollView,
   Page,
-  RatingStampPicker,
   Tape,
   Text,
   TORN_CARD_GAP,
@@ -39,7 +38,6 @@ import { errorMessage, useApi, unwrap } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/queryKeys";
 import type { RAEvent } from "@/lib/api/types";
 import { useCurrentUser } from "@/lib/auth";
-import { plural } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
 import { isWeb } from "@/lib/platform";
 
@@ -153,7 +151,7 @@ export default function CreateReviewScreen() {
   };
 
   const onSubmit = async () => {
-    const problem = draftProblem(draft, caught);
+    const problem = draftProblem(draft);
     dispatch({ type: "setError", error: problem?.message });
     if (problem?.field) dispatch({ type: "flagMissing", field: problem.field });
     if (problem?.field === "venue") shakeVenue();
@@ -249,9 +247,7 @@ export default function CreateReviewScreen() {
         <View className="mt-8 gap-4">
           <SectionHeading
             number={listedLineup.length ? "02" : "01"}
-            title={
-              caught.length ? `Rate the ${caught.length === 1 ? "set" : plural(caught.length, "set")}` : "Rate the sets"
-            }
+            title={caught.length === 1 ? "The set" : "The sets"}
             numberClassName="text-primary-dark"
           />
           <View className={TORN_CARD_GAP}>
@@ -298,16 +294,9 @@ export default function CreateReviewScreen() {
             number={listedLineup.length ? "03" : "02"}
             title="The night overall"
             numberClassName="text-stamp-red"
-            aside="Required"
-            asideClassName={state.nightMissing ? "text-danger-dark" : "text-paper/50"}
           />
           <Card tint="neutral" className="gap-5 pb-5">
             <Tape style={{ top: -10, right: 32 }} rotate={5} />
-            <View className="gap-2">
-              <FieldLabel>Your rating</FieldLabel>
-              <RatingStampPicker value={draft.rating} onChange={(rating) => updateDraft({ rating })} size={48} />
-              {state.nightMissing && <Text className="text-sm text-danger-dark">Rate the night to pin it up</Text>}
-            </View>
             <View className="gap-2">
               <FieldLabel>What was it like</FieldLabel>
               <TagPicker

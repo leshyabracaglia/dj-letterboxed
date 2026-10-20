@@ -45,11 +45,12 @@ export function anEvent(overrides: Partial<Event> = {}): Event {
   };
 }
 
-/** A lineup entry for each name; pass `{ name, rating }` to rate one. */
-export function aLineup(...djs: (string | { name: string; rating?: number; reviewText?: string })[]): LineupEntry[] {
+/** A lineup entry for each name; pass `{ name, reviewText }` to write about
+ * one's set. */
+export function aLineup(...djs: (string | { name: string; reviewText?: string })[]): LineupEntry[] {
   return djs.map((dj) => {
-    const { name, rating, reviewText } = typeof dj === "string" ? { name: dj } : dj;
-    return { dj: aDj({ name }), rating: rating ?? null, reviewText: reviewText ?? null };
+    const { name, reviewText } = typeof dj === "string" ? { name: dj } : dj;
+    return { dj: aDj({ name }), reviewText: reviewText ?? null };
   });
 }
 
@@ -65,7 +66,6 @@ export function aReview(overrides: Partial<Review> = {}): Review {
     seenAt: AT,
     isDay: false,
     isNight: true,
-    rating: 4,
     reviewText: null,
     lineup: [],
     tags: [],

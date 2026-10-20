@@ -1,17 +1,8 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { ActivityIndicator, Image, Modal, Pressable, useWindowDimensions, View } from "react-native";
 
-import {
-  Button,
-  CARD_COLORS,
-  Icon,
-  type Paper,
-  RatingStamp,
-  Tape,
-  Text,
-  TornEdge,
-  WallBackground,
-} from "@/components/ui";
+import { Button, CARD_COLORS, Icon, type Paper, Tape, Text, TornEdge, WallBackground } from "@/components/ui";
+import { NightStamp } from "@/components/NightStamp";
 import { errorMessage } from "@/lib/api/client";
 import type { ReviewDetail } from "@/lib/api/types";
 import { colors } from "@/lib/colors";
@@ -38,7 +29,7 @@ function storyPhoto(review: ReviewDetail) {
 
 // The 9:16 Instagram story image, in the app's zine look: a torn, taped
 // paper card (the same purple/red the review was opened on) pinned to the
-// concrete wall, with a framed snapshot and the rating stamp. Laid out on a
+// concrete wall, with a framed snapshot and the night's passport stamp. Laid out on a
 // 360-wide design grid and scaled by `width` so the on-screen preview and the
 // 1080×1920 capture are the same drawing. Key content stays clear of the top
 // ~10% / bottom ~12%, where Instagram overlays its progress bar, header and
@@ -63,7 +54,6 @@ function StoryCard({
   const set = soloSet(review);
   const subject = reviewSubject(review, set);
   const photo = storyPhoto(review);
-  const rating = set ? set.rating : review.rating;
   const reviewText = set ? set.reviewText : review.reviewText;
   const paperColor = CARD_COLORS[paper.tint];
   const label = nightDateParts(review, { wholeNight: subject.isNight, withYear: true }).join(" · ");
@@ -151,11 +141,9 @@ function StoryCard({
                   </View>
                 )}
               </View>
-              {!!rating && (
-                <View style={{ marginTop: u(4), marginRight: u(2) }}>
-                  <RatingStamp value={rating} size={u(104)} rotate={-10} />
-                </View>
-              )}
+              <View style={{ marginTop: u(4), marginRight: u(2) }}>
+                <NightStamp review={review} size={u(104)} rotate={-10} />
+              </View>
             </View>
 
             <Text

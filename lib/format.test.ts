@@ -1,4 +1,11 @@
-import { formatDayNight, formatRating, formatTimeAgo, parseDateInputValue, plural, toDateInputValue } from "./format";
+import {
+  formatDayNight,
+  formatStampDate,
+  formatTimeAgo,
+  parseDateInputValue,
+  plural,
+  toDateInputValue,
+} from "./format";
 
 describe("plural", () => {
   it("uses the singular for one", () => expect(plural(1, "night")).toBe("1 night"));
@@ -8,12 +15,11 @@ describe("plural", () => {
   });
 });
 
-describe("formatRating", () => {
-  it("shows whole stars without a decimal", () => expect(formatRating(4)).toBe("4"));
-  it("keeps one decimal on averages", () => expect(formatRating(3.456)).toBe("3.5"));
-  it("shows a dash for no rating", () => {
-    expect(formatRating(null)).toBe("—");
-    expect(formatRating(undefined)).toBe("—");
+describe("formatStampDate", () => {
+  it("is the month over the local day", () => {
+    const [month, day] = formatStampDate(new Date(2026, 8, 4, 12).toISOString());
+    expect(month).toMatch(/sep/i);
+    expect(day).toBe("4");
   });
 });
 

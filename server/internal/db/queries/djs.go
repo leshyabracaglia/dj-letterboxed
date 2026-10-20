@@ -62,34 +62,19 @@ func GetDjsByIDs(ctx context.Context, q DBTX, ids []string) (map[string]db.Dj, e
 }
 
 type DjAggregate struct {
-	AvgRating   *float64 `json:"avgRating" extensions:"x-nullable"`
-	ReviewCount int64    `json:"reviewCount"`
-	// RatingCounts[i] is how many reviews gave i+1 stars.
-	RatingCounts []int64 `json:"ratingCounts"`
+	// TimesSeen is how many nights logged have them on the lineup.
+	TimesSeen int64 `json:"timesSeen"`
+	// ReviewCount is how many of those say something about their set.
+	ReviewCount int64 `json:"reviewCount"`
 }
 
-// GetDjAggregate rates djID from their ratings on nights' lineups, plus the
-// rating of nights they were the only DJ on the lineup of and weren't rated
-// on themselves (a solo night's rating is theirs).
+// GetDjAggregate counts the nights djID was seen on and the sets of theirs
+// people wrote about.
 func GetDjAggregate(ctx context.Context, q DBTX, djID string) (*DjAggregate, error) {
 	var agg DjAggregate
 	err := q.QueryRow(ctx, `
-		SELECT AVG(rating)::float8, COUNT(*),
-			ARRAY[
-				COUNT(*) FILTER (WHERE rating = 1),
-				COUNT(*) FILTER (WHERE rating = 2),
-				COUNT(*) FILTER (WHERE rating = 3),
-				COUNT(*) FILTER (WHERE rating = 4),
-				COUNT(*) FILTER (WHERE rating = 5)
-			]
-		FROM (
-			SELECT rating FROM review_lineup WHERE dj_id = $1 AND rating IS NOT NULL
-			UNION ALL
-			SELECT r.rating FROM reviews r
-			JOIN review_lineup rl ON rl.review_id = r.id AND rl.dj_id = $1 AND rl.rating IS NULL
-			WHERE r.rating IS NOT NULL
-				AND NOT EXISTS (SELECT 1 FROM review_lineup o WHERE o.review_id = r.id AND o.dj_id <> $1)
-		) ratings`, djID).Scan(&agg.AvgRating, &agg.ReviewCount, &agg.RatingCounts)
+		SELECT COUNT(*), COUNT(*) FILTER (WHERE review_text IS NOT NULL)
+		FROM review_lineup WHERE dj_id = $1`, djID).Scan(&agg.TimesSeen, &agg.ReviewCount)
 	if err != nil {
 		return nil, err
 	}

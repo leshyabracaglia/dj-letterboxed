@@ -17,7 +17,7 @@ import {
 } from "@/components/ui";
 import { useEventDetail } from "@/lib/api/hooks";
 import type { Dj, EventDetail } from "@/lib/api/types";
-import { plural } from "@/lib/format";
+import { plural, pluralWord } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
 import { ReactNode } from "react";
 
@@ -52,7 +52,7 @@ function DjAvatarRow({ items }: { items: { dj: Dj; caption?: ReactNode }[] }) {
 
 // The event as a gig poster, like the one you fill in when logging a night:
 // its name headlining, the DJs people saw as the lineup (each a link), the record showing
-// how it rates, and where it's been along the bottom strip.
+// how many nights of it people logged, and where it's been along the bottom strip.
 function EventPoster({ data }: { data: EventDetail }) {
   const { event } = data;
   const lineup = data.djs.slice(0, POSTER_LINEUP);
@@ -70,13 +70,8 @@ function EventPoster({ data }: { data: EventDetail }) {
       </View>
 
       <View style={POSTER_RECORD_STYLE} className="items-center justify-center bg-zine-purple">
-        <Text variant="display" className="text-sm leading-4 text-paper/80">
-          Avg
-        </Text>
-        <Text className="font-numeric text-4xl leading-9 text-paper">
-          {event.avgRating == null ? "–" : event.avgRating.toFixed(1)}
-        </Text>
-        <Text className="font-display text-xs leading-3 text-paper/80">of 5</Text>
+        <Text className="font-numeric text-4xl leading-9 text-paper">{event.reviewCount}</Text>
+        <Text className="font-display text-xs leading-3 text-paper/80">{pluralWord(event.reviewCount, "night")}</Text>
       </View>
 
       <View className="px-3 pb-3 pt-24">
@@ -138,7 +133,7 @@ function EventPoster({ data }: { data: EventDetail }) {
 }
 
 // Everything logged about an event ("Innervisions NY") across every date,
-// venue and day/night people went: how it rates, the DJs people saw and how
+// venue and day/night people went: how many nights, the DJs people saw and how
 // often, where it's been, and recent reviews.
 export default function EventDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();

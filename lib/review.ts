@@ -28,8 +28,8 @@ export function getNightTitle(night: Pick<Review, "event" | "lineup"> | null | u
 }
 
 /** When a night was, as label parts to join with " · ": "Sat 14 Sep",
- * "Night", plus "Whole night" when `wholeNight` (the rating shown is the
- * night's, not a DJ's). `withYear` adds the year to the date. */
+ * "Night", plus "Whole night" when `wholeNight` (the post is about the
+ * night, not one DJ's set). `withYear` adds the year to the date. */
 export function nightDateParts(
   review: Pick<Review, "seenAt" | "isDay" | "isNight">,
   { wholeNight = false, withYear = false }: { wholeNight?: boolean; withYear?: boolean } = {},
@@ -48,17 +48,17 @@ function nightHref(night: Night): Href | null {
   return null;
 }
 
-/** The DJs someone rated on a night (their DJ reviews), in lineup order. */
-export function ratedSets(review: Pick<Review, "lineup">): LineupEntry[] {
-  return review.lineup.filter((entry) => entry.rating != null);
+/** The DJs someone wrote about on a night (their DJ reviews), in lineup
+ * order. */
+export function reviewedSets(review: Pick<Review, "lineup">): LineupEntry[] {
+  return review.lineup.filter((entry) => !!entry.reviewText);
 }
 
-/** The one DJ a post is really about: a night logged before nights were
- * rated, with nothing said about the night itself and a single DJ rated. It
- * shows as that DJ's review. */
-export function soloSet(review: Pick<Review, "rating" | "reviewText" | "lineup">): LineupEntry | null {
-  if (review.rating != null || review.reviewText) return null;
-  const sets = ratedSets(review);
+/** The one DJ a post is really about: nothing said about the night itself
+ * and a single DJ's set written about. It shows as that DJ's review. */
+export function soloSet(review: Pick<Review, "reviewText" | "lineup">): LineupEntry | null {
+  if (review.reviewText) return null;
+  const sets = reviewedSets(review);
   return sets.length === 1 ? sets[0] : null;
 }
 

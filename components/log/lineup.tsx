@@ -12,7 +12,6 @@ import {
   KEYBOARD_DISMISS_PROPS,
   paperAt,
   Photo,
-  RatingStampPicker,
   Sheet,
   Skeleton,
   Tape,
@@ -26,8 +25,8 @@ import type { CreateDjInput, Dj } from "@/lib/api/types";
 import { artistPickName, type ArtistPick, type DraftLineupEntry } from "./draft";
 import { CircleIcon, FieldLabel, INPUT_CLASS, LinedInput, NO_WEB_OUTLINE, SheetRow } from "./fields";
 
-// The night's DJs: ticking off a listed lineup, adding artists, and rating
-// each set.
+// The night's DJs: ticking off a listed lineup, adding artists, and writing
+// about each set.
 
 // Fixed row height so the dropdown can cap itself at exactly five rows.
 const RESULT_ROW_HEIGHT = 64;
@@ -223,7 +222,7 @@ export function ArtistSearchInput({
 }
 
 // A DJ's photo full size over the page, to put a face to the name while
-// rating them. Tap anywhere to close.
+// writing about them. Tap anywhere to close.
 function PhotoLightbox({ uri, name, onClose }: { uri: string; name: string; onClose: () => void }) {
   const { width, height } = useWindowDimensions();
   const size = Math.min(width - 48, height * 0.6, 480);
@@ -244,7 +243,7 @@ function PhotoLightbox({ uri, name, onClose }: { uri: string; name: string; onCl
 }
 
 // A DJ in the lineup, on purple or red paper: their name and photo (tap to
-// enlarge), a row of stamps to rate the set, and a box for a review of it.
+// enlarge), and a box for a review of their set.
 export function LineupCard({
   entry,
   index,
@@ -274,7 +273,6 @@ export function LineupCard({
           <View className="flex-row items-center gap-3">
             <Text variant="display" className={`text-sm ${paper.inkClassName}`}>
               DJ {number}
-              {!entry.rating && " · Tap a stamp to rate"}
             </Text>
             {onEdit && (
               <Pressable onPress={onEdit} hitSlop={8}>
@@ -283,6 +281,9 @@ export function LineupCard({
                 </Text>
               </Pressable>
             )}
+            <Pressable onPress={onRemove} hitSlop={8} accessibilityLabel={`Remove ${name}`} className="ml-auto">
+              <Icon name="close" size={18} className="text-paper/80" />
+            </Pressable>
           </View>
           <View className="mt-2">
             <FitText fontSize={40} numberOfLines={2} className="text-paper">
@@ -313,13 +314,6 @@ export function LineupCard({
         </Pressable>
       </View>
       {photoOpen && !!imageUrl && <PhotoLightbox uri={imageUrl} name={name} onClose={() => setPhotoOpen(false)} />}
-
-      <View className="mt-3 flex-row items-center justify-between border-t border-paper/25 pt-3">
-        <RatingStampPicker value={entry.rating} onChange={(rating) => onChange({ rating })} size={40} />
-        <Pressable onPress={onRemove} hitSlop={8} accessibilityLabel={`Remove ${name}`}>
-          <Icon name="close" size={18} className="text-paper/80" />
-        </Pressable>
-      </View>
 
       {entry.reviewing || !!entry.reviewText ? (
         <View className="mt-3 gap-1 bg-black/20 p-3">

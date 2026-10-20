@@ -394,7 +394,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List the nights out a DJ was on the lineup of (with any rating of them in the lineup), cursor-paginated by seenAt desc */
+        /** List the nights out a DJ was on the lineup of (with anything said about their set in the lineup), cursor-paginated by seenAt desc */
         get: {
             parameters: {
                 query?: {
@@ -447,7 +447,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a DJ by slug, with rating aggregate and recent reviews */
+        /** Get a DJ by slug, with how often they were seen and recent reviews */
         get: {
             parameters: {
                 query?: never;
@@ -1254,7 +1254,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Log a night out: the event (picked, or found or created by name), venue, day, rating, the DJs seen and any DJ reviews, tags and friends, in one go */
+        /** Log a night out: the event (picked, or found or created by name), venue, day, review, the DJs seen and anything said about their sets, tags and friends, in one go */
         post: {
             parameters: {
                 query?: never;
@@ -1392,7 +1392,7 @@ export interface paths {
         head?: never;
         /**
          * Change who was tagged as being at a night out owned by the caller (404, never 403, if not owned/found)
-         * @description The rest of a review - event, venue, date, ratings, lineup, text and tags - is fixed once logged.
+         * @description The rest of a review - event, venue, date, lineup, text and tags - is fixed once logged.
          */
         patch: {
             parameters: {
@@ -2492,7 +2492,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a user's review stats: totals, most-seen and recently seen DJs, top venues */
+        /** Get a user's review stats: totals, most-seen and recently seen DJs, top venues, and their passport of venues */
         get: {
             parameters: {
                 query?: never;
@@ -2713,15 +2713,12 @@ export interface components {
             updatedAt: string;
         };
         DjDetailResponse: {
-            avgRating: number | null;
             dj: components["schemas"]["Dj"];
-            /**
-             * @description RatingCounts is how many ratings of them gave each star rating: index
-             *     0 is 1 star, index 4 is 5 stars.
-             */
-            ratingCounts: number[];
             recentReviews: components["schemas"]["ReviewDTO"][];
+            /** @description ReviewCount is how many of those say something about their set. */
             reviewCount: number;
+            /** @description TimesSeen is how many nights logged have them on the lineup. */
+            timesSeen: number;
         };
         Event: {
             createdAt: string;
@@ -2741,7 +2738,6 @@ export interface components {
             reviewCount: number;
         };
         EventSummary: {
-            avgRating: number | null;
             createdAt: string;
             createdByUserId: string | null;
             id: string;
@@ -2768,7 +2764,6 @@ export interface components {
         };
         LineupEntry: {
             dj: components["schemas"]["Dj"];
-            rating: number | null;
             reviewText: string | null;
         };
         NearbyVenue: {
@@ -2809,6 +2804,13 @@ export interface components {
         PaginatedReviews: {
             items: components["schemas"]["ReviewDTO"][];
             nextCursor: string | null;
+        };
+        PassportStamp: {
+            city: string | null;
+            firstVisitAt: string;
+            name: string;
+            nights: number;
+            venueId: string;
         };
         PlaceSuggestion: {
             name: string;
@@ -2917,11 +2919,6 @@ export interface components {
             isPopular?: boolean;
             likeCount: number;
             lineup: components["schemas"]["LineupEntry"][];
-            /**
-             * @description Rating of the night as a whole, 1-5. Nil only on nights logged before
-             *     nights were rated, which only rated their DJs.
-             */
-            rating: number | null;
             reviewText: string | null;
             seenAt: string;
             taggedUsers: components["schemas"]["User"][];
@@ -2999,6 +2996,8 @@ export interface components {
             reengagePush: boolean;
         };
         UserStatsResponse: {
+            /** @description Passport is every venue they've logged a night at, first visit first. */
+            passport: components["schemas"]["PassportStamp"][];
             recentDjs: components["schemas"]["RecentDj"][];
             topDjs: components["schemas"]["TopDj"][];
             topVenues: components["schemas"]["TopVenue"][];
@@ -3067,8 +3066,7 @@ export interface components {
             lineup: components["schemas"]["lineupEntryInput"][];
             placeId?: string;
             placeSessionToken?: string;
-            /** @description The night as a whole, 1-5. Required. */
-            rating: number;
+            /** @description What you thought of the night as a whole. */
             reviewText?: string;
             seenAt: string;
             taggedUserIds: string[];
@@ -3082,7 +3080,6 @@ export interface components {
         };
         lineupEntryInput: {
             djId: string;
-            rating?: number;
             reviewText?: string;
         };
         pushTokenRequest: {

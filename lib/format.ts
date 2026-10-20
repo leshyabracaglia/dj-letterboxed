@@ -9,10 +9,11 @@ export function pluralWord(n: number, word: string): string {
   return n === 1 ? word : `${word}s`;
 }
 
-// rating is whole stars (1-5); averages keep one decimal.
-export function formatRating(rating: number | null | undefined): string {
-  if (!rating) return "—";
-  return Number.isInteger(rating) ? String(rating) : rating.toFixed(1);
+/** A night's date as a passport stamp shows it: the month over the day,
+ * ["Sep", "14"]. The month name follows the device locale. */
+export function formatStampDate(iso: string): [string, string] {
+  const date = new Date(iso);
+  return [date.toLocaleDateString(undefined, { month: "short" }), String(date.getDate())];
 }
 
 // Date-only: for when something was reviewed/seen, where the exact time isn't meaningful.

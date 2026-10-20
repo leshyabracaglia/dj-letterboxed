@@ -15,9 +15,9 @@ import {
   LoadingFade,
   paperAt,
   Photo,
-  RatingStamp,
   SectionTitle,
   Skeleton,
+  Stamp,
   Text,
   TornEdge,
   CARD_COLORS,
@@ -27,8 +27,10 @@ import {
   usePageGutter,
 } from "@/components/ui";
 import { DetailPage } from "@/components/DetailPage";
+import { NightStamp } from "@/components/NightStamp";
 import { ReviewTags } from "@/components/ReviewTags";
 import { useDjDetail } from "@/lib/api/hooks";
+import { plural } from "@/lib/format";
 import type { DjDetail, Review } from "@/lib/api/types";
 import { getNightTitle, nightDateParts } from "@/lib/review";
 import { ROUTES } from "@/lib/routes";
@@ -123,7 +125,6 @@ function SpotifyLink({ spotifyId }: { spotifyId: string }) {
 
 function NameBand({ data }: { data: DjDetail }) {
   const gutter = usePageGutter();
-  const avgRating = data.avgRating ? Number(data.avgRating) : null;
   return (
     <View className="z-10 bg-zine-red pb-8 pt-4" style={{ paddingHorizontal: gutter }}>
       <FitText fontSize={72} numberOfLines={3} className="text-paper">
@@ -143,53 +144,25 @@ function NameBand({ data }: { data: DjDetail }) {
       {!!data.dj.spotifyId && <SpotifyLink spotifyId={data.dj.spotifyId} />}
       <TornEdge color={CARD_COLORS.accent} height={12} />
       <View className="absolute -bottom-12" style={{ right: gutter - 8 }}>
-        <RatingStamp value={avgRating} size={124} color="purple" rotate={-4} />
+        <Stamp
+          label={String(data.timesSeen)}
+          rim="SEEN · BEATBOXD · "
+          size={124}
+          color="purple"
+          rotate={-4}
+          accessibilityLabel={`Seen ${plural(data.timesSeen, "time")}`}
+        />
       </View>
     </View>
   );
 }
 
-function RatingLevels({ counts, reviewCount }: { counts: number[]; reviewCount: number }) {
-  const max = Math.max(1, ...counts);
-  return (
-    <Card tilt={0.6} className="gap-3 bg-zine-panel">
-      <View className="flex-row justify-between">
-        <Text variant="display" className="text-xl text-paper/70">
-          Rating levels
-        </Text>
-        <Text variant="display" className="text-xl text-paper/70">
-          Avg of {reviewCount}
-        </Text>
-      </View>
-      <View className="gap-2">
-        {[5, 4, 3, 2, 1].map((stars) => {
-          const count = counts[stars - 1] ?? 0;
-          return (
-            <View key={stars} className="flex-row items-center gap-3">
-              <Text className="w-4 font-display text-lg text-paper">{stars}</Text>
-              <View className="h-3 flex-1 bg-[#2A0F14]">
-                {!!count && (
-                  <View
-                    className="h-full bg-paper shadow-md shadow-white"
-                    style={{ width: `${(count / max) * 100}%` }}
-                  />
-                )}
-              </View>
-            </View>
-          );
-        })}
-      </View>
-    </Card>
-  );
-}
-
-// A night the DJ was on the lineup of: the reviewer's rating and review of
-// the DJ's set, or - when they only rated the night as a whole - the
+// A night the DJ was on the lineup of: what the reviewer said about the
+// DJ's set, or - when they only wrote about the night as a whole - the
 // night's.
 function DjNightRow({ review, djId, index }: { review: Review; djId: string; index: number }) {
   const where = getNightTitle(review);
-  const set = review.lineup.find((entry) => entry.dj.id === djId && entry.rating != null);
-  const rating = set ? set.rating : review.rating;
+  const set = review.lineup.find((entry) => entry.dj.id === djId && !!entry.reviewText);
   const reviewText = set ? set.reviewText : review.reviewText;
   const meta = [...(review.user ? [`@${review.user.username}`] : []), ...nightDateParts(review, { wholeNight: !set })];
   const paper = paperAt(index);
@@ -204,7 +177,7 @@ function DjNightRow({ review, djId, index }: { review: Review; djId: string; ind
             {meta.join(" · ")}
           </Text>
         </View>
-        <RatingStamp value={rating} size={52} />
+        <NightStamp review={review} size={52} />
       </View>
       {!!reviewText && (
         <Text className="mt-2 text-base leading-6 text-paper" numberOfLines={4}>
@@ -277,8 +250,6 @@ function DjProfileList({ data }: { data: DjDetail }) {
             <NameBand data={data} />
           </FadeInView>
           <View style={[contentStyle, { paddingTop: 72, paddingBottom: 0 }]} className="gap-4">
-            <RatingLevels counts={data.ratingCounts} reviewCount={data.reviewCount} />
-            <View className="mt-2" />
             <SectionTitle>Recent logs</SectionTitle>
           </View>
           <View className="h-2" />

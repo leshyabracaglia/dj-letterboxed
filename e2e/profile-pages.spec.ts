@@ -28,7 +28,7 @@ test("DJ page lists every log of that DJ", async ({ page }) => {
   await page.goto("/dj/dixon");
 
   await expect(text(page, "Dixon")).toBeVisible();
-  await expect(text(page, "Avg of 3")).toBeVisible();
+  await expect(page.getByRole("img", { name: "Seen 3 times" })).toBeVisible();
   await expect(logRow(page, "Innervisions New York", "alice")).toBeVisible();
   await expect(logRow(page, "Innervisions New York", "bob")).toBeVisible();
   await expect(logRow(page, "Dixon All Night Long", "bob")).toBeVisible();
@@ -108,4 +108,11 @@ test("a log is verified only when its reviewer checked in at the venue", async (
   await expect(notCheckedIn).toBeVisible();
   await expect(checkedIn.getByTestId("verified-mark")).toBeVisible();
   await expect(notCheckedIn.getByTestId("verified-mark")).toHaveCount(0);
+});
+
+test("a profile's passport stamps every club they've logged a night at", async ({ page }) => {
+  await page.goto("/user/carla");
+
+  await expect(shown(page.getByRole("img", { name: "Good Room: 1 night" }))).toBeVisible();
+  await expect(shown(page.getByRole("img", { name: "Nowadays: 1 night" }))).toBeVisible();
 });

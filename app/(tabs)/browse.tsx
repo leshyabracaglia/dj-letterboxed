@@ -12,7 +12,7 @@ import {
   KEYBOARD_DISMISS_PROPS,
   Page,
   Photo,
-  RatingStamp,
+  Stamp,
   SegmentedTabs,
   Skeleton,
   Text,
@@ -75,7 +75,12 @@ function EventCard({ event }: { event: EventSummary }) {
             {plural(event.reviewCount, "night")} logged
           </Text>
         </View>
-        {event.avgRating !== null && <RatingStamp value={event.avgRating} size={52} />}
+        <Stamp
+          label={String(event.reviewCount)}
+          rim="LOGGED · BEATBOXD · "
+          size={52}
+          accessibilityLabel={`${plural(event.reviewCount, "night")} logged`}
+        />
       </View>
     </Card>
   );

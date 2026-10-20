@@ -14,9 +14,9 @@ const REVIEW_LIST_PREFIXES = ["feed", "reviews", "users", "djs", "events", "venu
 const MAX_DEPTH = 6;
 
 // A review, as opposed to the other id-carrying objects next to it (users,
-// DJs, events). Nothing else has both a rating and an author.
+// DJs, events, comments). Nothing else has both a lineup and an author.
 function isReview(obj: Record<string, unknown>): boolean {
-  return "rating" in obj && "userId" in obj;
+  return "lineup" in obj && "userId" in obj;
 }
 
 function isUser(obj: Record<string, unknown>): boolean {

@@ -32,7 +32,7 @@ const SECTIONS: InfoSection[] = [
       "• Promote violence, self-harm or illegal activity, including buying or selling drugs.",
       "• Share someone’s private information, or tag people to reveal where they were when they wouldn’t want it known.",
       "• Make false statements of fact about real people or businesses. Reviews should be your honest opinion of a night you were actually at.",
-      "• Spam, run fake accounts, impersonate anyone, or manipulate ratings.",
+      "• Spam, run fake accounts, impersonate anyone, or manipulate likes or reviews.",
       "• Post content you don’t have the rights to.",
       "• Interfere with Beatboxd: attack, overload, scrape or reverse engineer it, or get around blocks or limits.",
     ],

@@ -38,7 +38,7 @@ func (h *Handlers) SearchDjs(w http.ResponseWriter, r *http.Request) {
 
 // GetDjBySlug godoc
 //
-//	@Summary	Get a DJ by slug, with rating aggregate and recent reviews
+//	@Summary	Get a DJ by slug, with how often they were seen and recent reviews
 //	@Tags		djs
 //	@Produce	json
 //	@Param		slug	path		string	true	"DJ slug"
@@ -72,9 +72,8 @@ func (h *Handlers) GetDjBySlug(w http.ResponseWriter, r *http.Request) {
 
 	WriteJSON(w, http.StatusOK, DjDetailResponse{
 		Dj:            *dj,
-		AvgRating:     agg.AvgRating,
+		TimesSeen:     agg.TimesSeen,
 		ReviewCount:   agg.ReviewCount,
-		RatingCounts:  agg.RatingCounts,
 		RecentReviews: recentDTOs,
 	})
 }
@@ -176,7 +175,7 @@ func (h *Handlers) SearchSpotify(w http.ResponseWriter, r *http.Request) {
 
 // ListReviewsByDj godoc
 //
-//	@Summary	List the nights out a DJ was on the lineup of (with any rating of them in the lineup), cursor-paginated by seenAt desc
+//	@Summary	List the nights out a DJ was on the lineup of (with anything said about their set in the lineup), cursor-paginated by seenAt desc
 //	@Tags		djs
 //	@Produce	json
 //	@Param		id		path		string	true	"DJ id"

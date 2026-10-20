@@ -8,7 +8,7 @@ import { useApi, unwrap } from "@/lib/api/client";
 import { useFavoriteReviews } from "@/lib/api/hooks";
 import { queryKeys } from "@/lib/api/queryKeys";
 import type { FavoriteReviewsResponse, Review, SetFavoritesInput } from "@/lib/api/types";
-import { formatRating } from "@/lib/format";
+import { formatCardDate } from "@/lib/format";
 import { reviewSubject, soloSet } from "@/lib/review";
 import { ROUTES } from "@/lib/routes";
 
@@ -87,7 +87,7 @@ export function FavoritesShowcase({
               <Text className="mt-1 text-center text-xs text-paper" numberOfLines={2}>
                 {reviewSubject(review, soloSet(review)).name}
               </Text>
-              <Text className="text-xs text-muted">{formatRating((soloSet(review) ?? review).rating)}</Text>
+              <Text className="text-xs text-muted">{formatCardDate(review.seenAt)}</Text>
             </Pressable>
           );
         })}
@@ -175,7 +175,7 @@ function EditFavoritesModal({
                     />
                     <View className="flex-1">
                       <Text className="text-paper">{reviewSubject(review, soloSet(review)).name}</Text>
-                      <Text className="text-xs text-muted">{formatRating((soloSet(review) ?? review).rating)}</Text>
+                      <Text className="text-xs text-muted">{formatCardDate(review.seenAt)}</Text>
                     </View>
                     {isSelected && (
                       <View className="h-6 w-6 items-center justify-center rounded-full bg-primary-dark">

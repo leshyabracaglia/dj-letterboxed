@@ -18,7 +18,7 @@ export { Button } from "./Button";
 export { Page, WallBackground, WallView } from "./Page";
 export { Photo } from "./Photo";
 export { ChannelLabel, PageHeader } from "./PageHeader";
-export { RatingStamp, RatingStampPicker } from "./RatingStamp";
+export { Stamp } from "./Stamp";
 export { SectionTitle } from "./SectionTitle";
 export { SegmentedTabs } from "./SegmentedTabs";
 export { Sheet } from "./Sheet";

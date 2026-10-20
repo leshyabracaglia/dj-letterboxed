@@ -27,7 +27,6 @@ export type LogFormState = {
   error?: string;
   // Required fields the last submit found missing, outlined on the form.
   venueMissing: boolean;
-  nightMissing: boolean;
   sheet?: PosterSheet;
   // What the venue sheet opens searching for.
   venueSheetQuery: string;
@@ -55,7 +54,7 @@ export type LogFormAction =
   | { type: "addToLineup"; pick: ArtistPick }
   | { type: "saveArtist"; input: CreateDjInput }
   | { type: "setError"; error?: string }
-  | { type: "flagMissing"; field: "venue" | "night" }
+  | { type: "flagMissing"; field: "venue" }
   | { type: "openSheet"; sheet: PosterSheet; venueQuery?: string }
   | { type: "closeSheet" }
   | { type: "startAddingDj"; query?: string }
@@ -70,7 +69,6 @@ export function initialLogFormState(): LogFormState {
     draft: emptyDraft(),
     lineup: [],
     venueMissing: false,
-    nightMissing: false,
     venueSheetQuery: "",
     addingDj: false,
     djQuery: "",
@@ -111,7 +109,6 @@ export function logFormReducer(state: LogFormState, action: LogFormAction): LogF
         draft: { ...state.draft, ...changes },
         // Filling in a missing field clears its outline.
         venueMissing: state.venueMissing && !changes.venuePick,
-        nightMissing: state.nightMissing && !changes.rating,
       };
     }
     case "updateEntry":
@@ -142,7 +139,7 @@ export function logFormReducer(state: LogFormState, action: LogFormAction): LogF
     case "setError":
       return { ...state, error: action.error };
     case "flagMissing":
-      return action.field === "venue" ? { ...state, venueMissing: true } : { ...state, nightMissing: true };
+      return { ...state, venueMissing: true };
     case "openSheet":
       return { ...state, sheet: action.sheet, venueSheetQuery: action.venueQuery ?? state.venueSheetQuery };
     case "closeSheet":

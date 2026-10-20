@@ -46,12 +46,11 @@ type PaginatedReviews struct {
 }
 
 type DjDetailResponse struct {
-	Dj          db.Dj    `json:"dj"`
-	AvgRating   *float64 `json:"avgRating" extensions:"x-nullable"`
-	ReviewCount int64    `json:"reviewCount"`
-	// RatingCounts is how many ratings of them gave each star rating: index
-	// 0 is 1 star, index 4 is 5 stars.
-	RatingCounts  []int64     `json:"ratingCounts"`
+	Dj db.Dj `json:"dj"`
+	// TimesSeen is how many nights logged have them on the lineup.
+	TimesSeen int64 `json:"timesSeen"`
+	// ReviewCount is how many of those say something about their set.
+	ReviewCount   int64       `json:"reviewCount"`
 	RecentReviews []ReviewDTO `json:"recentReviews"`
 }
 
@@ -83,6 +82,8 @@ type UserStatsResponse struct {
 	TopDjs       []queries.TopDj    `json:"topDjs"`
 	RecentDjs    []queries.RecentDj `json:"recentDjs"`
 	TopVenues    []queries.TopVenue `json:"topVenues"`
+	// Passport is every venue they've logged a night at, first visit first.
+	Passport []queries.PassportStamp `json:"passport"`
 }
 
 type FeedResponse struct {

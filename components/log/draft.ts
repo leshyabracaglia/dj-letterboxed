@@ -17,12 +17,11 @@ import { parseDateInputValue, plural, toDateInputValue } from "@/lib/format";
 // created when the night is saved.
 export type ArtistPick = { type: "existing"; dj: Dj } | { type: "new"; input: CreateDjInput };
 
-// One DJ in the night's lineup. Rating them is optional; an unrated DJ is
-// still saved to the lineup.
+// One DJ in the night's lineup. Writing about their set is optional; a DJ
+// with nothing said about them is still saved to the lineup.
 export type DraftLineupEntry = {
   key: string;
   pick: ArtistPick;
-  rating?: number;
   reviewText: string;
   // Their review box is open.
   reviewing: boolean;
@@ -45,8 +44,8 @@ export type VenuePick =
   | { type: "place"; place: PlaceSuggestion; sessionToken: string }
   | { type: "typed"; name: string; city: string };
 
-// Form fields as typed; turned into the POST /reviews body on submit. rating,
-// tags and reviewText are the review of the night as a whole.
+// Form fields as typed; turned into the POST /reviews body on submit. tags
+// and reviewText are the review of the night as a whole.
 export type ReviewDraft = {
   // Unset until they name the night or pick "no name".
   eventPick?: EventPick;
@@ -54,7 +53,6 @@ export type ReviewDraft = {
   seenAt: string;
   isDay: boolean;
   isNight: boolean;
-  rating?: number;
   tags: string[];
   reviewText: string;
   taggedUsers: User[];
@@ -208,22 +206,14 @@ export function draftFromReview(
   };
 }
 
-// What stops the draft being logged, if anything. A missing venue or night
-// rating is flagged on the form itself (`field`); the rest is a message.
-export function draftProblem(
-  draft: ReviewDraft,
-  caught: DraftLineupEntry[],
-): { field?: "venue" | "night"; message?: string } | undefined {
+// What stops the draft being logged, if anything. A missing venue is flagged
+// on the form itself (`field`); the rest is a message.
+export function draftProblem(draft: ReviewDraft): { field?: "venue"; message?: string } | undefined {
   if (!draft.venuePick) return { field: "venue" };
   if (!parseDateInputValue(draft.seenAt)) return { message: "Pick the date you went" };
   // The calendar disables future days; this is a backstop. YYYY-MM-DD
   // strings compare correctly as plain strings.
   if (draft.seenAt > toDateInputValue(new Date())) return { message: "You can't log a set that hasn't happened yet" };
   if (!draft.isDay && !draft.isNight) return { message: "Pick day, night, or both" };
-  if (!draft.rating) return { field: "night", message: "Rate the night overall" };
-  const unratedWithText = caught.find((e) => !e.rating && e.reviewText.trim());
-  if (unratedWithText) {
-    return { message: `Rate ${artistPickName(unratedWithText.pick)} to save what you wrote about them` };
-  }
   return undefined;
 }

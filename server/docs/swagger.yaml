@@ -65,30 +65,23 @@ definitions:
     type: object
   DjDetailResponse:
     properties:
-      avgRating:
-        type: number
-        x-nullable: true
       dj:
         $ref: '#/definitions/Dj'
-      ratingCounts:
-        description: |-
-          RatingCounts is how many ratings of them gave each star rating: index
-          0 is 1 star, index 4 is 5 stars.
-        items:
-          type: integer
-        type: array
       recentReviews:
         items:
           $ref: '#/definitions/ReviewDTO'
         type: array
       reviewCount:
+        description: ReviewCount is how many of those say something about their set.
+        type: integer
+      timesSeen:
+        description: TimesSeen is how many nights logged have them on the lineup.
         type: integer
     required:
-    - avgRating
     - dj
-    - ratingCounts
     - recentReviews
     - reviewCount
+    - timesSeen
     type: object
   Event:
     properties:
@@ -144,9 +137,6 @@ definitions:
     type: object
   EventSummary:
     properties:
-      avgRating:
-        type: number
-        x-nullable: true
       createdAt:
         type: string
       createdByUserId:
@@ -161,7 +151,6 @@ definitions:
       slug:
         type: string
     required:
-    - avgRating
     - createdAt
     - createdByUserId
     - id
@@ -222,15 +211,11 @@ definitions:
     properties:
       dj:
         $ref: '#/definitions/Dj'
-      rating:
-        type: integer
-        x-nullable: true
       reviewText:
         type: string
         x-nullable: true
     required:
     - dj
-    - rating
     - reviewText
     type: object
   NearbyVenue:
@@ -334,6 +319,26 @@ definitions:
     required:
     - items
     - nextCursor
+    type: object
+  PassportStamp:
+    properties:
+      city:
+        type: string
+        x-nullable: true
+      firstVisitAt:
+        type: string
+      name:
+        type: string
+      nights:
+        type: integer
+      venueId:
+        type: string
+    required:
+    - city
+    - firstVisitAt
+    - name
+    - nights
+    - venueId
     type: object
   PlaceSuggestion:
     properties:
@@ -595,12 +600,6 @@ definitions:
         items:
           $ref: '#/definitions/LineupEntry'
         type: array
-      rating:
-        description: |-
-          Rating of the night as a whole, 1-5. Nil only on nights logged before
-          nights were rated, which only rated their DJs.
-        type: integer
-        x-nullable: true
       reviewText:
         type: string
         x-nullable: true
@@ -651,7 +650,6 @@ definitions:
     - isNight
     - likeCount
     - lineup
-    - rating
     - reviewText
     - seenAt
     - taggedUsers
@@ -797,6 +795,12 @@ definitions:
     type: object
   UserStatsResponse:
     properties:
+      passport:
+        description: Passport is every venue they've logged a night at, first visit
+          first.
+        items:
+          $ref: '#/definitions/PassportStamp'
+        type: array
       recentDjs:
         items:
           $ref: '#/definitions/RecentDj'
@@ -815,6 +819,7 @@ definitions:
       uniqueDjs:
         type: integer
     required:
+    - passport
     - recentDjs
     - topDjs
     - topVenues
@@ -963,10 +968,8 @@ definitions:
         type: string
       placeSessionToken:
         type: string
-      rating:
-        description: The night as a whole, 1-5. Required.
-        type: integer
       reviewText:
+        description: What you thought of the night as a whole.
         type: string
       seenAt:
         type: string
@@ -985,7 +988,6 @@ definitions:
         type: string
     required:
     - lineup
-    - rating
     - seenAt
     - taggedUserIds
     - tags
@@ -1001,8 +1003,6 @@ definitions:
     properties:
       djId:
         type: string
-      rating:
-        type: integer
       reviewText:
         type: string
     required:
@@ -1247,8 +1247,8 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
-      summary: List the nights out a DJ was on the lineup of (with any rating of them
-        in the lineup), cursor-paginated by seenAt desc
+      summary: List the nights out a DJ was on the lineup of (with anything said about
+        their set in the lineup), cursor-paginated by seenAt desc
       tags:
       - djs
   /api/djs/{slug}:
@@ -1270,7 +1270,7 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
-      summary: Get a DJ by slug, with rating aggregate and recent reviews
+      summary: Get a DJ by slug, with how often they were seen and recent reviews
       tags:
       - djs
   /api/djs/search:
@@ -1757,8 +1757,8 @@ paths:
       security:
       - BearerAuth: []
       summary: 'Log a night out: the event (picked, or found or created by name),
-        venue, day, rating, the DJs seen and any DJ reviews, tags and friends, in
-        one go'
+        venue, day, review, the DJs seen and anything said about their sets, tags
+        and friends, in one go'
       tags:
       - reviews
   /api/reviews/{id}:
@@ -1815,8 +1815,8 @@ paths:
     patch:
       consumes:
       - application/json
-      description: The rest of a review - event, venue, date, ratings, lineup, text
-        and tags - is fixed once logged.
+      description: The rest of a review - event, venue, date, lineup, text and tags
+        - is fixed once logged.
       parameters:
       - description: review id
         in: path
@@ -2202,7 +2202,7 @@ paths:
           schema:
             $ref: '#/definitions/errorEnvelope'
       summary: 'Get a user''s review stats: totals, most-seen and recently seen DJs,
-        top venues'
+        top venues, and their passport of venues'
       tags:
       - users
   /api/users/me:

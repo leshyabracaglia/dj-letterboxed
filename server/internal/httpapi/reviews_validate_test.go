@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -10,86 +11,77 @@ const (
 	djB = "22222222-2222-2222-2222-222222222222"
 )
 
-// TestCreateReviewValidate covers the logging rules: the night's rating is
-// required, ratings are 1-5, a DJ is on the lineup once, and a DJ's review
-// text needs a rating.
+// TestCreateReviewValidate covers the logging rules: a DJ is on the lineup
+// once, empty review text is dropped, and nothing has to be rated (a rating
+// an older app build still sends is ignored).
 func TestCreateReviewValidate(t *testing.T) {
 	cases := []struct {
-		name        string
-		body        string
-		wantErr     string
-		wantLineup  []string
-		wantRatedDj string
+		name           string
+		body           string
+		wantErr        string
+		wantLineup     []string
+		wantReviewedDj string
 	}{
 		{
 			name:    "slur in a DJ's review",
-			body:    `{"seenAt":"2026-10-04T12:00:00Z","rating":4,"lineup":[{"djId":"` + djA + `","rating":1,"reviewText":"what a f4ggot"}]}`,
+			body:    `{"seenAt":"2026-10-04T12:00:00Z","lineup":[{"djId":"` + djA + `","reviewText":"what a f4ggot"}]}`,
 			wantErr: "that includes language that isn't allowed on Beatboxd",
 		},
 		{
 			name:    "slur in a tag",
-			body:    `{"seenAt":"2026-10-04T12:00:00Z","rating":4,"tags":["packed","kys"]}`,
+			body:    `{"seenAt":"2026-10-04T12:00:00Z","tags":["packed","kys"]}`,
 			wantErr: "that includes language that isn't allowed on Beatboxd",
 		},
 		{
-			name:    "night not rated",
-			body:    `{"seenAt":"2026-10-04T12:00:00Z","lineup":[{"djId":"` + djA + `","rating":5}]}`,
-			wantErr: "rate the night",
-		},
-		{
-			name:       "night only, unrated lineup kept",
-			body:       `{"seenAt":"2026-10-04T12:00:00Z","rating":4,"lineup":[{"djId":"` + djA + `"},{"djId":"` + djB + `"}]}`,
+			name:       "nothing written, lineup kept",
+			body:       `{"seenAt":"2026-10-04T12:00:00Z","lineup":[{"djId":"` + djA + `"},{"djId":"` + djB + `"}]}`,
 			wantLineup: []string{djA, djB},
 		},
 		{
-			name:        "a DJ rated",
-			body:        `{"seenAt":"2026-10-04T12:00:00Z","rating":4,"lineup":[{"djId":"` + djA + `"},{"djId":"` + djB + `","rating":5,"reviewText":"huge"}]}`,
-			wantLineup:  []string{djA, djB},
-			wantRatedDj: djB,
+			name:           "a DJ's set written about",
+			body:           `{"seenAt":"2026-10-04T12:00:00Z","lineup":[{"djId":"` + djA + `"},{"djId":"` + djB + `","reviewText":"huge"}]}`,
+			wantLineup:     []string{djA, djB},
+			wantReviewedDj: djB,
 		},
 		{
-			name:    "night rating out of range",
-			body:    `{"seenAt":"2026-10-04T12:00:00Z","rating":6}`,
-			wantErr: "rating must be 1-5",
+			name:           "ratings from an older app build are ignored",
+			body:           `{"seenAt":"2026-10-04T12:00:00Z","rating":4,"lineup":[{"djId":"` + djA + `","rating":5,"reviewText":"huge"}]}`,
+			wantLineup:     []string{djA},
+			wantReviewedDj: djA,
 		},
 		{
-			name:    "DJ rating out of range",
-			body:    `{"seenAt":"2026-10-04T12:00:00Z","rating":4,"lineup":[{"djId":"` + djA + `","rating":0}]}`,
-			wantErr: "rating must be 1-5",
+			name:    "night text too long",
+			body:    `{"seenAt":"2026-10-04T12:00:00Z","reviewText":"` + strings.Repeat("a", 5001) + `"}`,
+			wantErr: "reviewText too long",
 		},
 		{
 			name:    "DJ listed twice",
-			body:    `{"seenAt":"2026-10-04T12:00:00Z","rating":4,"lineup":[{"djId":"` + djA + `","rating":5},{"djId":"` + djA + `"}]}`,
+			body:    `{"seenAt":"2026-10-04T12:00:00Z","lineup":[{"djId":"` + djA + `"},{"djId":"` + djA + `"}]}`,
 			wantErr: "a DJ is in the lineup twice",
 		},
 		{
-			name:    "DJ text without a rating",
-			body:    `{"seenAt":"2026-10-04T12:00:00Z","rating":4,"lineup":[{"djId":"` + djA + `","reviewText":"great"}]}`,
-			wantErr: "rate a DJ to review their set",
-		},
-		{
 			name:       "empty DJ text is no text",
-			body:       `{"seenAt":"2026-10-04T12:00:00Z","rating":4,"lineup":[{"djId":"` + djA + `","reviewText":""}]}`,
+			body:       `{"seenAt":"2026-10-04T12:00:00Z","lineup":[{"djId":"` + djA + `","reviewText":""}]}`,
 			wantLineup: []string{djA},
 		},
 		{
 			name:    "bad DJ id",
-			body:    `{"seenAt":"2026-10-04T12:00:00Z","rating":3,"lineup":[{"djId":"nope"}]}`,
+			body:    `{"seenAt":"2026-10-04T12:00:00Z","lineup":[{"djId":"nope"}]}`,
 			wantErr: "unknown DJ in lineup",
 		},
 		{
 			name:    "future date",
-			body:    `{"seenAt":"2999-01-01T12:00:00Z","rating":3}`,
+			body:    `{"seenAt":"2999-01-01T12:00:00Z"}`,
 			wantErr: "seenAt can't be in the future",
 		},
 		{
 			name:    "bad date",
-			body:    `{"seenAt":"2026-10-04","rating":3}`,
+			body:    `{"seenAt":"2026-10-04"}`,
 			wantErr: "seenAt must be an RFC3339 timestamp",
 		},
 		{
 			name:    "a picked event still needs the date",
-			body:    `{"eventId":"` + djB + `","rating":3}`,
+			body:    `{"eventId":"` + djB + `"}`,
 			wantErr: "seenAt must be an RFC3339 timestamp",
 		},
 	}
@@ -114,8 +106,8 @@ func TestCreateReviewValidate(t *testing.T) {
 				if e.DjID != tc.wantLineup[i] {
 					t.Fatalf("lineup[%d] = %s, want %s", i, e.DjID, tc.wantLineup[i])
 				}
-				if rated := e.Rating != nil; rated != (e.DjID == tc.wantRatedDj) {
-					t.Fatalf("lineup[%d] rated = %v", i, rated)
+				if reviewed := e.ReviewText != nil; reviewed != (e.DjID == tc.wantReviewedDj) {
+					t.Fatalf("lineup[%d] reviewed = %v", i, reviewed)
 				}
 				if e.ReviewText != nil && *e.ReviewText == "" {
 					t.Fatalf("lineup[%d] kept empty review text", i)

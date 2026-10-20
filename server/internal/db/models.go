@@ -67,11 +67,8 @@ type Review struct {
 	SeenAt  time.Time `json:"seenAt"`
 	// IsDay and IsNight say when this person went; both is day into night.
 	// At least one is set.
-	IsDay   bool `json:"isDay"`
-	IsNight bool `json:"isNight"`
-	// Rating of the night as a whole, 1-5. Nil only on nights logged before
-	// nights were rated, which only rated their DJs.
-	Rating     *int16    `json:"rating" extensions:"x-nullable"`
+	IsDay      bool      `json:"isDay"`
+	IsNight    bool      `json:"isNight"`
 	ReviewText *string   `json:"reviewText" extensions:"x-nullable"`
 	CreatedAt  time.Time `json:"createdAt"`
 	UpdatedAt  time.Time `json:"updatedAt"`
@@ -80,11 +77,10 @@ type Review struct {
 	Verified bool `json:"verified"`
 }
 
-// LineupEntry is a DJ someone saw on their night out, with their rating of
-// that DJ's set (a DJ review) if they gave one.
+// LineupEntry is a DJ someone saw on their night out, with what they said
+// about that DJ's set (a DJ review) if they said anything.
 type LineupEntry struct {
 	Dj         Dj      `json:"dj"`
-	Rating     *int16  `json:"rating" extensions:"x-nullable"`
 	ReviewText *string `json:"reviewText" extensions:"x-nullable"`
 }
 

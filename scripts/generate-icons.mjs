@@ -1,5 +1,5 @@
-// Renders the app's logo - the red "5" rating stamp (components/ui/RatingStamp
-// .tsx, drawn here as SVG at icon resolution) - into every icon asset
+// Renders the app's logo - the red "5" stamp (components/ui/Stamp.tsx, from
+// when nights were rated, drawn here as SVG at icon resolution) - into every icon asset
 // app.json points at, plus the favicon and the logo mark. Uses the Playwright
 // Chromium the e2e suite already installs, so the stamp's ring text is set in
 // the real Jersey 10 font.
@@ -20,7 +20,7 @@ const RED = "#E5484D";
 const RING_TEXT = "BEATBOXD · RATED · BEATBOXD · RATED · ";
 
 /** The stamp as an SVG `size` px square: black disc, red rim, the ring text
- * around it, an inner ring and a white 5. Proportions match RatingStamp. With
+ * around it, an inner ring and a white 5. Proportions match Stamp. With
  * `mono`, everything is drawn in one flat white (Android's themed icon). */
 function stampSvg(size, { mono = false, rotate = -8 } = {}) {
   const c = size / 2;

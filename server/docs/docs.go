@@ -326,7 +326,7 @@ const docTemplate = `{
                 "tags": [
                     "djs"
                 ],
-                "summary": "List the nights out a DJ was on the lineup of (with any rating of them in the lineup), cursor-paginated by seenAt desc",
+                "summary": "List the nights out a DJ was on the lineup of (with anything said about their set in the lineup), cursor-paginated by seenAt desc",
                 "parameters": [
                     {
                         "type": "string",
@@ -372,7 +372,7 @@ const docTemplate = `{
                 "tags": [
                     "djs"
                 ],
-                "summary": "Get a DJ by slug, with rating aggregate and recent reviews",
+                "summary": "Get a DJ by slug, with how often they were seen and recent reviews",
                 "parameters": [
                     {
                         "type": "string",
@@ -1043,7 +1043,7 @@ const docTemplate = `{
                 "tags": [
                     "reviews"
                 ],
-                "summary": "Log a night out: the event (picked, or found or created by name), venue, day, rating, the DJs seen and any DJ reviews, tags and friends, in one go",
+                "summary": "Log a night out: the event (picked, or found or created by name), venue, day, review, the DJs seen and anything said about their sets, tags and friends, in one go",
                 "parameters": [
                     {
                         "description": "the night to log",
@@ -1159,7 +1159,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "The rest of a review - event, venue, date, ratings, lineup, text and tags - is fixed once logged.",
+                "description": "The rest of a review - event, venue, date, lineup, text and tags - is fixed once logged.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2119,7 +2119,7 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "Get a user's review stats: totals, most-seen and recently seen DJs, top venues",
+                "summary": "Get a user's review stats: totals, most-seen and recently seen DJs, top venues, and their passport of venues",
                 "parameters": [
                     {
                         "type": "string",
@@ -2360,26 +2360,14 @@ const docTemplate = `{
         "DjDetailResponse": {
             "type": "object",
             "required": [
-                "avgRating",
                 "dj",
-                "ratingCounts",
                 "recentReviews",
-                "reviewCount"
+                "reviewCount",
+                "timesSeen"
             ],
             "properties": {
-                "avgRating": {
-                    "type": "number",
-                    "x-nullable": true
-                },
                 "dj": {
                     "$ref": "#/definitions/Dj"
-                },
-                "ratingCounts": {
-                    "description": "RatingCounts is how many ratings of them gave each star rating: index\n0 is 1 star, index 4 is 5 stars.",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
                 },
                 "recentReviews": {
                     "type": "array",
@@ -2388,6 +2376,11 @@ const docTemplate = `{
                     }
                 },
                 "reviewCount": {
+                    "description": "ReviewCount is how many of those say something about their set.",
+                    "type": "integer"
+                },
+                "timesSeen": {
+                    "description": "TimesSeen is how many nights logged have them on the lineup.",
                     "type": "integer"
                 }
             }
@@ -2470,7 +2463,6 @@ const docTemplate = `{
         "EventSummary": {
             "type": "object",
             "required": [
-                "avgRating",
                 "createdAt",
                 "createdByUserId",
                 "id",
@@ -2479,10 +2471,6 @@ const docTemplate = `{
                 "slug"
             ],
             "properties": {
-                "avgRating": {
-                    "type": "number",
-                    "x-nullable": true
-                },
                 "createdAt": {
                     "type": "string"
                 },
@@ -2580,16 +2568,11 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "dj",
-                "rating",
                 "reviewText"
             ],
             "properties": {
                 "dj": {
                     "$ref": "#/definitions/Dj"
-                },
-                "rating": {
-                    "type": "integer",
-                    "x-nullable": true
                 },
                 "reviewText": {
                     "type": "string",
@@ -2730,6 +2713,34 @@ const docTemplate = `{
                 "nextCursor": {
                     "type": "string",
                     "x-nullable": true
+                }
+            }
+        },
+        "PassportStamp": {
+            "type": "object",
+            "required": [
+                "city",
+                "firstVisitAt",
+                "name",
+                "nights",
+                "venueId"
+            ],
+            "properties": {
+                "city": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "firstVisitAt": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nights": {
+                    "type": "integer"
+                },
+                "venueId": {
+                    "type": "string"
                 }
             }
         },
@@ -3066,7 +3077,6 @@ const docTemplate = `{
                 "isNight",
                 "likeCount",
                 "lineup",
-                "rating",
                 "reviewText",
                 "seenAt",
                 "taggedUsers",
@@ -3125,11 +3135,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/LineupEntry"
                     }
-                },
-                "rating": {
-                    "description": "Rating of the night as a whole, 1-5. Nil only on nights logged before\nnights were rated, which only rated their DJs.",
-                    "type": "integer",
-                    "x-nullable": true
                 },
                 "reviewText": {
                     "type": "string",
@@ -3371,6 +3376,7 @@ const docTemplate = `{
         "UserStatsResponse": {
             "type": "object",
             "required": [
+                "passport",
                 "recentDjs",
                 "topDjs",
                 "topVenues",
@@ -3378,6 +3384,13 @@ const docTemplate = `{
                 "uniqueDjs"
             ],
             "properties": {
+                "passport": {
+                    "description": "Passport is every venue they've logged a night at, first visit first.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/PassportStamp"
+                    }
+                },
                 "recentDjs": {
                     "type": "array",
                     "items": {
@@ -3583,7 +3596,6 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "lineup",
-                "rating",
                 "seenAt",
                 "taggedUserIds",
                 "tags"
@@ -3617,11 +3629,8 @@ const docTemplate = `{
                 "placeSessionToken": {
                     "type": "string"
                 },
-                "rating": {
-                    "description": "The night as a whole, 1-5. Required.",
-                    "type": "integer"
-                },
                 "reviewText": {
+                    "description": "What you thought of the night as a whole.",
                     "type": "string"
                 },
                 "seenAt": {
@@ -3667,9 +3676,6 @@ const docTemplate = `{
             "properties": {
                 "djId": {
                     "type": "string"
-                },
-                "rating": {
-                    "type": "integer"
                 },
                 "reviewText": {
                     "type": "string"

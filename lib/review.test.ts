@@ -1,6 +1,6 @@
 import { aLineup, anEvent, aReview } from "@/test/fixtures";
 
-import { getNightTitle, ratedSets, reviewSubject, soloSet } from "./review";
+import { getNightTitle, reviewedSets, reviewSubject, soloSet } from "./review";
 
 describe("getNightTitle", () => {
   it("is the event's name when it has one", () => {
@@ -19,23 +19,20 @@ describe("getNightTitle", () => {
 });
 
 describe("soloSet", () => {
-  const unratedNight = { rating: null, reviewText: null };
-
-  it("is the one DJ rated on a night with nothing said about the night", () => {
-    const review = aReview({ ...unratedNight, lineup: aLineup({ name: "Dixon", rating: 5 }, "Âme") });
+  it("is the one DJ written about on a night with nothing said about the night", () => {
+    const review = aReview({ lineup: aLineup({ name: "Dixon", reviewText: "Unreal" }, "Âme") });
     expect(soloSet(review)?.dj.name).toBe("Dixon");
   });
 
-  it("is null once the night itself is rated or reviewed", () => {
-    const lineup = aLineup({ name: "Dixon", rating: 5 });
-    expect(soloSet(aReview({ rating: 4, lineup }))).toBeNull();
-    expect(soloSet(aReview({ ...unratedNight, reviewText: "Great", lineup }))).toBeNull();
+  it("is null once the night itself is written about", () => {
+    const lineup = aLineup({ name: "Dixon", reviewText: "Unreal" });
+    expect(soloSet(aReview({ reviewText: "Great", lineup }))).toBeNull();
   });
 
-  it("is null with several DJs rated", () => {
-    const review = aReview({ ...unratedNight, lineup: aLineup({ name: "A", rating: 5 }, { name: "B", rating: 3 }) });
+  it("is null with several DJs written about", () => {
+    const review = aReview({ lineup: aLineup({ name: "A", reviewText: "Big" }, { name: "B", reviewText: "Deep" }) });
     expect(soloSet(review)).toBeNull();
-    expect(ratedSets(review)).toHaveLength(2);
+    expect(reviewedSets(review)).toHaveLength(2);
   });
 });
 
@@ -50,7 +47,7 @@ describe("reviewSubject", () => {
   });
 
   it("is the DJ when given a set", () => {
-    const review = aReview({ event: anEvent(), lineup: aLineup({ name: "Dixon", rating: 5 }) });
+    const review = aReview({ event: anEvent(), lineup: aLineup({ name: "Dixon", reviewText: "Unreal" }) });
     expect(reviewSubject(review, review.lineup[0])).toMatchObject({
       name: "Dixon",
       href: "/dj/dixon",

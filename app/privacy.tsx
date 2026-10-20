@@ -14,14 +14,14 @@ const SECTIONS: InfoSection[] = [
   {
     title: "Who we are",
     body: [
-      "Beatboxd is an app for logging, rating and reviewing DJ sets and nights out, operated by Leshya Bracaglia, an individual developer (“we”, “us”). This policy explains what we collect when you use the Beatboxd app or website, why, and the choices you have.",
+      "Beatboxd is an app for logging and reviewing DJ sets and nights out, operated by Leshya Bracaglia, an individual developer (“we”, “us”). This policy explains what we collect when you use the Beatboxd app or website, why, and the choices you have.",
     ],
   },
   {
     title: "What we collect",
     body: [
       "Account details: your email address, username, and (if you add them) your display name, bio and profile photo, plus when you agreed to our Terms of Service at sign-up, where you also confirm you’re 16 or older. Sign-in is handled by Clerk, which stores your email, password (hashed) or sign-in provider, and profile photo on our behalf.",
-      "What you post: the nights you log (event, venue, date, DJs), your ratings, reviews, tags, comments and likes, the friends you tag, who you follow, and the reviews you showcase as favorites.",
+      "What you post: the nights you log (event, venue, date, DJs), your reviews, tags, comments and likes, the friends you tag, who you follow, and the reviews you showcase as favorites.",
       "Approximate location: when you open the log tab, the app uses your device’s location, at low accuracy, to find nights near you. On iPhone and Android your device turns it into a city name and only the city is sent to us; on the web, coordinates rounded to about 1km are sent and turned into a city. We use it for that search and don’t store it. You can decline location access and pick a city by hand instead.",
       "Check-ins: when you tap Check in on the log tab, the app takes one precise reading of your device’s location and sends it to us to find the venue you’re at. We compare it with the venue’s location and then discard it. We keep only that you checked in at that venue, when, and roughly how far from it you were, so your log of that night can show as verified. Nothing is read in the background.",
       "Device push token: if you allow notifications, we store your device’s push token so we can tell you about new followers, likes and comments, and when someone tags you at a night. If you haven’t opened Beatboxd in a couple of days, we may also send an occasional reminder that people you follow have logged nights (at most once every two days); you can turn that off in Settings.",
@@ -40,7 +40,7 @@ const SECTIONS: InfoSection[] = [
   {
     title: "What’s public",
     body: [
-      "Beatboxd is a social app. Your username, display name, bio, profile photo, followers and following, and everything you post (logs, ratings, reviews, comments, tags and favorites) can be seen by anyone, including people who aren’t signed in. Friends you tag on a night are shown on it; people you’ve blocked, or who’ve blocked you, can’t tag you. Your email address is never shown.",
+      "Beatboxd is a social app. Your username, display name, bio, profile photo, followers and following, and everything you post (logs, reviews, comments, tags and favorites) can be seen by anyone, including people who aren’t signed in. Friends you tag on a night are shown on it; people you’ve blocked, or who’ve blocked you, can’t tag you. Your email address is never shown.",
     ],
   },
   {
@@ -54,7 +54,7 @@ const SECTIONS: InfoSection[] = [
   {
     title: "Keeping and deleting your data",
     body: [
-      "We keep your data while your account exists. You can delete your account at any time in Settings. That deletes your profile and everything you’ve posted (logs, ratings, reviews, comments, likes, follows, tags and favorites). DJs, events and venues you added to the shared database stay, without your name on them. Copies in backups are removed as the backups expire.",
+      "We keep your data while your account exists. You can delete your account at any time in Settings. That deletes your profile and everything you’ve posted (logs, reviews, comments, likes, follows, tags and favorites). DJs, events and venues you added to the shared database stay, without your name on them. Copies in backups are removed as the backups expire.",
       "Safety reports are kept as long as we need them to deal with abuse, including after the reported account is deleted: a report keeps the reported username and a copy of the reported text.",
     ],
   },
