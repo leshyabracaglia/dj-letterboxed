@@ -135,6 +135,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/users/me/settings", h.GetSettings)
 			r.Patch("/users/me/settings", h.UpdateSettings)
 			r.Patch("/users/me/favorites", h.SetFavoriteReviews)
+			r.Patch("/users/me/favorite-venues", h.SetFavoriteVenues)
 			r.Post("/users/me/push-tokens", h.RegisterPushToken)
 			r.Delete("/users/me/push-tokens", h.UnregisterPushToken)
 

@@ -114,8 +114,9 @@ func GetTopVenuesForUser(ctx context.Context, q DBTX, userID string) ([]TopVenue
 	return collect(rows, err, pgx.RowToStructByPos[TopVenue])
 }
 
-// PassportStamp is a venue someone has logged a night at, for the passport
-// on their profile.
+// PassportStamp is a venue someone has been to, for the passport on their
+// profile: one they logged a night at (Nights counts them) or only checked
+// in at (Nights 0).
 type PassportStamp struct {
 	VenueID      string    `json:"venueId"`
 	Name         string    `json:"name"`
@@ -124,15 +125,39 @@ type PassportStamp struct {
 	FirstVisitAt time.Time `json:"firstVisitAt"`
 }
 
-// GetPassportForUser returns every venue userID has logged a night at, in
-// the order they first went.
+// GetPassportForUser returns every venue userID has logged a night at or
+// checked in at, in the order they first went.
 func GetPassportForUser(ctx context.Context, q DBTX, userID string) ([]PassportStamp, error) {
 	rows, err := q.Query(ctx, `
-		SELECT v.id, v.name, v.city, COUNT(*), MIN(reviews.seen_at)
-		FROM reviews
-		JOIN venues v ON v.id = reviews.venue_id
-		WHERE reviews.user_id = $1
+		WITH visits AS (
+			SELECT venue_id, seen_at AS at, 1 AS night FROM reviews WHERE user_id = $1 AND venue_id IS NOT NULL
+			UNION ALL
+			SELECT venue_id, created_at, 0 FROM check_ins WHERE user_id = $1
+		)
+		SELECT v.id, v.name, v.city, SUM(visits.night)::bigint, MIN(visits.at)
+		FROM visits
+		JOIN venues v ON v.id = visits.venue_id
 		GROUP BY v.id
-		ORDER BY MIN(reviews.seen_at), v.name`, userID)
+		ORDER BY MIN(visits.at), v.name`, userID)
 	return collect(rows, err, pgx.RowToStructByPos[PassportStamp])
+}
+
+// SetFavoriteVenues replaces userID's favorite venues with venueIDs, #1
+// first. Callers check there are at most 3, with no duplicates, all places
+// userID has been to.
+func SetFavoriteVenues(ctx context.Context, q DBTX, userID string, venueIDs []string) error {
+	if _, err := q.Exec(ctx, "DELETE FROM favorite_venues WHERE user_id = $1", userID); err != nil {
+		return err
+	}
+	_, err := q.Exec(ctx, `
+		INSERT INTO favorite_venues (user_id, venue_id, position)
+		SELECT $1, venue_id, position FROM unnest($2::uuid[]) WITH ORDINALITY AS f(venue_id, position)`,
+		userID, venueIDs)
+	return err
+}
+
+// GetFavoriteVenueIDs returns userID's favorite venues' ids, #1 first.
+func GetFavoriteVenueIDs(ctx context.Context, q DBTX, userID string) ([]string, error) {
+	rows, err := q.Query(ctx, "SELECT venue_id FROM favorite_venues WHERE user_id = $1 ORDER BY position", userID)
+	return collect(rows, err, pgx.RowTo[string])
 }

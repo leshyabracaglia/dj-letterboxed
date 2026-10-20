@@ -192,6 +192,15 @@ definitions:
     required:
     - items
     type: object
+  FavoriteVenuesResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/PassportStamp'
+        type: array
+    required:
+    - items
+    type: object
   FeedResponse:
     properties:
       followingCount:
@@ -886,9 +895,15 @@ definitions:
     type: object
   UserStatsResponse:
     properties:
+      favoriteVenues:
+        description: 'FavoriteVenues are the ones they pinned, #1 first (at most 3).'
+        items:
+          $ref: '#/definitions/PassportStamp'
+        type: array
       passport:
-        description: Passport is every venue they've logged a night at, first visit
-          first.
+        description: |-
+          Passport is every venue they've been to (logged a night at or checked
+          in at), first visit first.
         items:
           $ref: '#/definitions/PassportStamp'
         type: array
@@ -910,6 +925,7 @@ definitions:
       uniqueDjs:
         type: integer
     required:
+    - favoriteVenues
     - passport
     - recentDjs
     - topDjs
@@ -1115,6 +1131,15 @@ definitions:
     required:
     - platform
     - token
+    type: object
+  setFavoriteVenuesRequest:
+    properties:
+      venueIds:
+        items:
+          type: string
+        type: array
+    required:
+    - venueIds
     type: object
   setFavoritesRequest:
     properties:
@@ -2371,7 +2396,7 @@ paths:
           schema:
             $ref: '#/definitions/errorEnvelope'
       summary: 'Get a user''s review stats: totals, most-seen and recently seen DJs,
-        top venues, and their passport of venues'
+        top venues, their passport of venues and favorite venues'
       tags:
       - users
   /api/users/me:
@@ -2446,6 +2471,38 @@ paths:
       summary: List the users the caller has blocked, most recent first
       tags:
       - moderation
+  /api/users/me/favorite-venues:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: ordered venue ids, at most 3, no duplicates
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/setFavoriteVenuesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/FavoriteVenuesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 'Replace the caller''s favorite venues (0-3, ordered, #1 first) - each
+        one they''ve logged a night at or checked in at'
+      tags:
+      - users
   /api/users/me/favorites:
     patch:
       consumes:

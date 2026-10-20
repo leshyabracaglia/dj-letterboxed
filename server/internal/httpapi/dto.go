@@ -88,8 +88,15 @@ type UserStatsResponse struct {
 	TopDjs       []queries.TopDj    `json:"topDjs"`
 	RecentDjs    []queries.RecentDj `json:"recentDjs"`
 	TopVenues    []queries.TopVenue `json:"topVenues"`
-	// Passport is every venue they've logged a night at, first visit first.
+	// Passport is every venue they've been to (logged a night at or checked
+	// in at), first visit first.
 	Passport []queries.PassportStamp `json:"passport"`
+	// FavoriteVenues are the ones they pinned, #1 first (at most 3).
+	FavoriteVenues []queries.PassportStamp `json:"favoriteVenues"`
+}
+
+type FavoriteVenuesResponse struct {
+	Items []queries.PassportStamp `json:"items"`
 }
 
 type FeedResponse struct {

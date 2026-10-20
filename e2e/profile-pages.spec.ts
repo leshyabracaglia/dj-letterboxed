@@ -114,6 +114,9 @@ test("a profile's passport stamps every club they've logged a night at", async (
   await page.goto("/user/carla");
 
   await expect(shown(page.getByRole("img", { name: "Good Room: 1 night" }))).toBeVisible();
+  // fabric she only checked in at, and pinned as her #2 club.
+  await expect(shown(page.getByRole("img", { name: "fabric: checked in" }))).toBeVisible();
+  await expect(shown(page.getByRole("img", { name: "Favorite #2, fabric: checked in" }))).toBeVisible();
   await expect(shown(page.getByRole("img", { name: "Nowadays: 1 night" }))).toBeVisible();
 });
 

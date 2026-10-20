@@ -1958,6 +1958,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users/me/favorite-venues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Replace the caller's favorite venues (0-3, ordered, #1 first) - each one they've logged a night at or checked in at */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description ordered venue ids, at most 3, no duplicates */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["setFavoriteVenuesRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FavoriteVenuesResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/users/me/favorites": {
         parameters: {
             query?: never;
@@ -2597,7 +2656,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a user's review stats: totals, most-seen and recently seen DJs, top venues, and their passport of venues */
+        /** Get a user's review stats: totals, most-seen and recently seen DJs, top venues, their passport of venues and favorite venues */
         get: {
             parameters: {
                 query?: never;
@@ -2863,6 +2922,9 @@ export interface components {
         };
         FavoriteReviewsResponse: {
             items: components["schemas"]["ReviewDTO"][];
+        };
+        FavoriteVenuesResponse: {
+            items: components["schemas"]["PassportStamp"][];
         };
         FeedResponse: {
             followingCount: number;
@@ -3135,7 +3197,12 @@ export interface components {
             reengagePush: boolean;
         };
         UserStatsResponse: {
-            /** @description Passport is every venue they've logged a night at, first visit first. */
+            /** @description FavoriteVenues are the ones they pinned, #1 first (at most 3). */
+            favoriteVenues: components["schemas"]["PassportStamp"][];
+            /**
+             * @description Passport is every venue they've been to (logged a night at or checked
+             *     in at), first visit first.
+             */
             passport: components["schemas"]["PassportStamp"][];
             recentDjs: components["schemas"]["RecentDj"][];
             topDjs: components["schemas"]["TopDj"][];
@@ -3228,6 +3295,9 @@ export interface components {
             platform: string;
             /** @description An Expo push token (ExponentPushToken[...]). */
             token: string;
+        };
+        setFavoriteVenuesRequest: {
+            venueIds: string[];
         };
         setFavoritesRequest: {
             reviewIds: string[];

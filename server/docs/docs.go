@@ -1644,6 +1644,56 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/users/me/favorite-venues": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Replace the caller's favorite venues (0-3, ordered, #1 first) - each one they've logged a night at or checked in at",
+                "parameters": [
+                    {
+                        "description": "ordered venue ids, at most 3, no duplicates",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/setFavoriteVenuesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/FavoriteVenuesResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/api/users/me/favorites": {
             "patch": {
                 "security": [
@@ -2196,7 +2246,7 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "Get a user's review stats: totals, most-seen and recently seen DJs, top venues, and their passport of venues",
+                "summary": "Get a user's review stats: totals, most-seen and recently seen DJs, top venues, their passport of venues and favorite venues",
                 "parameters": [
                     {
                         "type": "string",
@@ -2611,6 +2661,20 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/ReviewDTO"
+                    }
+                }
+            }
+        },
+        "FavoriteVenuesResponse": {
+            "type": "object",
+            "required": [
+                "items"
+            ],
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/PassportStamp"
                     }
                 }
             }
@@ -3571,6 +3635,7 @@ const docTemplate = `{
         "UserStatsResponse": {
             "type": "object",
             "required": [
+                "favoriteVenues",
                 "passport",
                 "recentDjs",
                 "topDjs",
@@ -3579,8 +3644,15 @@ const docTemplate = `{
                 "uniqueDjs"
             ],
             "properties": {
+                "favoriteVenues": {
+                    "description": "FavoriteVenues are the ones they pinned, #1 first (at most 3).",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/PassportStamp"
+                    }
+                },
                 "passport": {
-                    "description": "Passport is every venue they've logged a night at, first visit first.",
+                    "description": "Passport is every venue they've been to (logged a night at or checked\nin at), first visit first.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/PassportStamp"
@@ -3898,6 +3970,20 @@ const docTemplate = `{
                 "token": {
                     "description": "An Expo push token (ExponentPushToken[...]).",
                     "type": "string"
+                }
+            }
+        },
+        "setFavoriteVenuesRequest": {
+            "type": "object",
+            "required": [
+                "venueIds"
+            ],
+            "properties": {
+                "venueIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

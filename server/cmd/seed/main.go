@@ -587,6 +587,15 @@ func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User,
 	// Profile favorites, in order.
 	must(0, queries.SetFavoriteReviews(ctx, pool, bob.ID, []string{marathonNight.ID}))
 	must(0, queries.SetFavoriteReviews(ctx, pool, carla.ID, []string{rushNight.ID, b2bNight.ID}))
+
+	// carla checked in at fabric on a trip without logging the night: it's
+	// in her passport (no nights) and one of her favorite venues, with Good
+	// Room. bob has one favorite; alice and dev none.
+	must(pool.Exec(ctx, `
+		INSERT INTO check_ins (user_id, venue_id, distance_m, accuracy_m, created_at)
+		VALUES ($1, $2, 25, 10, '2026-06-06T00:30:00Z')`, carla.ID, fabric.ID))
+	must(0, queries.SetFavoriteVenues(ctx, pool, carla.ID, []string{goodRoom.ID, fabric.ID}))
+	must(0, queries.SetFavoriteVenues(ctx, pool, bob.ID, []string{mirage.ID}))
 	return nil
 }
 

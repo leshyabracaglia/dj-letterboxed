@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -103,4 +104,90 @@ func (h *Handlers) SetFavoriteReviews(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteJSON(w, http.StatusOK, FavoriteReviewsResponse{Items: dtos})
+}
+
+const maxFavoriteVenues = 3
+
+// passportAndFavorites returns userID's passport and, from it, their
+// favorite venues in order.
+func (h *Handlers) passportAndFavorites(ctx context.Context, userID string) (passport, favorites []queries.PassportStamp, err error) {
+	passport, err = queries.GetPassportForUser(ctx, h.Pool, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	ids, err := queries.GetFavoriteVenueIDs(ctx, h.Pool, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	byID := make(map[string]queries.PassportStamp, len(passport))
+	for _, stamp := range passport {
+		byID[stamp.VenueID] = stamp
+	}
+	for _, id := range ids {
+		if stamp, ok := byID[id]; ok {
+			favorites = append(favorites, stamp)
+		}
+	}
+	return passport, favorites, nil
+}
+
+type setFavoriteVenuesRequest struct {
+	VenueIDs []string `json:"venueIds"`
+}
+
+// SetFavoriteVenues godoc
+//
+//	@Summary	Replace the caller's favorite venues (0-3, ordered, #1 first) - each one they've logged a night at or checked in at
+//	@Tags		users
+//	@Accept		json
+//	@Produce	json
+//	@Param		body	body		setFavoriteVenuesRequest	true	"ordered venue ids, at most 3, no duplicates"
+//	@Success	200		{object}	FavoriteVenuesResponse
+//	@Failure	400		{object}	errorEnvelope
+//	@Failure	401		{object}	errorEnvelope
+//	@Security	BearerAuth
+//	@Router		/api/users/me/favorite-venues [patch]
+func (h *Handlers) SetFavoriteVenues(w http.ResponseWriter, r *http.Request) {
+	user, ok := mustUser(w, r)
+	if !ok {
+		return
+	}
+	var req setFavoriteVenuesRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		BadRequest(w, "invalid request body")
+		return
+	}
+	if len(req.VenueIDs) > maxFavoriteVenues {
+		BadRequest(w, "at most 3 favorite venues")
+		return
+	}
+	if len(queries.DedupeStrings(req.VenueIDs)) != len(req.VenueIDs) {
+		BadRequest(w, "duplicate venue id")
+		return
+	}
+	passport, err := queries.GetPassportForUser(r.Context(), h.Pool, user.ID)
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	beenTo := map[string]bool{}
+	for _, stamp := range passport {
+		beenTo[stamp.VenueID] = true
+	}
+	for _, id := range req.VenueIDs {
+		if !beenTo[id] {
+			BadRequest(w, "you can only pick places you've been to")
+			return
+		}
+	}
+	if err := queries.SetFavoriteVenues(r.Context(), h.Pool, user.ID, req.VenueIDs); err != nil {
+		InternalError(w, err)
+		return
+	}
+	_, favorites, err := h.passportAndFavorites(r.Context(), user.ID)
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, FavoriteVenuesResponse{Items: orEmpty(favorites)})
 }
