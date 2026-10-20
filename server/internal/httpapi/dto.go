@@ -56,7 +56,9 @@ type DjDetailResponse struct {
 	ReviewCount int64 `json:"reviewCount"`
 	// TopTracks are the tracks people highlighted from their sets, most
 	// picked first.
-	TopTracks     []queries.TopTrack `json:"topTracks"`
+	TopTracks []queries.TopTrack `json:"topTracks"`
+	// Portrait is how people describe them, from what they've logged.
+	Portrait      queries.DjPortrait `json:"portrait"`
 	RecentReviews []ReviewDTO        `json:"recentReviews"`
 }
 

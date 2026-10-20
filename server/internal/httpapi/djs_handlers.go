@@ -40,7 +40,7 @@ func (h *Handlers) SearchDjs(w http.ResponseWriter, r *http.Request) {
 
 // GetDjBySlug godoc
 //
-//	@Summary	Get a DJ by slug, with how often they were seen, the tracks people loved from their sets, and recent reviews
+//	@Summary	Get a DJ by slug, with how often they were seen, the tracks people loved from their sets, how people describe them, and recent reviews
 //	@Tags		djs
 //	@Produce	json
 //	@Param		slug	path		string	true	"DJ slug"
@@ -67,11 +67,18 @@ func (h *Handlers) GetDjBySlug(w http.ResponseWriter, r *http.Request) {
 		InternalError(w, err)
 		return
 	}
-	topTracks, err := queries.GetDjTopTracks(r.Context(), h.Pool, dj.ID, slices.Collect(maps.Keys(hidden)), 8)
+	hiddenIDs := slices.Collect(maps.Keys(hidden))
+	topTracks, err := queries.GetDjTopTracks(r.Context(), h.Pool, dj.ID, hiddenIDs, 8)
 	if err != nil {
 		InternalError(w, err)
 		return
 	}
+	portrait, err := queries.GetDjPortrait(r.Context(), h.Pool, dj.ID, hiddenIDs)
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	portrait.Descriptors, portrait.Venues = orEmpty(portrait.Descriptors), orEmpty(portrait.Venues)
 
 	recent, err := queries.ListReviewsByDj(r.Context(), h.Pool, dj.ID, nil, 25)
 	if err != nil {
@@ -88,6 +95,7 @@ func (h *Handlers) GetDjBySlug(w http.ResponseWriter, r *http.Request) {
 		TimesSeen:     agg.TimesSeen,
 		ReviewCount:   agg.ReviewCount,
 		TopTracks:     orEmpty(topTracks),
+		Portrait:      *portrait,
 		RecentReviews: recentDTOs,
 	})
 }

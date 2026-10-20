@@ -158,6 +158,51 @@ function NameBand({ data }: { data: DjDetail }) {
   );
 }
 
+// How people describe the DJ, from what they've logged: the most-liked words
+// about one of their sets, where they're seen most, and the tags on their
+// nights. Nothing shows until someone's logged them.
+function Portrait({ portrait }: { portrait: DjDetail["portrait"] }) {
+  const { pullQuote, venues, descriptors } = portrait;
+  if (!pullQuote && !venues.length && !descriptors.length) return null;
+  return (
+    <Card tint="accent" tilt={-0.6} className="gap-4">
+      {!!pullQuote && (
+        <Pressable onPress={() => router.push(ROUTES.REVIEW_DETAIL(pullQuote.reviewId))} className="active:opacity-80">
+          <Text className="text-xl italic leading-7 text-paper">“{pullQuote.text}”</Text>
+          <Text variant="display" className="mt-1 text-base text-zine-red-ink">
+            — @{pullQuote.user.username}
+          </Text>
+        </Pressable>
+      )}
+      {!!venues.length && (
+        <View className="gap-1">
+          <Text variant="display" className="text-base text-paper/70">
+            Seen most at
+          </Text>
+          <Text variant="display" className="text-xl leading-6 text-paper">
+            {venues.map((venue, i) => (
+              <Text key={venue.venueId}>
+                {!!i && " · "}
+                <Text onPress={() => router.push(ROUTES.VENUE(venue.venueId))} className="underline">
+                  {venue.name}
+                </Text>
+              </Text>
+            ))}
+          </Text>
+        </View>
+      )}
+      {!!descriptors.length && (
+        <View className="gap-2">
+          <Text variant="display" className="text-base text-paper/70">
+            How people describe their nights
+          </Text>
+          <ReviewTags tags={descriptors.map((d) => d.name)} />
+        </View>
+      )}
+    </Card>
+  );
+}
+
 // The tracks people highlighted from the DJ's sets, most picked first.
 function TopTracks({ tracks }: { tracks: DjDetail["topTracks"] }) {
   return (
@@ -280,6 +325,7 @@ function DjProfileList({ data }: { data: DjDetail }) {
             <NameBand data={data} />
           </FadeInView>
           <View style={[contentStyle, { paddingTop: 72, paddingBottom: 0 }]} className="gap-4">
+            <Portrait portrait={data.portrait} />
             {!!data.topTracks.length && <TopTracks tracks={data.topTracks} />}
             <SectionTitle>Recent logs</SectionTitle>
           </View>

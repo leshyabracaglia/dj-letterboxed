@@ -128,6 +128,9 @@ test("a DJ page collects the tracks people loved from their sets", async ({ page
   await expect(text(page, "Tracks people loved")).toBeVisible();
   await expect(shown(page.getByLabel("Picked on 3 nights"))).toBeVisible();
   await expect(text(page, "Rej")).toBeVisible();
+  // The portrait: where he's seen most, from everyone's logs.
+  await expect(text(page, "Seen most at")).toBeVisible();
+  await expect(text(page, "How people describe their nights")).toBeVisible();
   // An unidentified track isn't a top track.
   await expect(shown(page.getByText("Anyone?", { exact: false }))).toHaveCount(0);
 });

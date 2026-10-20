@@ -67,6 +67,10 @@ definitions:
     properties:
       dj:
         $ref: '#/definitions/Dj'
+      portrait:
+        allOf:
+        - $ref: '#/definitions/DjPortrait'
+        description: Portrait is how people describe them, from what they've logged.
       recentReviews:
         items:
           $ref: '#/definitions/ReviewDTO'
@@ -86,10 +90,56 @@ definitions:
         type: array
     required:
     - dj
+    - portrait
     - recentReviews
     - reviewCount
     - timesSeen
     - topTracks
+    type: object
+  DjPortrait:
+    properties:
+      descriptors:
+        items:
+          $ref: '#/definitions/TagCount'
+        type: array
+      pullQuote:
+        allOf:
+        - $ref: '#/definitions/DjPullQuote'
+        x-nullable: true
+      venues:
+        items:
+          $ref: '#/definitions/DjVenueCount'
+        type: array
+    required:
+    - descriptors
+    - pullQuote
+    - venues
+    type: object
+  DjPullQuote:
+    properties:
+      reviewId:
+        type: string
+      text:
+        type: string
+      user:
+        $ref: '#/definitions/User'
+    required:
+    - reviewId
+    - text
+    - user
+    type: object
+  DjVenueCount:
+    properties:
+      name:
+        type: string
+      nights:
+        type: integer
+      venueId:
+        type: string
+    required:
+    - name
+    - nights
+    - venueId
     type: object
   Event:
     properties:
@@ -765,6 +815,16 @@ definitions:
         type: boolean
     required:
     - success
+    type: object
+  TagCount:
+    properties:
+      count:
+        type: integer
+      name:
+        type: string
+    required:
+    - count
+    - name
     type: object
   TagSummary:
     properties:
@@ -1483,7 +1543,7 @@ paths:
           schema:
             $ref: '#/definitions/errorEnvelope'
       summary: Get a DJ by slug, with how often they were seen, the tracks people
-        loved from their sets, and recent reviews
+        loved from their sets, how people describe them, and recent reviews
       tags:
       - djs
   /api/djs/search:

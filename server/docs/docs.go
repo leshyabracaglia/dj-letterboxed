@@ -372,7 +372,7 @@ const docTemplate = `{
                 "tags": [
                     "djs"
                 ],
-                "summary": "Get a DJ by slug, with how often they were seen, the tracks people loved from their sets, and recent reviews",
+                "summary": "Get a DJ by slug, with how often they were seen, the tracks people loved from their sets, how people describe them, and recent reviews",
                 "parameters": [
                     {
                         "type": "string",
@@ -2635,6 +2635,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "dj",
+                "portrait",
                 "recentReviews",
                 "reviewCount",
                 "timesSeen",
@@ -2643,6 +2644,14 @@ const docTemplate = `{
             "properties": {
                 "dj": {
                     "$ref": "#/definitions/Dj"
+                },
+                "portrait": {
+                    "description": "Portrait is how people describe them, from what they've logged.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/DjPortrait"
+                        }
+                    ]
                 },
                 "recentReviews": {
                     "type": "array",
@@ -2664,6 +2673,74 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/TopTrack"
                     }
+                }
+            }
+        },
+        "DjPortrait": {
+            "type": "object",
+            "required": [
+                "descriptors",
+                "pullQuote",
+                "venues"
+            ],
+            "properties": {
+                "descriptors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/TagCount"
+                    }
+                },
+                "pullQuote": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/DjPullQuote"
+                        }
+                    ],
+                    "x-nullable": true
+                },
+                "venues": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/DjVenueCount"
+                    }
+                }
+            }
+        },
+        "DjPullQuote": {
+            "type": "object",
+            "required": [
+                "reviewId",
+                "text",
+                "user"
+            ],
+            "properties": {
+                "reviewId": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/User"
+                }
+            }
+        },
+        "DjVenueCount": {
+            "type": "object",
+            "required": [
+                "name",
+                "nights",
+                "venueId"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "nights": {
+                    "type": "integer"
+                },
+                "venueId": {
+                    "type": "string"
                 }
             }
         },
@@ -3594,6 +3671,21 @@ const docTemplate = `{
             "properties": {
                 "success": {
                     "type": "boolean"
+                }
+            }
+        },
+        "TagCount": {
+            "type": "object",
+            "required": [
+                "count",
+                "name"
+            ],
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
                 }
             }
         },

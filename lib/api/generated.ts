@@ -447,7 +447,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a DJ by slug, with how often they were seen, the tracks people loved from their sets, and recent reviews */
+        /** Get a DJ by slug, with how often they were seen, the tracks people loved from their sets, how people describe them, and recent reviews */
         get: {
             parameters: {
                 query?: never;
@@ -3054,6 +3054,8 @@ export interface components {
         };
         DjDetailResponse: {
             dj: components["schemas"]["Dj"];
+            /** @description Portrait is how people describe them, from what they've logged. */
+            portrait: components["schemas"]["DjPortrait"];
             recentReviews: components["schemas"]["ReviewDTO"][];
             /** @description ReviewCount is how many of those say something about their set. */
             reviewCount: number;
@@ -3064,6 +3066,21 @@ export interface components {
              *     picked first.
              */
             topTracks: components["schemas"]["TopTrack"][];
+        };
+        DjPortrait: {
+            descriptors: components["schemas"]["TagCount"][];
+            pullQuote: components["schemas"]["DjPullQuote"] | null;
+            venues: components["schemas"]["DjVenueCount"][];
+        };
+        DjPullQuote: {
+            reviewId: string;
+            text: string;
+            user: components["schemas"]["User"];
+        };
+        DjVenueCount: {
+            name: string;
+            nights: number;
+            venueId: string;
         };
         Event: {
             createdAt: string;
@@ -3322,6 +3339,10 @@ export interface components {
         };
         SuccessResponse: {
             success: boolean;
+        };
+        TagCount: {
+            count: number;
+            name: string;
         };
         TagSummary: {
             id: string;
