@@ -9,6 +9,7 @@ import (
 type Handlers struct {
 	Pool    *pgxpool.Pool
 	Spotify *domain.SpotifyClient
+	Tracks  *domain.TrackClient
 	Places  *domain.PlacesClient
 	Push    *domain.PushClient
 	RA      *domain.RAClient
@@ -18,5 +19,5 @@ type Handlers struct {
 }
 
 func NewHandlers(pool *pgxpool.Pool, spotify *domain.SpotifyClient, places *domain.PlacesClient, push *domain.PushClient, ra *domain.RAClient, email *domain.EmailClient, webURL string) *Handlers {
-	return &Handlers{Pool: pool, Spotify: spotify, Places: places, Push: push, RA: ra, Email: email, WebURL: webURL}
+	return &Handlers{Pool: pool, Spotify: spotify, Tracks: domain.NewTrackClient(spotify), Places: places, Push: push, RA: ra, Email: email, WebURL: webURL}
 }

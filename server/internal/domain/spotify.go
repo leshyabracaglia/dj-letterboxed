@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -21,6 +22,7 @@ type SpotifyArtist struct {
 type SpotifyClient struct {
 	clientID     string
 	clientSecret string
+	http         *http.Client
 
 	mu        sync.Mutex
 	token     string
@@ -28,7 +30,7 @@ type SpotifyClient struct {
 }
 
 func NewSpotifyClient(clientID, clientSecret string) *SpotifyClient {
-	return &SpotifyClient{clientID: clientID, clientSecret: clientSecret}
+	return &SpotifyClient{clientID: clientID, clientSecret: clientSecret, http: &http.Client{Timeout: 8 * time.Second}}
 }
 
 func (c *SpotifyClient) getAccessToken() (string, error) {
@@ -52,7 +54,7 @@ func (c *SpotifyClient) getAccessToken() (string, error) {
 	req.Header.Set("Authorization", "Basic "+auth)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.http.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -89,7 +91,7 @@ func (c *SpotifyClient) SearchArtists(query string) ([]SpotifyArtist, error) {
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -135,4 +137,89 @@ func (c *SpotifyClient) SearchArtists(query string) ([]SpotifyArtist, error) {
 		})
 	}
 	return out, nil
+}
+
+// spotifyTrack is a track as Spotify's API returns it.
+type spotifyTrack struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Artists []struct {
+		Name string `json:"name"`
+	} `json:"artists"`
+	Album struct {
+		Images []struct {
+			URL string `json:"url"`
+		} `json:"images"`
+	} `json:"album"`
+	ExternalURLs struct {
+		Spotify string `json:"spotify"`
+	} `json:"external_urls"`
+}
+
+func (t spotifyTrack) match() TrackMatch {
+	names := make([]string, len(t.Artists))
+	for i, a := range t.Artists {
+		names[i] = a.Name
+	}
+	m := TrackMatch{Source: TrackSourceSpotify, ExternalID: t.ID, Title: t.Name, Artist: strings.Join(names, ", ")}
+	if t.ExternalURLs.Spotify != "" {
+		m.URL = &t.ExternalURLs.Spotify
+	}
+	// The first album image is the largest; the second (~300px) is plenty.
+	if n := len(t.Album.Images); n > 0 {
+		m.ArtworkURL = &t.Album.Images[min(1, n-1)].URL
+	}
+	return m
+}
+
+// getJSON GETs a Spotify Web API path and decodes the response into out.
+func (c *SpotifyClient) getJSON(ctx context.Context, path string, out any) error {
+	token, err := c.getAccessToken()
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.spotify.com/v1"+path, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusBadRequest {
+		return ErrTrackNotFound
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("spotify %s failed: %d", path, resp.StatusCode)
+	}
+	return json.NewDecoder(resp.Body).Decode(out)
+}
+
+// SearchTracks finds up to 10 tracks matching query.
+func (c *SpotifyClient) SearchTracks(ctx context.Context, query string) ([]TrackMatch, error) {
+	var data struct {
+		Tracks struct {
+			Items []spotifyTrack `json:"items"`
+		} `json:"tracks"`
+	}
+	if err := c.getJSON(ctx, "/search?type=track&limit=10&q="+url.QueryEscape(query), &data); err != nil {
+		return nil, err
+	}
+	out := make([]TrackMatch, len(data.Tracks.Items))
+	for i, t := range data.Tracks.Items {
+		out[i] = t.match()
+	}
+	return out, nil
+}
+
+// GetTrack looks up one track by its Spotify id.
+func (c *SpotifyClient) GetTrack(ctx context.Context, id string) (*TrackMatch, error) {
+	var t spotifyTrack
+	if err := c.getJSON(ctx, "/tracks/"+url.PathEscape(id), &t); err != nil {
+		return nil, err
+	}
+	m := t.match()
+	return &m, nil
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -17,6 +18,7 @@ import (
 const (
 	maxLineup      = 30
 	maxTaggedUsers = 30
+	maxTracks      = 10
 )
 
 // seenAtFutureSlack is how far past now a seenAt may land. Clients send
@@ -43,6 +45,74 @@ type lineupEntryInput struct {
 	ReviewText *string `json:"reviewText,omitempty"`
 }
 
+// A track someone highlights on their night (see db.ReviewTrack): djId is
+// who played it (on the lineup), or omitted for one from the night they
+// can't pin to a DJ. A track from a music service gives its source and
+// externalId (with the url and artworkUrl the search or link lookup gave);
+// one typed in is source "manual". It needs a title, or a note about an
+// unidentified one.
+type trackInput struct {
+	DjID       *string `json:"djId,omitempty"`
+	Source     string  `json:"source"`
+	ExternalID *string `json:"externalId,omitempty"`
+	URL        *string `json:"url,omitempty"`
+	Title      *string `json:"title,omitempty"`
+	Artist     *string `json:"artist,omitempty"`
+	ArtworkURL *string `json:"artworkUrl,omitempty"`
+	Note       *string `json:"note,omitempty"`
+}
+
+// validate checks the track against the night's lineup (onLineup) and
+// returns it ready to save, or a 400 message.
+func (t trackInput) validate(onLineup map[string]bool) (queries.TrackInput, string) {
+	in := queries.TrackInput{
+		DjID: t.DjID, Source: t.Source, ExternalID: nonEmpty(t.ExternalID), URL: nonEmpty(t.URL),
+		Title: nonEmpty(t.Title), Artist: nonEmpty(t.Artist), ArtworkURL: nonEmpty(t.ArtworkURL), Note: nonEmpty(t.Note),
+	}
+	if in.DjID != nil && !onLineup[*in.DjID] {
+		return in, "a track's DJ isn't on the lineup"
+	}
+	switch in.Source {
+	case domain.TrackSourceManual:
+		if in.ExternalID != nil || in.URL != nil || in.ArtworkURL != nil {
+			return in, "a track typed in can't have a link"
+		}
+	case domain.TrackSourceSpotify, domain.TrackSourceSoundCloud, domain.TrackSourceApple, domain.TrackSourceShazam:
+		if in.ExternalID == nil || len(*in.ExternalID) > 200 {
+			return in, "a track from " + in.Source + " needs its externalId"
+		}
+		if in.URL != nil {
+			if link, err := domain.ParseTrackLink(*in.URL); err != nil || link.Source != in.Source {
+				return in, "a track's url isn't a " + in.Source + " link"
+			}
+		}
+		if in.ArtworkURL != nil && !domain.IsTrackArtworkURL(*in.ArtworkURL) {
+			return in, "a track's artworkUrl isn't its cover art"
+		}
+	default:
+		return in, "unknown track source"
+	}
+	if in.Title == nil && in.Note == nil {
+		return in, "a track needs a title, or a note about it"
+	}
+	if len(deref(in.Title)) > 200 || len(deref(in.Artist)) > 200 {
+		return in, "a track's title or artist is too long"
+	}
+	if len(deref(in.Note)) > 500 {
+		return in, "a track's note is too long"
+	}
+	return in, ""
+}
+
+// nonEmpty is s, or nil when it's missing or blank.
+func nonEmpty(s *string) *string {
+	if s == nil || strings.TrimSpace(*s) == "" {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*s)
+	return &trimmed
+}
+
 // One night out: which event (optional), where and when, whether you went
 // during the day or at night, what you thought of it, and who you saw. The
 // event is given by eventId (an existing one) or eventName (found or created
@@ -63,6 +133,8 @@ type createReviewRequest struct {
 	// What you thought of the night as a whole.
 	ReviewText *string            `json:"reviewText,omitempty"`
 	Lineup     []lineupEntryInput `json:"lineup"`
+	// Tracks they highlighted, in the order to show them.
+	Tracks []trackInput `json:"tracks,omitempty"`
 	// Descriptive tag names ("packed"), and friends who were there.
 	Tags          []string `json:"tags"`
 	TaggedUserIDs []string `json:"taggedUserIds"`
@@ -75,9 +147,46 @@ func validateReviewText(text *string) string {
 	return ""
 }
 
+// validatedReview is a createReviewRequest checked and ready to save.
+type validatedReview struct {
+	seenAt   time.Time
+	lineup   []queries.LineupInput
+	tracks   []queries.TrackInput
+	tagNames []string
+}
+
 // validate returns the parsed seenAt, the lineup (empty review texts
-// dropped), and the normalized tag names.
-func (req createReviewRequest) validate() (seenAt time.Time, lineup []queries.LineupInput, tagNames []string, errMsg string) {
+// dropped), the tracks, and the normalized tag names.
+func (req createReviewRequest) validate() (v validatedReview, errMsg string) {
+	t, lineup, tagNames, errMsg := req.validateNight()
+	if errMsg != "" {
+		return v, errMsg
+	}
+	if len(req.Tracks) > maxTracks {
+		return v, "too many tracks"
+	}
+	onLineup := map[string]bool{}
+	for _, e := range lineup {
+		onLineup[e.DjID] = true
+	}
+	tracks := make([]queries.TrackInput, len(req.Tracks))
+	var texts []string
+	for i, tr := range req.Tracks {
+		in, msg := tr.validate(onLineup)
+		if msg != "" {
+			return v, msg
+		}
+		tracks[i] = in
+		texts = append(texts, deref(in.Title), deref(in.Artist), deref(in.Note))
+	}
+	if domain.IsObjectionable(texts...) {
+		return v, domain.ErrObjectionable.Error()
+	}
+	return validatedReview{seenAt: t, lineup: lineup, tracks: tracks, tagNames: tagNames}, ""
+}
+
+// validateNight checks everything but the tracks.
+func (req createReviewRequest) validateNight() (seenAt time.Time, lineup []queries.LineupInput, tagNames []string, errMsg string) {
 	t, errMsg := parseSeenAt(req.SeenAt, time.Now())
 	if errMsg != "" {
 		return time.Time{}, nil, nil, errMsg
@@ -157,7 +266,7 @@ func (h *Handlers) validateTaggedUsers(ctx context.Context, callerID string, ids
 
 // CreateReview godoc
 //
-//	@Summary	Log a night out: the event (picked, or found or created by name), venue, day, review, the DJs seen and anything said about their sets, tags and friends, in one go
+//	@Summary	Log a night out: the event (picked, or found or created by name), venue, day, review, the DJs seen and anything said about their sets, tracks, tags and friends, in one go
 //	@Tags		reviews
 //	@Accept		json
 //	@Produce	json
@@ -179,11 +288,12 @@ func (h *Handlers) CreateReview(w http.ResponseWriter, r *http.Request) {
 		BadRequest(w, "invalid request body")
 		return
 	}
-	seenAt, lineup, tagNames, errMsg := req.validate()
+	v, errMsg := req.validate()
 	if errMsg != "" {
 		BadRequest(w, errMsg)
 		return
 	}
+	lineup := v.lineup
 	taggedIDs, _, errMsg, err := h.validateTaggedUsers(ctx, user.ID, req.TaggedUserIDs)
 	if err != nil {
 		InternalError(w, err)
@@ -241,7 +351,7 @@ func (h *Handlers) CreateReview(w http.ResponseWriter, r *http.Request) {
 	}
 	review, err := queries.CreateReview(ctx, tx, queries.CreateReviewParams{
 		UserID: user.ID, EventID: eventID, Venue: venue, City: city,
-		SeenAt: seenAt, IsDay: req.IsDay, IsNight: req.IsNight || !req.IsDay,
+		SeenAt: v.seenAt, IsDay: req.IsDay, IsNight: req.IsNight || !req.IsDay,
 		ReviewText: req.ReviewText,
 	})
 	if err != nil {
@@ -252,14 +362,18 @@ func (h *Handlers) CreateReview(w http.ResponseWriter, r *http.Request) {
 		InternalError(w, err)
 		return
 	}
+	if err := queries.AddReviewTracks(ctx, tx, review.ID, v.tracks); err != nil {
+		InternalError(w, err)
+		return
+	}
 	if len(taggedIDs) > 0 {
 		if err := queries.SetReviewTags(ctx, tx, review.ID, taggedIDs); err != nil {
 			InternalError(w, err)
 			return
 		}
 	}
-	if len(tagNames) > 0 {
-		if err := queries.SetReviewTagLinks(ctx, tx, review.ID, user.ID, tagNames); err != nil {
+	if len(v.tagNames) > 0 {
+		if err := queries.SetReviewTagLinks(ctx, tx, review.ID, user.ID, v.tagNames); err != nil {
 			InternalError(w, err)
 			return
 		}

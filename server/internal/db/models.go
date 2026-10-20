@@ -84,6 +84,24 @@ type LineupEntry struct {
 	ReviewText *string `json:"reviewText" extensions:"x-nullable"`
 }
 
+// ReviewTrack is a track someone highlighted on their night: one a DJ on
+// the lineup played (DjID), or one from the night they couldn't pin to a DJ
+// (DjID nil). It's from a music service (Source, ExternalID, URL, artwork)
+// or typed in ("manual"); an unidentified one ("ID - ID") has no Title, just
+// a Note.
+type ReviewTrack struct {
+	ID         string  `json:"id"`
+	ReviewID   string  `json:"reviewId"`
+	DjID       *string `json:"djId" extensions:"x-nullable"`
+	Source     string  `json:"source"`
+	ExternalID *string `json:"externalId" extensions:"x-nullable"`
+	URL        *string `json:"url" extensions:"x-nullable"`
+	Title      *string `json:"title" extensions:"x-nullable"`
+	Artist     *string `json:"artist" extensions:"x-nullable"`
+	ArtworkURL *string `json:"artworkUrl" extensions:"x-nullable"`
+	Note       *string `json:"note" extensions:"x-nullable"`
+}
+
 type ReviewComment struct {
 	ID        string    `json:"id"`
 	ReviewID  string    `json:"reviewId"`

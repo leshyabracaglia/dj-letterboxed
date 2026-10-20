@@ -7,13 +7,16 @@ import (
 
 // ReviewDTO is a night out as the app shows it: the review, who posted it,
 // its event (nil for a night with no event name), its lineup - the DJs seen,
-// alphabetically, with any DJ reviews - its tags and tagged friends, and its
-// likes and comments.
+// alphabetically, with any DJ reviews - the tracks they highlighted, its tags
+// and tagged friends, and its likes and comments.
 type ReviewDTO struct {
 	db.Review
-	User         *db.User         `json:"user,omitempty"`
-	Event        *db.Event        `json:"event" extensions:"x-nullable"`
-	Lineup       []db.LineupEntry `json:"lineup"`
+	User   *db.User         `json:"user,omitempty"`
+	Event  *db.Event        `json:"event" extensions:"x-nullable"`
+	Lineup []db.LineupEntry `json:"lineup"`
+	// Tracks they highlighted, in order: each from a DJ on the lineup
+	// (djId) or from the night as a whole (djId null).
+	Tracks       []db.ReviewTrack `json:"tracks"`
 	TaggedUsers  []db.User        `json:"taggedUsers"`
 	Tags         []string         `json:"tags"`
 	LikeCount    int64            `json:"likeCount"`
@@ -50,8 +53,11 @@ type DjDetailResponse struct {
 	// TimesSeen is how many nights logged have them on the lineup.
 	TimesSeen int64 `json:"timesSeen"`
 	// ReviewCount is how many of those say something about their set.
-	ReviewCount   int64       `json:"reviewCount"`
-	RecentReviews []ReviewDTO `json:"recentReviews"`
+	ReviewCount int64 `json:"reviewCount"`
+	// TopTracks are the tracks people highlighted from their sets, most
+	// picked first.
+	TopTracks     []queries.TopTrack `json:"topTracks"`
+	RecentReviews []ReviewDTO        `json:"recentReviews"`
 }
 
 type EventDetailResponse struct {

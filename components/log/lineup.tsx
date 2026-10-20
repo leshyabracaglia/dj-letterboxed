@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { type Ref, useState } from "react";
+import { type ComponentProps, type Ref, useState } from "react";
 import { Modal, Pressable, ScrollView, TextInput, useWindowDimensions, View } from "react-native";
 
 import {
@@ -22,7 +22,8 @@ import { useApi, unwrap } from "@/lib/api/client";
 import { useDjSearch } from "@/lib/api/hooks";
 import { queryKeys } from "@/lib/api/queryKeys";
 import type { CreateDjInput, Dj } from "@/lib/api/types";
-import { artistPickName, type ArtistPick, type DraftLineupEntry } from "./draft";
+import { artistPickName, type ArtistPick, type DraftLineupEntry, type DraftTrack } from "./draft";
+import { DraftTrackList } from "./TrackSheet";
 import { CircleIcon, FieldLabel, INPUT_CLASS, LinedInput, NO_WEB_OUTLINE, SheetRow } from "./fields";
 
 // The night's DJs: ticking off a listed lineup, adding artists, and writing
@@ -243,19 +244,24 @@ function PhotoLightbox({ uri, name, onClose }: { uri: string; name: string; onCl
 }
 
 // A DJ in the lineup, on purple or red paper: their name and photo (tap to
-// enlarge), and a box for a review of their set.
+// enlarge), a box for a review of their set, and the tracks of theirs you
+// highlighted (`tracks`, edited through `trackActions`).
 export function LineupCard({
   entry,
   index,
   onChange,
   onEdit,
   onRemove,
+  tracks,
+  trackActions,
 }: {
   entry: DraftLineupEntry;
   index: number;
   onChange: (changes: Partial<DraftLineupEntry>) => void;
   onEdit?: () => void;
   onRemove: () => void;
+  tracks: DraftTrack[];
+  trackActions: Omit<ComponentProps<typeof DraftTrackList>, "tracks" | "addLabel">;
 }) {
   const { pick } = entry;
   const paper = paperAt(index);
@@ -336,6 +342,9 @@ export function LineupCard({
           className="mt-3 border-paper/70 bg-black/15 py-2"
         />
       )}
+      <View className="mt-3">
+        <DraftTrackList tracks={tracks} addLabel={`A track ${name} played`} {...trackActions} />
+      </View>
     </Card>
   );
 }

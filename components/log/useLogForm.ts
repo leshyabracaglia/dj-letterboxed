@@ -5,6 +5,7 @@ import {
   artistPickKey,
   type ArtistPick,
   type DraftLineupEntry,
+  type DraftTrack,
   emptyDraft,
   type PosterSheet,
   type ReviewDraft,
@@ -36,6 +37,9 @@ export type LogFormState = {
   // The artist sheet, open for a new artist (null) or to edit a hand-made
   // one in the lineup (its key).
   artistSheet?: { editingKey: string | null };
+  // The track sheet, open to add a track (for a DJ's set, by their entry's
+  // key, or the night's) or to edit one (its key).
+  trackSheet?: { djKey?: string; editingKey?: string };
 };
 
 export type LogFormAction =
@@ -61,7 +65,11 @@ export type LogFormAction =
   | { type: "cancelAddingDj" }
   | { type: "setDjQuery"; query: string }
   | { type: "openArtistSheet"; editingKey: string | null }
-  | { type: "closeArtistSheet" };
+  | { type: "closeArtistSheet" }
+  | { type: "openTrackSheet"; djKey?: string; editingKey?: string }
+  | { type: "closeTrackSheet" }
+  | { type: "saveTrack"; track: DraftTrack }
+  | { type: "removeTrack"; key: string };
 
 export function initialLogFormState(): LogFormState {
   return {
@@ -154,12 +162,32 @@ export function logFormReducer(state: LogFormState, action: LogFormAction): LogF
       return { ...state, artistSheet: { editingKey: action.editingKey } };
     case "closeArtistSheet":
       return { ...state, artistSheet: undefined };
+    case "openTrackSheet":
+      return { ...state, trackSheet: { djKey: action.djKey, editingKey: action.editingKey } };
+    case "closeTrackSheet":
+      return { ...state, trackSheet: undefined };
+    case "saveTrack": {
+      const { tracks } = state.draft;
+      const { track } = action;
+      return {
+        ...state,
+        draft: {
+          ...state.draft,
+          tracks: tracks.some((t) => t.key === track.key)
+            ? tracks.map((t) => (t.key === track.key ? track : t))
+            : [...tracks, track],
+        },
+        trackSheet: undefined,
+      };
+    }
+    case "removeTrack":
+      return { ...state, draft: { ...state.draft, tracks: state.draft.tracks.filter((t) => t.key !== action.key) } };
   }
 }
 
 /** The log form's state, plus what's derived from it: the DJs ticked as
- * caught, the ones listed on the night's lineup, and the hand-made artist
- * the artist sheet is editing. */
+ * caught, the ones listed on the night's lineup, the hand-made artist the
+ * artist sheet is editing, and the track the track sheet is editing. */
 export function useLogForm() {
   const [state, dispatch] = useReducer(logFormReducer, undefined, initialLogFormState);
   const derived = useMemo(
@@ -167,8 +195,9 @@ export function useLogForm() {
       caught: state.lineup.filter((e) => e.caught),
       listedLineup: state.lineup.filter((e) => e.listed),
       editingEntry: state.lineup.find((e) => e.key === state.artistSheet?.editingKey),
+      editingTrack: state.draft.tracks.find((t) => t.key === state.trackSheet?.editingKey),
     }),
-    [state.lineup, state.artistSheet],
+    [state.lineup, state.artistSheet, state.draft.tracks, state.trackSheet],
   );
   return { state, dispatch, ...derived };
 }

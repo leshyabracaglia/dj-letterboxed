@@ -116,3 +116,15 @@ test("a profile's passport stamps every club they've logged a night at", async (
   await expect(shown(page.getByRole("img", { name: "Good Room: 1 night" }))).toBeVisible();
   await expect(shown(page.getByRole("img", { name: "Nowadays: 1 night" }))).toBeVisible();
 });
+
+test("a DJ page collects the tracks people loved from their sets", async ({ page }) => {
+  await page.goto("/dj/dixon");
+
+  // Rej was picked on three nights (from Spotify, Apple Music and Shazam):
+  // it counts once, at the top.
+  await expect(text(page, "Tracks people loved")).toBeVisible();
+  await expect(shown(page.getByLabel("Picked on 3 nights"))).toBeVisible();
+  await expect(text(page, "Rej")).toBeVisible();
+  // An unidentified track isn't a top track.
+  await expect(shown(page.getByText("Anyone?", { exact: false }))).toHaveCount(0);
+});

@@ -8,7 +8,7 @@ import (
 )
 
 // hydrateReviews turns reviews into what the app shows of each night out:
-// who posted it, its event, lineup, tags, tagged friends and engagement
+// who posted it, its event, lineup, tracks, tags, tagged friends and engagement
 // (with, when currentUserID is set, whether the caller liked it). One query
 // per relation, whatever the number of reviews.
 func (h *Handlers) hydrateReviews(ctx context.Context, reviews []db.Review, currentUserID *string) ([]ReviewDTO, error) {
@@ -36,6 +36,10 @@ func (h *Handlers) hydrateReviews(ctx context.Context, reviews []db.Review, curr
 	if err != nil {
 		return nil, err
 	}
+	tracks, err := queries.GetTracksByReviewIDs(ctx, h.Pool, ids)
+	if err != nil {
+		return nil, err
+	}
 	tags, err := queries.ListTagNamesByReviewIDs(ctx, h.Pool, ids)
 	if err != nil {
 		return nil, err
@@ -54,6 +58,7 @@ func (h *Handlers) hydrateReviews(ctx context.Context, reviews []db.Review, curr
 		dto := ReviewDTO{
 			Review:       r,
 			Lineup:       orEmpty(lineups[r.ID]),
+			Tracks:       orEmpty(tracks[r.ID]),
 			TaggedUsers:  orEmpty(tagged[r.ID]),
 			Tags:         orEmpty(tags[r.ID]),
 			LikeCount:    e.LikeCount,

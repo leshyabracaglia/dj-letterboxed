@@ -372,7 +372,7 @@ const docTemplate = `{
                 "tags": [
                     "djs"
                 ],
-                "summary": "Get a DJ by slug, with how often they were seen and recent reviews",
+                "summary": "Get a DJ by slug, with how often they were seen, the tracks people loved from their sets, and recent reviews",
                 "parameters": [
                     {
                         "type": "string",
@@ -1043,7 +1043,7 @@ const docTemplate = `{
                 "tags": [
                     "reviews"
                 ],
-                "summary": "Log a night out: the event (picked, or found or created by name), venue, day, review, the DJs seen and anything said about their sets, tags and friends, in one go",
+                "summary": "Log a night out: the event (picked, or found or created by name), venue, day, review, the DJs seen and anything said about their sets, tracks, tags and friends, in one go",
                 "parameters": [
                     {
                         "description": "the night to log",
@@ -1445,6 +1445,83 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/TagSummary"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tracks/resolve": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tracks"
+                ],
+                "summary": "Read a pasted Spotify, SoundCloud, Apple Music or Shazam track link",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "the pasted link",
+                        "name": "url",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/TrackMatch"
+                        }
+                    },
+                    "400": {
+                        "description": "not a track link from one of those services",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "no such track, or the service couldn't be reached",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tracks/search": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tracks"
+                ],
+                "summary": "Search Spotify for tracks to highlight on a night (fails open to [] on Spotify errors)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search query",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/TrackMatch"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
                         }
                     }
                 }
@@ -2363,7 +2440,8 @@ const docTemplate = `{
                 "dj",
                 "recentReviews",
                 "reviewCount",
-                "timesSeen"
+                "timesSeen",
+                "topTracks"
             ],
             "properties": {
                 "dj": {
@@ -2382,6 +2460,13 @@ const docTemplate = `{
                 "timesSeen": {
                     "description": "TimesSeen is how many nights logged have them on the lineup.",
                     "type": "integer"
+                },
+                "topTracks": {
+                    "description": "TopTracks are the tracks people highlighted from their sets, most\npicked first.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/TopTrack"
+                    }
                 }
             }
         },
@@ -3081,6 +3166,7 @@ const docTemplate = `{
                 "seenAt",
                 "taggedUsers",
                 "tags",
+                "tracks",
                 "updatedAt",
                 "userId",
                 "venue",
@@ -3155,6 +3241,13 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "tracks": {
+                    "description": "Tracks they highlighted, in order: each from a DJ on the lineup\n(djId) or from the night as a whole (djId null).",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ReviewTrack"
+                    }
+                },
                 "updatedAt": {
                     "type": "string"
                 },
@@ -3180,6 +3273,60 @@ const docTemplate = `{
                 "viewerLoggedNight": {
                     "description": "On a review's own page, when the caller is tagged in it: whether\nthey've logged the night themselves (the page prompts them to if not).",
                     "type": "boolean"
+                }
+            }
+        },
+        "ReviewTrack": {
+            "type": "object",
+            "required": [
+                "artist",
+                "artworkUrl",
+                "djId",
+                "externalId",
+                "id",
+                "note",
+                "reviewId",
+                "source",
+                "title",
+                "url"
+            ],
+            "properties": {
+                "artist": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "artworkUrl": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "djId": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "externalId": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "id": {
+                    "type": "string"
+                },
+                "note": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "reviewId": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "url": {
+                    "type": "string",
+                    "x-nullable": true
                 }
             }
         },
@@ -3259,6 +3406,21 @@ const docTemplate = `{
                 }
             }
         },
+        "TopTrack": {
+            "type": "object",
+            "required": [
+                "picks",
+                "track"
+            ],
+            "properties": {
+                "picks": {
+                    "type": "integer"
+                },
+                "track": {
+                    "$ref": "#/definitions/ReviewTrack"
+                }
+            }
+        },
         "TopVenue": {
             "type": "object",
             "required": [
@@ -3271,6 +3433,39 @@ const docTemplate = `{
                 },
                 "venue": {
                     "type": "string"
+                }
+            }
+        },
+        "TrackMatch": {
+            "type": "object",
+            "required": [
+                "artist",
+                "artworkUrl",
+                "externalId",
+                "source",
+                "title",
+                "url"
+            ],
+            "properties": {
+                "artist": {
+                    "type": "string"
+                },
+                "artworkUrl": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "externalId": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string",
+                    "x-nullable": true
                 }
             }
         },
@@ -3649,6 +3844,13 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "tracks": {
+                    "description": "Tracks they highlighted, in the order to show them.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/trackInput"
+                    }
+                },
                 "venue": {
                     "type": "string"
                 },
@@ -3710,6 +3912,38 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "trackInput": {
+            "type": "object",
+            "required": [
+                "source"
+            ],
+            "properties": {
+                "artist": {
+                    "type": "string"
+                },
+                "artworkUrl": {
+                    "type": "string"
+                },
+                "djId": {
+                    "type": "string"
+                },
+                "externalId": {
+                    "type": "string"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
                 }
             }
         },

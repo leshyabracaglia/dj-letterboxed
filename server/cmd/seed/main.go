@@ -10,6 +10,7 @@ import (
 
 	"beatboxd/server/internal/db"
 	"beatboxd/server/internal/db/queries"
+	"beatboxd/server/internal/domain"
 )
 
 func main() {
@@ -111,8 +112,8 @@ func run() error {
 		return err
 	}
 
-	// logNight saves one person's night out: its text and tags, and the DJs
-	// they saw, with anything they wrote about each set.
+	// logNight saves one person's night out: its text and tags, the DJs they
+	// saw, with anything they wrote about each set, and their tracks.
 	logNight := func(n night) (*db.Review, error) {
 		var eventID, text *string
 		if n.event != nil {
@@ -139,6 +140,13 @@ func run() error {
 		if err := queries.AddReviewLineup(ctx, pool, r.ID, lineup); err != nil {
 			return nil, err
 		}
+		tracks := make([]queries.TrackInput, len(n.tracks))
+		for i, t := range n.tracks {
+			tracks[i] = t.input()
+		}
+		if err := queries.AddReviewTracks(ctx, pool, r.ID, tracks); err != nil {
+			return nil, err
+		}
 		if len(n.tags) == 0 {
 			return r, nil
 		}
@@ -160,6 +168,13 @@ func run() error {
 			wrote(dj4, "The live set was the highlight of the night, that room was made for it."),
 			seen(dj5),
 		},
+		// One of each kind of track: Spotify with a note, SoundCloud with
+		// none, and a Shazam from the night as a whole (no DJ).
+		tracks: []track{
+			onSpotify(dj1, "3rYAvF4f1aTbQ5hrIpcCPk", "Rej", "Âme", "The whole Main Hall sang the riff back at him."),
+			onSoundCloud(dj4, "ame-live/hypnotic-live-edit", "Hypnotic (Live Edit)", "Âme", ""),
+			shazamed(nil, "1787023936", "Movin' To The Sun", "HUGEL, Imael Angel & Ultra Naté", "Shazamed it in the smoking area between sets."),
+		},
 	})
 	if err != nil {
 		return err
@@ -172,6 +187,12 @@ func run() error {
 		user: bob, event: innervisions, venue: knockdown, seenAt: "2026-07-18T18:00:00Z", isNight: true,
 		tags:   []string{"packed"},
 		lineup: []set{wrote(dj1, "Dixon closing the Main Hall was pure tension and release, if a bit long."), seen(dj4), seen(dj5)},
+		// Rej again, from Apple Music this time (it still counts once on
+		// Dixon's page), and an ID nobody's named yet.
+		tracks: []track{
+			onAppleMusic(dj1, "1440841766", "Rej", "Âme", "Still the best record Innervisions ever put out."),
+			unidentified(dj1, "ID - the one with the strings that came in around 4am. Anyone?"),
+		},
 	}); err != nil {
 		return err
 	}
@@ -195,6 +216,13 @@ func run() error {
 	if _, err := logNight(night{
 		user: bob, event: dixonAllNight, venue: nowadays, seenAt: "2026-08-22T18:00:00Z", isNight: true,
 		lineup: []set{wrote(dj1, "Seven hours of Dixon at Nowadays, never once lost the room.")},
+		// Rej a third time (top of Dixon's tracks), with no note; a track
+		// typed in by hand; and a long title.
+		tracks: []track{
+			shazamed(dj1, "1440841999", "Rej", "Âme", ""),
+			typedIn(dj1, "Strings of Life (Dixon Edit)", "Rhythim Is Rhythim", "Unreleased as far as I can tell."),
+			onSpotify(dj1, "5u9dC7LBrHZ6QRlU4xPEW3", "Sun Child (Extended Mix) [Innervisions Remastered Edition, Part Two]", "Dixon, Âme, Henrik Schwarz", ""),
+		},
 	}); err != nil {
 		return err
 	}
@@ -258,6 +286,7 @@ type (
 		text    string
 		tags    []string
 		lineup  []set
+		tracks  []track
 	}
 	set struct {
 		dj   *db.Dj
@@ -269,11 +298,66 @@ type (
 func seen(dj *db.Dj) set               { return set{dj: dj} }
 func wrote(dj *db.Dj, text string) set { return set{dj: dj, text: text} }
 
+// track is a track highlighted on a night: dj is who played it (nil for one
+// from the night as a whole). Build one with the helpers below, one per
+// source a track can come from.
+type track struct {
+	dj                                        *db.Dj
+	source, id, url, title, artist, art, note string
+}
+
+func (t track) input() queries.TrackInput {
+	in := queries.TrackInput{Source: t.source, Title: optStr(t.title), Artist: optStr(t.artist), Note: optStr(t.note)}
+	if t.dj != nil {
+		in.DjID = &t.dj.ID
+	}
+	if t.source != domain.TrackSourceManual {
+		in.ExternalID, in.URL, in.ArtworkURL = &t.id, &t.url, optStr(t.art)
+	}
+	return in
+}
+
+func optStr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+// seedArt is stand-in cover art (seeded tracks' ids aren't real).
+func seedArt(id string) string { return "https://picsum.photos/seed/track-" + id + "/300/300" }
+
+func onSpotify(dj *db.Dj, id, title, artist, note string) track {
+	return track{dj, domain.TrackSourceSpotify, id, "https://open.spotify.com/track/" + id, title, artist, seedArt(id), note}
+}
+
+func onSoundCloud(dj *db.Dj, path, title, artist, note string) track {
+	return track{dj, domain.TrackSourceSoundCloud, path, "https://soundcloud.com/" + path, title, artist, seedArt(path), note}
+}
+
+func onAppleMusic(dj *db.Dj, id, title, artist, note string) track {
+	return track{dj, domain.TrackSourceApple, id, "https://music.apple.com/us/song/" + id, title, artist, seedArt(id), note}
+}
+
+func shazamed(dj *db.Dj, id, title, artist, note string) track {
+	return track{dj, domain.TrackSourceShazam, id, "https://www.shazam.com/song/" + id, title, artist, seedArt(id), note}
+}
+
+func typedIn(dj *db.Dj, title, artist, note string) track {
+	return track{dj: dj, source: domain.TrackSourceManual, title: title, artist: artist, note: note}
+}
+
+// unidentified is an "ID - ID": a track nobody's named yet, just a note.
+func unidentified(dj *db.Dj, note string) track {
+	return track{dj: dj, source: domain.TrackSourceManual, note: note}
+}
+
 // seedVariations adds nights covering each shape a card, DJ, event or venue
 // page has to handle: with and without an event name, no/one/several DJs,
 // no/some/every set written about, a night with nothing said about it,
-// day/night/day-into-night, long and empty text, tagged friends, a popular
-// post, another city. It deliberately stays clear of what e2e/ asserts on
+// day/night/day-into-night, long and empty text, tracks of every kind (each
+// source, typed in, unidentified, from the night, a full ten), tagged
+// friends, a popular post, another city. It deliberately stays clear of what e2e/ asserts on
 // (Dixon, Knockdown Center, Innervisions New York, Dixon All Night Long), so
 // those counts don't move.
 func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User, logNight logNightFunc) (err error) {
@@ -364,6 +448,7 @@ func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User,
 		user: alice, event: misterSat, venue: nowadays, seenAt: "2026-09-20T16:00:00Z", isDay: true, isNight: true,
 		tags:   []string{"sunset", "friendly"},
 		lineup: []set{wrote(honey, "House music church. The garden at golden hour.")},
+		tracks: []track{onSpotify(honey, "0r4bwyQf8rTn6CBOEHTgAp", "Thinking of You", "Sister Sledge", "")},
 	})
 
 	// Event, several DJs, none written about: lineup photo tiles, no sets. Two DJs
@@ -404,6 +489,23 @@ func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User,
 			seen(honey),
 			wrote(peggy, "Fun but felt short after the marathon before it."),
 		},
+		// The most tracks a night can have (maxTracks), across every DJ and
+		// the night itself: more than a list card shows. Honey Dijon's set
+		// has no words, only a track (picked on two nights, so it tops her
+		// page).
+		tracks: []track{
+			onSpotify(floating, "1x2y3z4a5b6c7d8e9f0g1h", "LesAlpx", "Floating Points", "Played it twice. Nobody minded."),
+			onSpotify(floating, "2x2y3z4a5b6c7d8e9f0g1h", "Silhouettes (I, II & III)", "Floating Points", ""),
+			onAppleMusic(floating, "1500000001", "Spiral", "Pharoah Sanders", "Ten minutes of spiritual jazz at peak time, and it worked."),
+			unidentified(floating, "The acid track he closed on. Sounded like a 303 falling down the stairs. If anyone knows it, I need it. "+
+				"I've been through every Shazam in my history and the only thing it caught was the crowd screaming."),
+			onSoundCloud(djPython, "djpython/dulce-edit", "Dulce (Edit)", "DJ Python", ""),
+			onSpotify(honey, "0r4bwyQf8rTn6CBOEHTgAp", "Thinking of You", "Sister Sledge", "Dropped this at sunset and the whole room went."),
+			shazamed(peggy, "1500000002", "Starry Night", "Peggy Gou", ""),
+			typedIn(peggy, "It Makes You Forget (Itgehane)", "Peggy Gou", ""),
+			typedIn(nil, "The encore record", "", "Whatever the last record was, after the lights came up. Everyone stayed."),
+			shazamed(nil, "1500000003", "Your Love", "Frankie Knuckles", "Played on the PA while we waited outside."),
+		},
 	})
 
 	// No event, one DJ: titled after the DJ, venue under it.
@@ -431,6 +533,9 @@ func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User,
 		user: dev, venue: goodRoom, seenAt: "2026-09-06T15:00:00Z", isDay: true,
 		tags:   []string{"older crowd"},
 		lineup: []set{wrote(mallGrab, "Lo-fi house on a sunny afternoon, it was fine."), seen(joy)},
+		// Nothing written about Joy's set, just a track: it still shows as
+		// a set.
+		tracks: []track{onSoundCloud(joy, "joyorbison/flight-fm", "Flight FM", "Joy Orbison", "The one track that got the whole patio moving.")},
 	})
 
 	// Another city, for the location-based search and city picker.

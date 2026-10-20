@@ -5,9 +5,9 @@ import { queryKeys } from "@/lib/api/queryKeys";
 import type { CreateDjInput, CreateReviewInput, Dj, Paginated, Review } from "@/lib/api/types";
 import { useCurrentUser } from "@/lib/auth";
 import { parseDateInputValue } from "@/lib/format";
-import type { DraftLineupEntry, EventPick, ReviewDraft, VenuePick } from "./draft";
+import { type DraftLineupEntry, type EventPick, type ReviewDraft, trackInputs, type VenuePick } from "./draft";
 
-type WhereAndWhen = Omit<CreateReviewInput, "reviewText" | "lineup" | "tags" | "taggedUserIds">;
+type WhereAndWhen = Omit<CreateReviewInput, "reviewText" | "lineup" | "tracks" | "tags" | "taggedUserIds">;
 
 // The event part of the POST /reviews body: an existing event, one to
 // create by name, or none.
@@ -93,6 +93,7 @@ export function useLogNight() {
         djId: djFor(e).id,
         reviewText: e.reviewText.trim() || undefined,
       })),
+      tracks: trackInputs(draft.tracks, caught, (e) => djFor(e).id),
       tags: draft.tags,
       taggedUserIds: draft.taggedUsers.map((u) => u.id),
     });

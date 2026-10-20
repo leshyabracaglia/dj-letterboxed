@@ -9,6 +9,8 @@ import {
   draftFromReview,
   draftProblem,
   emptyDraft,
+  MAX_TRACKS,
+  trackInputCount,
   type BlankSeed,
   type EventPick,
   type DraftLineupEntry,
@@ -19,6 +21,7 @@ import { FindTheNight } from "@/components/log/FindTheNight";
 import { ArtistSearchInput, CaughtChecklist, CreateArtistSheet, LineupCard } from "@/components/log/lineup";
 import { NightPoster, PosterCaption } from "@/components/log/NightPoster";
 import { DateSheet, EventSheet, VenueSheet } from "@/components/log/sheets";
+import { DraftTrackList, TrackSheet } from "@/components/log/TrackSheet";
 import { TagPicker } from "@/components/log/TagPicker";
 import { useLogForm } from "@/components/log/useLogForm";
 import { useLogNight } from "@/components/log/useLogNight";
@@ -41,7 +44,8 @@ import { useCurrentUser } from "@/lib/auth";
 import { ROUTES } from "@/lib/routes";
 import { isWeb } from "@/lib/platform";
 
-// The log tab: find the night, then fill in its poster and rate it. The
+// The log tab: find the night, then fill in its poster, the sets and tracks
+// you caught, and what you thought of it. The
 // form's pieces (and its state, useLogForm) live in components/log/.
 export default function CreateReviewScreen() {
   const api = useApi();
@@ -53,7 +57,7 @@ export default function CreateReviewScreen() {
 
   const { me } = useCurrentUser();
   const { logNight, pending } = useLogNight();
-  const { state, dispatch, caught, listedLineup, editingEntry } = useLogForm();
+  const { state, dispatch, caught, listedLineup, editingEntry, editingTrack } = useLogForm();
   const { draft, lineup } = state;
   const { fromReview } = useLocalSearchParams<{ fromReview?: string }>();
 
@@ -61,6 +65,15 @@ export default function CreateReviewScreen() {
   const updateEntry = (key: string, changes: Partial<DraftLineupEntry>) =>
     dispatch({ type: "updateEntry", key, changes });
   const closeSheet = () => dispatch({ type: "closeSheet" });
+  // Adding, editing and removing tracks; the tracks of the DJs caught, or the
+  // night's, count towards the limit.
+  const trackCount = trackInputCount(draft.tracks, caught);
+  const trackActions = (djKey?: string) => ({
+    canAdd: trackCount < MAX_TRACKS,
+    onAdd: () => dispatch({ type: "openTrackSheet", djKey }),
+    onEdit: (key: string) => dispatch({ type: "openTrackSheet", editingKey: key }),
+    onRemove: (key: string) => dispatch({ type: "removeTrack", key }),
+  });
 
   // "+ Who played" on the poster: open the DJ search below and focus it
   // (which scrolls it into view).
@@ -264,6 +277,8 @@ export default function CreateReviewScreen() {
                     : undefined
                 }
                 onRemove={() => dispatch({ type: "removeEntry", key: entry.key })}
+                tracks={draft.tracks.filter((t) => t.djKey === entry.key)}
+                trackActions={trackActions(entry.key)}
               />
             ))}
             {state.addingDj ? (
@@ -312,6 +327,14 @@ export default function CreateReviewScreen() {
                 onChangeText={(reviewText) => updateDraft({ reviewText })}
                 placeholder="How was the night?"
                 lines={5}
+              />
+            </View>
+            <View className="gap-2">
+              <FieldLabel>Tracks from the night</FieldLabel>
+              <DraftTrackList
+                tracks={draft.tracks.filter((t) => !t.djKey)}
+                addLabel="A track you can't pin to a DJ"
+                {...trackActions()}
               />
             </View>
             <View className="gap-2">
@@ -367,6 +390,15 @@ export default function CreateReviewScreen() {
             closeSheet();
           }}
           onClose={closeSheet}
+        />
+      )}
+      {state.trackSheet && (
+        <TrackSheet
+          editing={editingTrack}
+          djKey={state.trackSheet.djKey}
+          lineup={caught}
+          onSave={(track) => dispatch({ type: "saveTrack", track })}
+          onClose={() => dispatch({ type: "closeTrackSheet" })}
         />
       )}
       {state.artistSheet && (

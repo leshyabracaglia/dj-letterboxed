@@ -1,6 +1,6 @@
 import type { Href } from "expo-router";
 
-import type { LineupEntry, Review } from "./api/types";
+import type { LineupEntry, Review, ReviewTrack } from "./api/types";
 import { formatCardDate, formatDayNight } from "./format";
 import { ROUTES } from "./routes";
 
@@ -48,16 +48,23 @@ function nightHref(night: Night): Href | null {
   return null;
 }
 
-/** The DJs someone wrote about on a night (their DJ reviews), in lineup
- * order. */
-export function reviewedSets(review: Pick<Review, "lineup">): LineupEntry[] {
-  return review.lineup.filter((entry) => !!entry.reviewText);
+/** The tracks someone highlighted from one DJ's set, or (`djId` null) from
+ * the night as a whole, in their order. */
+export function tracksFrom(review: Pick<Review, "tracks">, djId: string | null): ReviewTrack[] {
+  return review.tracks.filter((track) => track.djId === djId);
+}
+
+/** The DJs someone wrote about or highlighted tracks from on a night (their
+ * DJ reviews), in lineup order. */
+export function reviewedSets(review: Pick<Review, "lineup" | "tracks">): LineupEntry[] {
+  return review.lineup.filter((entry) => !!entry.reviewText || !!tracksFrom(review, entry.dj.id).length);
 }
 
 /** The one DJ a post is really about: nothing said about the night itself
- * and a single DJ's set written about. It shows as that DJ's review. */
-export function soloSet(review: Pick<Review, "reviewText" | "lineup">): LineupEntry | null {
-  if (review.reviewText) return null;
+ * (no text, no tracks from it) and a single DJ's set reviewed. It shows as
+ * that DJ's review. */
+export function soloSet(review: Pick<Review, "reviewText" | "lineup" | "tracks">): LineupEntry | null {
+  if (review.reviewText || tracksFrom(review, null).length) return null;
   const sets = reviewedSets(review);
   return sets.length === 1 ? sets[0] : null;
 }

@@ -29,6 +29,7 @@ import {
 import { DetailPage } from "@/components/DetailPage";
 import { NightStamp } from "@/components/NightStamp";
 import { ReviewTags } from "@/components/ReviewTags";
+import { TrackRow } from "@/components/TrackRow";
 import { useDjDetail } from "@/lib/api/hooks";
 import { plural } from "@/lib/format";
 import type { DjDetail, Review } from "@/lib/api/types";
@@ -157,6 +158,35 @@ function NameBand({ data }: { data: DjDetail }) {
   );
 }
 
+// The tracks people highlighted from the DJ's sets, most picked first.
+function TopTracks({ tracks }: { tracks: DjDetail["topTracks"] }) {
+  return (
+    <Card tilt={0.6} className="gap-4 bg-zine-panel">
+      <Text variant="display" className="text-xl text-paper/70">
+        Tracks people loved
+      </Text>
+      {tracks.map(({ track, picks }) => (
+        <TrackRow
+          key={track.id}
+          track={track}
+          noteLines={2}
+          trailing={
+            picks > 1 && (
+              <Text
+                variant="display"
+                className="text-lg text-paper/70"
+                accessibilityLabel={`Picked on ${picks} nights`}
+              >
+                ×{picks}
+              </Text>
+            )
+          }
+        />
+      ))}
+    </Card>
+  );
+}
+
 // A night the DJ was on the lineup of: what the reviewer said about the
 // DJ's set, or - when they only wrote about the night as a whole - the
 // night's.
@@ -250,6 +280,7 @@ function DjProfileList({ data }: { data: DjDetail }) {
             <NameBand data={data} />
           </FadeInView>
           <View style={[contentStyle, { paddingTop: 72, paddingBottom: 0 }]} className="gap-4">
+            {!!data.topTracks.length && <TopTracks tracks={data.topTracks} />}
             <SectionTitle>Recent logs</SectionTitle>
           </View>
           <View className="h-2" />

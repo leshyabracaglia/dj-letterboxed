@@ -17,18 +17,42 @@ import {
   tiltFor,
 } from "./ui";
 
-import type { LineupEntry, Review, User } from "@/lib/api/types";
+import type { LineupEntry, Review, ReviewTrack, User } from "@/lib/api/types";
 import { pluralWord } from "@/lib/format";
-import { nightDateParts, reviewedSets, reviewSubject, soloSet } from "@/lib/review";
+import { nightDateParts, reviewedSets, reviewSubject, soloSet, tracksFrom } from "@/lib/review";
 import { ROUTES } from "@/lib/routes";
 import { NightStamp } from "./NightStamp";
 import { ReviewTags } from "./ReviewTags";
+import { TrackRow } from "./TrackRow";
 import { colors } from "@/lib/colors";
 
 // How many lineup photos a night card shows before "+N more".
 const LINEUP_SHOWN = 3;
 // How many DJ reviews a night card in a list shows before "+N more".
 const SETS_SHOWN = 3;
+// How many of a set's (or the night's) tracks a card in a list shows.
+const TRACKS_SHOWN = 1;
+
+// Tracks highlighted from a set or the night: on a list card the first
+// TRACKS_SHOWN (note clamped) and a count of the rest; on the review's own
+// page all of them, in full.
+function Tracks({ tracks, paper, expanded }: { tracks: ReviewTrack[]; paper: Paper; expanded: boolean }) {
+  if (!tracks.length) return null;
+  const shown = expanded ? tracks : tracks.slice(0, TRACKS_SHOWN);
+  const hidden = tracks.length - shown.length;
+  return (
+    <View className="mt-3 gap-3">
+      {shown.map((track) => (
+        <TrackRow key={track.id} track={track} noteLines={expanded ? undefined : 2} />
+      ))}
+      {!!hidden && (
+        <Text variant="display" className={`text-base ${paper.inkClassName}`}>
+          +{hidden} more {pluralWord(hidden, "track")}
+        </Text>
+      )}
+    </View>
+  );
+}
 
 /** "SAT 14 SEP · NIGHT" (plus "· WHOLE NIGHT" when the night itself is
  * written about). */
@@ -292,6 +316,9 @@ function DjReviewCard({ review, set, paper, expanded, actions }: CardProps & { s
           {set.reviewText}
         </Text>
       )}
+      <View className="pr-16">
+        <Tracks tracks={tracksFrom(review, set.dj.id)} paper={paper} expanded={expanded} />
+      </View>
       <View className="pr-20">
         <View className="mt-3" />
         <CardFooter review={review} expanded={expanded} actions={actions} />
@@ -304,9 +331,19 @@ function DjReviewCard({ review, set, paper, expanded, actions }: CardProps & { s
   );
 }
 
-// One row per DJ reviewed on a night out: photo, name and what was said. A
-// list card shows the first SETS_SHOWN.
-function SetReviews({ sets, paper, expanded }: { sets: LineupEntry[]; paper: Paper; expanded: boolean }) {
+// One row per DJ reviewed on a night out: photo, name, what was said and
+// their tracks. A list card shows the first SETS_SHOWN.
+function SetReviews({
+  review,
+  sets,
+  paper,
+  expanded,
+}: {
+  review: Review;
+  sets: LineupEntry[];
+  paper: Paper;
+  expanded: boolean;
+}) {
   const shown = expanded ? sets : sets.slice(0, SETS_SHOWN);
   const hidden = sets.length - shown.length;
   return (
@@ -340,6 +377,7 @@ function SetReviews({ sets, paper, expanded }: { sets: LineupEntry[]; paper: Pap
                 {set.reviewText}
               </Text>
             )}
+            <Tracks tracks={tracksFrom(review, set.dj.id)} paper={paper} expanded={expanded} />
           </View>
         </View>
       ))}
@@ -353,8 +391,9 @@ function SetReviews({ sets, paper, expanded }: { sets: LineupEntry[]; paper: Pap
 }
 
 // A whole night out (purple or red paper): the night's name (or, with no
-// event name, its lineup), its passport stamp and review, then each DJ
-// written about on it - or, with none, its lineup as a row of photos.
+// event name, its lineup), its passport stamp, review and tracks from the
+// night, then each DJ reviewed on it - or, with none, its lineup as a row of
+// photos.
 function NightReviewCard({ review, paper, expanded, actions }: CardProps) {
   const sets = reviewedSets(review);
   const lineup = review.lineup.map((entry) => entry.dj);
@@ -449,10 +488,11 @@ function NightReviewCard({ review, paper, expanded, actions }: CardProps) {
           {review.reviewText}
         </Text>
       )}
+      <Tracks tracks={tracksFrom(review, null)} paper={paper} expanded={expanded} />
       {!!sets.length && (
         <>
           <View className="mt-3" />
-          <SetReviews sets={sets} paper={paper} expanded={expanded} />
+          <SetReviews review={review} sets={sets} paper={paper} expanded={expanded} />
         </>
       )}
       {!!sets.length && !!unreviewed.length && (

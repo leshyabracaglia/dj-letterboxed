@@ -30,6 +30,15 @@ export type ReviewDetail = Review & { user: User };
 /** A DJ seen on a night, with `reviewText` when someone wrote about their
  * set (a DJ review). */
 export type LineupEntry = Schemas["LineupEntry"];
+/** A track someone highlighted on their night: from a DJ on the lineup
+ * (`djId`) or the night as a whole (`djId` null). From a music service
+ * (`source`, its link and art) or typed in (`"manual"`); an unidentified one
+ * has no `title`, just a `note`. */
+export type ReviewTrack = Schemas["ReviewTrack"];
+/** A track found by search or a pasted link, not yet on a review. */
+export type TrackMatch = Schemas["TrackMatch"];
+/** A track people highlighted from a DJ's sets, and on how many nights. */
+export type TopTrack = Schemas["TopTrack"];
 export type ReviewComment = Schemas["ReviewComment"];
 export type PlaceSuggestion = Schemas["PlaceSuggestion"];
 
@@ -76,8 +85,10 @@ export type NearbyVenue = Schemas["NearbyVenue"];
  * on first use; send the autocomplete session token with it), or `venue` (a
  * typed-in name), checked in that order - the day and day/night (neither
  * means night), the night's review, the DJs seen (each with an optional
- * review of their set), tags and tagged friends. */
+ * review of their set), the tracks they highlighted, tags and tagged
+ * friends. */
 export type CreateReviewInput = Schemas["createReviewRequest"];
+export type TrackInput = Schemas["trackInput"];
 
 /** PATCH /reviews/{id}: a review is fixed once logged except for who you
  * tagged as being there; this replaces them ([] clears). */

@@ -30,6 +30,10 @@ export const queryKeys = {
   tags: {
     list: (q: string) => ["tags", q] as const,
   },
+  tracks: {
+    search: (q: string) => ["tracks", "search", q] as const,
+    resolve: (url: string) => ["tracks", "resolve", url] as const,
+  },
   users: {
     me: () => ["users", "me"] as const,
     blocks: () => ["users", "me", "blocks"] as const,

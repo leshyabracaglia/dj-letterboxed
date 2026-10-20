@@ -1,6 +1,6 @@
 import { aLineup, anEvent, aReview } from "@/test/fixtures";
 
-import { getNightTitle, reviewedSets, reviewSubject, soloSet } from "./review";
+import { getNightTitle, reviewedSets, reviewSubject, soloSet, tracksFrom } from "./review";
 
 describe("getNightTitle", () => {
   it("is the event's name when it has one", () => {
@@ -54,5 +54,33 @@ describe("reviewSubject", () => {
       isNight: false,
       where: ["Innervisions NY", "Basement"],
     });
+  });
+});
+
+describe("tracks on a night", () => {
+  const dixon = aLineup("Dixon")[0];
+  const track = (djId: string | null) => ({
+    id: `t-${djId}`,
+    reviewId: "review-1",
+    djId,
+    source: "manual",
+    externalId: null,
+    url: null,
+    title: "Rej",
+    artist: "Âme",
+    artworkUrl: null,
+    note: null,
+  });
+
+  it("counts a set with only a track as reviewed, and the post as that DJ's", () => {
+    const review = aReview({ lineup: [dixon, ...aLineup("Âme")], tracks: [track(dixon.dj.id)] });
+    expect(reviewedSets(review).map((e) => e.dj.name)).toEqual(["Dixon"]);
+    expect(soloSet(review)?.dj.name).toBe("Dixon");
+  });
+
+  it("keeps a post with tracks from the night about the night", () => {
+    const review = aReview({ lineup: [dixon], tracks: [track(dixon.dj.id), track(null)] });
+    expect(soloSet(review)).toBeNull();
+    expect(tracksFrom(review, null)).toHaveLength(1);
   });
 });

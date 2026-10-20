@@ -77,11 +77,19 @@ definitions:
       timesSeen:
         description: TimesSeen is how many nights logged have them on the lineup.
         type: integer
+      topTracks:
+        description: |-
+          TopTracks are the tracks people highlighted from their sets, most
+          picked first.
+        items:
+          $ref: '#/definitions/TopTrack'
+        type: array
     required:
     - dj
     - recentReviews
     - reviewCount
     - timesSeen
+    - topTracks
     type: object
   Event:
     properties:
@@ -613,6 +621,13 @@ definitions:
         items:
           type: string
         type: array
+      tracks:
+        description: |-
+          Tracks they highlighted, in order: each from a DJ on the lineup
+          (djId) or from the night as a whole (djId null).
+        items:
+          $ref: '#/definitions/ReviewTrack'
+        type: array
       updatedAt:
         type: string
       user:
@@ -654,11 +669,53 @@ definitions:
     - seenAt
     - taggedUsers
     - tags
+    - tracks
     - updatedAt
     - userId
     - venue
     - venueId
     - verified
+    type: object
+  ReviewTrack:
+    properties:
+      artist:
+        type: string
+        x-nullable: true
+      artworkUrl:
+        type: string
+        x-nullable: true
+      djId:
+        type: string
+        x-nullable: true
+      externalId:
+        type: string
+        x-nullable: true
+      id:
+        type: string
+      note:
+        type: string
+        x-nullable: true
+      reviewId:
+        type: string
+      source:
+        type: string
+      title:
+        type: string
+        x-nullable: true
+      url:
+        type: string
+        x-nullable: true
+    required:
+    - artist
+    - artworkUrl
+    - djId
+    - externalId
+    - id
+    - note
+    - reviewId
+    - source
+    - title
+    - url
     type: object
   SpotifyArtist:
     properties:
@@ -712,6 +769,16 @@ definitions:
     - dj
     - timesSeen
     type: object
+  TopTrack:
+    properties:
+      picks:
+        type: integer
+      track:
+        $ref: '#/definitions/ReviewTrack'
+    required:
+    - picks
+    - track
+    type: object
   TopVenue:
     properties:
       reviewCount:
@@ -721,6 +788,30 @@ definitions:
     required:
     - reviewCount
     - venue
+    type: object
+  TrackMatch:
+    properties:
+      artist:
+        type: string
+      artworkUrl:
+        type: string
+        x-nullable: true
+      externalId:
+        type: string
+      source:
+        type: string
+      title:
+        type: string
+      url:
+        type: string
+        x-nullable: true
+    required:
+    - artist
+    - artworkUrl
+    - externalId
+    - source
+    - title
+    - url
     type: object
   UnreadNotificationsResponse:
     properties:
@@ -982,6 +1073,11 @@ definitions:
         items:
           type: string
         type: array
+      tracks:
+        description: Tracks they highlighted, in the order to show them.
+        items:
+          $ref: '#/definitions/trackInput'
+        type: array
       venue:
         type: string
       venueId:
@@ -1028,6 +1124,27 @@ definitions:
         type: array
     required:
     - reviewIds
+    type: object
+  trackInput:
+    properties:
+      artist:
+        type: string
+      artworkUrl:
+        type: string
+      djId:
+        type: string
+      externalId:
+        type: string
+      note:
+        type: string
+      source:
+        type: string
+      title:
+        type: string
+      url:
+        type: string
+    required:
+    - source
     type: object
   updateProfileRequest:
     properties:
@@ -1270,7 +1387,8 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
-      summary: Get a DJ by slug, with how often they were seen and recent reviews
+      summary: Get a DJ by slug, with how often they were seen, the tracks people
+        loved from their sets, and recent reviews
       tags:
       - djs
   /api/djs/search:
@@ -1757,8 +1875,8 @@ paths:
       security:
       - BearerAuth: []
       summary: 'Log a night out: the event (picked, or found or created by name),
-        venue, day, review, the DJs seen and anything said about their sets, tags
-        and friends, in one go'
+        venue, day, review, the DJs seen and anything said about their sets, tracks,
+        tags and friends, in one go'
       tags:
       - reviews
   /api/reviews/{id}:
@@ -2004,6 +2122,57 @@ paths:
         used first
       tags:
       - tags
+  /api/tracks/resolve:
+    get:
+      parameters:
+      - description: the pasted link
+        in: query
+        name: url
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/TrackMatch'
+        "400":
+          description: not a track link from one of those services
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: no such track, or the service couldn't be reached
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: Read a pasted Spotify, SoundCloud, Apple Music or Shazam track link
+      tags:
+      - tracks
+  /api/tracks/search:
+    get:
+      parameters:
+      - description: search query
+        in: query
+        name: q
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/TrackMatch'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: Search Spotify for tracks to highlight on a night (fails open to []
+        on Spotify errors)
+      tags:
+      - tracks
   /api/users/{userId}/block:
     delete:
       parameters:

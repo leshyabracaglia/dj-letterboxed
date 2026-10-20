@@ -447,7 +447,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a DJ by slug, with how often they were seen and recent reviews */
+        /** Get a DJ by slug, with how often they were seen, the tracks people loved from their sets, and recent reviews */
         get: {
             parameters: {
                 query?: never;
@@ -1254,7 +1254,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Log a night out: the event (picked, or found or created by name), venue, day, review, the DJs seen and anything said about their sets, tags and friends, in one go */
+        /** Log a night out: the event (picked, or found or created by name), venue, day, review, the DJs seen and anything said about their sets, tracks, tags and friends, in one go */
         post: {
             parameters: {
                 query?: never;
@@ -1699,6 +1699,111 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["TagSummary"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tracks/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read a pasted Spotify, SoundCloud, Apple Music or Shazam track link */
+        get: {
+            parameters: {
+                query: {
+                    /** @description the pasted link */
+                    url: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TrackMatch"];
+                    };
+                };
+                /** @description not a track link from one of those services */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description no such track, or the service couldn't be reached */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tracks/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Spotify for tracks to highlight on a night (fails open to [] on Spotify errors) */
+        get: {
+            parameters: {
+                query: {
+                    /** @description search query */
+                    q: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TrackMatch"][];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
                     };
                 };
             };
@@ -2719,6 +2824,11 @@ export interface components {
             reviewCount: number;
             /** @description TimesSeen is how many nights logged have them on the lineup. */
             timesSeen: number;
+            /**
+             * @description TopTracks are the tracks people highlighted from their sets, most
+             *     picked first.
+             */
+            topTracks: components["schemas"]["TopTrack"][];
         };
         Event: {
             createdAt: string;
@@ -2923,6 +3033,11 @@ export interface components {
             seenAt: string;
             taggedUsers: components["schemas"]["User"][];
             tags: string[];
+            /**
+             * @description Tracks they highlighted, in order: each from a DJ on the lineup
+             *     (djId) or from the night as a whole (djId null).
+             */
+            tracks: components["schemas"]["ReviewTrack"][];
             updatedAt: string;
             user?: components["schemas"]["User"];
             userId: string;
@@ -2943,6 +3058,18 @@ export interface components {
              */
             viewerLoggedNight?: boolean;
         };
+        ReviewTrack: {
+            artist: string | null;
+            artworkUrl: string | null;
+            djId: string | null;
+            externalId: string | null;
+            id: string;
+            note: string | null;
+            reviewId: string;
+            source: string;
+            title: string | null;
+            url: string | null;
+        };
         SpotifyArtist: {
             genres: string[];
             imageUrl: string | null;
@@ -2962,9 +3089,21 @@ export interface components {
             dj: components["schemas"]["Dj"];
             timesSeen: number;
         };
+        TopTrack: {
+            picks: number;
+            track: components["schemas"]["ReviewTrack"];
+        };
         TopVenue: {
             reviewCount: number;
             venue: string;
+        };
+        TrackMatch: {
+            artist: string;
+            artworkUrl: string | null;
+            externalId: string;
+            source: string;
+            title: string;
+            url: string | null;
         };
         UnreadNotificationsResponse: {
             count: number;
@@ -3072,6 +3211,8 @@ export interface components {
             taggedUserIds: string[];
             /** @description Descriptive tag names ("packed"), and friends who were there. */
             tags: string[];
+            /** @description Tracks they highlighted, in the order to show them. */
+            tracks?: components["schemas"]["trackInput"][];
             venue?: string;
             venueId?: string;
         };
@@ -3090,6 +3231,16 @@ export interface components {
         };
         setFavoritesRequest: {
             reviewIds: string[];
+        };
+        trackInput: {
+            artist?: string;
+            artworkUrl?: string;
+            djId?: string;
+            externalId?: string;
+            note?: string;
+            source: string;
+            title?: string;
+            url?: string;
         };
         updateProfileRequest: {
             avatarUrl?: string;

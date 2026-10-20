@@ -13,7 +13,7 @@ export const INPUT_CLASS =
 // browser's focus ring.
 export const NO_WEB_OUTLINE = isWeb ? ({ outlineStyle: "none" } as object) : undefined;
 
-// Small pixel-type label above a field ("YOUR RATING").
+// Small pixel-type label above a field ("WHAT WAS IT LIKE").
 export function FieldLabel({ children }: { children: ReactNode }) {
   return (
     <Text variant="display" className="text-base text-paper/60">
@@ -168,7 +168,7 @@ export function SheetSkeletonRow() {
   );
 }
 
-// "01 RATE THE SETS ………… OPTIONAL"
+// "01 THE SETS ………… OPTIONAL"
 export function SectionHeading({
   number,
   title,

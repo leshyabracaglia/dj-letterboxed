@@ -5,6 +5,8 @@ import type {
   PlaceSuggestion,
   RAEventMatch,
   Review,
+  TrackInput,
+  TrackMatch,
   User,
   VenueSummary,
 } from "@/lib/api/types";
@@ -32,6 +34,22 @@ export type DraftLineupEntry = {
   listed?: boolean;
 };
 
+// The most tracks a night can have (the server's maxTracks).
+export const MAX_TRACKS = 10;
+
+// A track to highlight on the night: one found on a music service (`match`)
+// or typed in (`title`/`artist`, both blank for an unidentified one, which
+// then needs a note). `djKey` is the lineup entry who played it; none is a
+// track from the night as a whole.
+export type DraftTrack = {
+  key: string;
+  djKey?: string;
+  match?: TrackMatch;
+  title: string;
+  artist: string;
+  note: string;
+};
+
 // An existing event ("Innervisions NY"), a new one created by name when the
 // night is saved, or (none) a night with no name, just the venue.
 export type EventPick = { type: "existing"; event: EventSummary } | { type: "new"; name: string } | { type: "none" };
@@ -55,6 +73,7 @@ export type ReviewDraft = {
   isNight: boolean;
   tags: string[];
   reviewText: string;
+  tracks: DraftTrack[];
   taggedUsers: User[];
 };
 
@@ -68,7 +87,62 @@ export function emptyDraft(): ReviewDraft {
     isNight: true,
     tags: [],
     reviewText: "",
+    tracks: [],
     taggedUsers: [],
+  };
+}
+
+/** The tracks to log, as the POST /reviews body takes them: a DJ's only
+ * while that DJ is still ticked as caught (unticking keeps them in the draft,
+ * so ticking back brings them back), with `djIdFor` giving the DJ's id. */
+export function trackInputs(
+  tracks: DraftTrack[],
+  caught: DraftLineupEntry[],
+  djIdFor: (entry: DraftLineupEntry) => string,
+): TrackInput[] {
+  const byKey = new Map(caught.map((e) => [e.key, e]));
+  return tracks.flatMap((track) => {
+    const entry = track.djKey ? byKey.get(track.djKey) : undefined;
+    if (track.djKey && !entry) return [];
+    const djId = entry ? djIdFor(entry) : undefined;
+    const note = track.note.trim() || undefined;
+    const { match } = track;
+    if (match) {
+      return [
+        {
+          djId,
+          source: match.source,
+          externalId: match.externalId,
+          url: match.url ?? undefined,
+          title: match.title,
+          artist: match.artist || undefined,
+          artworkUrl: match.artworkUrl ?? undefined,
+          note,
+        },
+      ];
+    }
+    const title = track.title.trim() || undefined;
+    if (!title && !note) return [];
+    return [{ djId, source: "manual", title, artist: (title && track.artist.trim()) || undefined, note }];
+  });
+}
+
+/** How many tracks would be logged (see trackInputs). */
+export function trackInputCount(tracks: DraftTrack[], caught: DraftLineupEntry[]): number {
+  const caughtKeys = new Set(caught.map((e) => e.key));
+  return tracks.filter((t) => !t.djKey || caughtKeys.has(t.djKey)).length;
+}
+
+/** A draft track as a track row shows it. */
+export function draftTrackDisplay(track: DraftTrack) {
+  const { match } = track;
+  return {
+    source: match?.source ?? "manual",
+    title: match?.title ?? (track.title.trim() || null),
+    artist: match?.artist ?? (track.artist.trim() || null),
+    artworkUrl: match?.artworkUrl ?? null,
+    url: match?.url ?? null,
+    note: track.note.trim() || null,
   };
 }
 

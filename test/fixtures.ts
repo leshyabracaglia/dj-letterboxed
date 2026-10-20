@@ -68,6 +68,7 @@ export function aReview(overrides: Partial<Review> = {}): Review {
     isNight: true,
     reviewText: null,
     lineup: [],
+    tracks: [],
     tags: [],
     taggedUsers: [],
     likeCount: 0,

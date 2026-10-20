@@ -2,7 +2,9 @@ package httpapi
 
 import (
 	"errors"
+	"maps"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -38,7 +40,7 @@ func (h *Handlers) SearchDjs(w http.ResponseWriter, r *http.Request) {
 
 // GetDjBySlug godoc
 //
-//	@Summary	Get a DJ by slug, with how often they were seen and recent reviews
+//	@Summary	Get a DJ by slug, with how often they were seen, the tracks people loved from their sets, and recent reviews
 //	@Tags		djs
 //	@Produce	json
 //	@Param		slug	path		string	true	"DJ slug"
@@ -60,6 +62,17 @@ func (h *Handlers) GetDjBySlug(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hidden, err := h.hiddenUsers(r.Context(), optionalUserID(r))
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	topTracks, err := queries.GetDjTopTracks(r.Context(), h.Pool, dj.ID, slices.Collect(maps.Keys(hidden)), 8)
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+
 	recent, err := queries.ListReviewsByDj(r.Context(), h.Pool, dj.ID, nil, 25)
 	if err != nil {
 		InternalError(w, err)
@@ -74,6 +87,7 @@ func (h *Handlers) GetDjBySlug(w http.ResponseWriter, r *http.Request) {
 		Dj:            *dj,
 		TimesSeen:     agg.TimesSeen,
 		ReviewCount:   agg.ReviewCount,
+		TopTracks:     orEmpty(topTracks),
 		RecentReviews: recentDTOs,
 	})
 }

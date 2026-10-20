@@ -106,6 +106,13 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			// Auth-only (unlike Spotify search) since every call is billed;
 			// the daily cap bounds what one account can cost.
 			r.With(limitByUser(60, time.Minute), limitByUser(500, 24*time.Hour)).Get("/venues/places-search", h.SearchPlaces)
+			// Calls out to Spotify/SoundCloud/Apple/Shazam (cached), so
+			// signed in and capped by the day like the others.
+			r.Group(func(r chi.Router) {
+				r.Use(limitByUser(60, time.Minute), limitByUser(500, 24*time.Hour))
+				r.Get("/tracks/search", h.SearchTracks)
+				r.Get("/tracks/resolve", h.ResolveTrackLink)
+			})
 
 			r.Get("/follows/is-following/{userId}", h.IsFollowing)
 			r.Post("/follows/{userId}", h.Follow)
