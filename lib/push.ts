@@ -49,15 +49,12 @@ async function getPushToken(): Promise<string | undefined> {
 
 // The server sends what happened, not a path; routes stay in ROUTES.
 function routeFor(data: Record<string, unknown> | undefined) {
-  if (data?.type === "follow" && typeof data.username === "string") {
+  // A follow, or a friend checking in where you are: their profile.
+  if ((data?.type === "follow" || data?.type === "here_too") && typeof data.username === "string") {
     return ROUTES.USER(data.username);
   }
-  if (
-    (data?.type === "like" || data?.type === "comment" || data?.type === "tag") &&
-    typeof data.reviewId === "string"
-  ) {
-    return ROUTES.REVIEW_DETAIL(data.reviewId);
-  }
+  // Anything about a night (a like, comment, tag, ID, a friend there too).
+  if (typeof data?.reviewId === "string") return ROUTES.REVIEW_DETAIL(data.reviewId);
   if (data?.type === "following_logs") return ROUTES.FEED;
   return undefined;
 }

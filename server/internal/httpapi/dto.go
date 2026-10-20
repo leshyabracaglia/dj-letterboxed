@@ -16,13 +16,16 @@ type ReviewDTO struct {
 	Lineup []db.LineupEntry `json:"lineup"`
 	// Tracks they highlighted, in order: each from a DJ on the lineup
 	// (djId) or from the night as a whole (djId null).
-	Tracks       []db.ReviewTrack `json:"tracks"`
-	TaggedUsers  []db.User        `json:"taggedUsers"`
-	Tags         []string         `json:"tags"`
-	LikeCount    int64            `json:"likeCount"`
-	CommentCount int64            `json:"commentCount"`
-	IsLikedByMe  bool             `json:"isLikedByMe"`
-	IsPopular    *bool            `json:"isPopular,omitempty"`
+	Tracks []db.ReviewTrack `json:"tracks"`
+	// AlsoThere are the poster's friends (people they follow who follow
+	// them back) who logged the same night.
+	AlsoThere    []db.User `json:"alsoThere"`
+	TaggedUsers  []db.User `json:"taggedUsers"`
+	Tags         []string  `json:"tags"`
+	LikeCount    int64     `json:"likeCount"`
+	CommentCount int64     `json:"commentCount"`
+	IsLikedByMe  bool      `json:"isLikedByMe"`
+	IsPopular    *bool     `json:"isPopular,omitempty"`
 	// On a review's own page, when the caller is tagged in it: whether
 	// they've logged the night themselves (the page prompts them to if not).
 	ViewerLoggedNight *bool `json:"viewerLoggedNight,omitempty"`

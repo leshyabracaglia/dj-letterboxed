@@ -2869,12 +2869,20 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "checkedInAt",
+                "friendsHere",
                 "venue"
             ],
             "properties": {
                 "checkedInAt": {
                     "description": "When the caller checked in there (an earlier check-in the same night\nstands). Logging the venue for that night shows as verified.",
                     "type": "string"
+                },
+                "friendsHere": {
+                    "description": "FriendsHere are the caller's friends (mutual follows) who checked in\nat the same venue in the last few hours; each gets a push.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/User"
+                    }
                 },
                 "venue": {
                     "$ref": "#/definitions/NearbyVenue"
@@ -3510,7 +3518,8 @@ const docTemplate = `{
                         "comment",
                         "tag",
                         "id_suggested",
-                        "id_accepted"
+                        "id_accepted",
+                        "also_there"
                     ]
                 }
             }
@@ -3902,6 +3911,7 @@ const docTemplate = `{
         "ReviewDTO": {
             "type": "object",
             "required": [
+                "alsoThere",
                 "city",
                 "commentCount",
                 "createdAt",
@@ -3925,6 +3935,13 @@ const docTemplate = `{
                 "verified"
             ],
             "properties": {
+                "alsoThere": {
+                    "description": "AlsoThere are the poster's friends (people they follow who follow\nthem back) who logged the same night.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/User"
+                    }
+                },
                 "city": {
                     "type": "string",
                     "x-nullable": true

@@ -158,3 +158,9 @@ test("a profile's lists open to their nights and sets, with notes", async ({ pag
   await expect(text(page, "3. The whole night")).toBeVisible();
   await expect(shown(page.getByText("Acid techno at sunrise after twelve hours", { exact: false }))).toBeVisible();
 });
+
+test("a night shows the poster's friends who logged it too", async ({ page }) => {
+  // bob and carla follow each other and both logged Basement on 12 Sep.
+  await page.goto("/user/carla");
+  await expect(shown(page.getByText("Also there: @bob", { exact: false }))).toBeVisible();
+});

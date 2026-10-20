@@ -299,6 +299,7 @@ function CheckInStrip() {
   const busy = locate.isPending || checkIn.isPending;
 
   if (checkIn.data) {
+    const friends = checkIn.data.friendsHere;
     return (
       <View className="flex-row items-center gap-3 border-2 border-primary-dark bg-ink px-3 py-3">
         <Icon name="checkmark-circle" size={22} className="text-primary-dark" />
@@ -306,6 +307,13 @@ function CheckInStrip() {
           <Text variant="display" className="text-xl leading-5 text-paper">
             Checked in at {checkIn.data.venue.name}
           </Text>
+          {/* Friends (mutual follows) who checked in there tonight; they've
+              been told you're here too. */}
+          {!!friends.length && (
+            <Text variant="display" className="text-lg leading-5 text-primary-dark">
+              {friends.map((u) => `@${u.username}`).join(", ")} {friends.length === 1 ? "is" : "are"} here too
+            </Text>
+          )}
           <Text className="text-xs text-paper/70">Log tonight any time and it&apos;ll show as verified.</Text>
         </View>
       </View>

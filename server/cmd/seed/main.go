@@ -632,6 +632,14 @@ func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User,
 	must(0, queries.AddListItem(ctx, pool, sunset.ID, honeyNight.ID, &honey.ID, strPtr("The garden at golden hour.")))
 	must(queries.CreateList(ctx, pool, alice.ID, "To revisit", strPtr("Nights I want to hear again.")))
 
+	// bob and carla follow each other and both logged Basement: each card
+	// lists the other as also there, and carla heard bob was there too.
+	var carlaBasement string
+	must(0, pool.QueryRow(ctx, "SELECT id FROM reviews WHERE user_id = $1 AND event_id = $2", carla.ID, basementEvent.ID).Scan(&carlaBasement))
+	must(queries.CreateNotification(ctx, pool, queries.CreateNotificationParams{
+		UserID: carla.ID, ActorID: bob.ID, Type: "also_there", ReviewID: &carlaBasement,
+	}))
+
 	// carla checked in at fabric on a trip without logging the night: it's
 	// in her passport (no nights) and one of her favorite venues, with Good
 	// Room. bob has one favorite; alice and dev none.

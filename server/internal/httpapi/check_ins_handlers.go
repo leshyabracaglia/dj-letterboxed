@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"beatboxd/server/internal/db"
 	"beatboxd/server/internal/db/queries"
 	"beatboxd/server/internal/domain"
 )
@@ -55,7 +56,13 @@ type CheckInResponse struct {
 	// When the caller checked in there (an earlier check-in the same night
 	// stands). Logging the venue for that night shows as verified.
 	CheckedInAt time.Time `json:"checkedInAt"`
+	// FriendsHere are the caller's friends (mutual follows) who checked in
+	// at the same venue in the last few hours; each gets a push.
+	FriendsHere []db.User `json:"friendsHere"`
 }
+
+// friendsHereWindow is how recently a friend's check-in counts as tonight.
+const friendsHereWindow = 6 * time.Hour
 
 func validLatLng(lat, lng float64) bool {
 	return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
@@ -215,9 +222,16 @@ func (h *Handlers) CheckIn(w http.ResponseWriter, r *http.Request) {
 		InternalError(w, err)
 		return
 	}
+	friends, err := queries.FriendsCheckedInAt(r.Context(), h.Pool, user.ID, venue.ID, time.Now().Add(-friendsHereWindow))
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	h.notifyHereToo(user, venue.Name, friends)
 	WriteJSON(w, http.StatusOK, CheckInResponse{
 		Venue:       NearbyVenue{ID: &venue.ID, PlaceID: venue.GooglePlaceID, Name: venue.Name, City: venue.City, DistanceM: distanceM},
 		CheckedInAt: at,
+		FriendsHere: orEmpty(friends),
 	})
 }
 

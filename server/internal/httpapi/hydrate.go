@@ -10,7 +10,7 @@ import (
 )
 
 // hydrateReviews turns reviews into what the app shows of each night out:
-// who posted it, its event, lineup, tracks, tags, tagged friends and engagement
+// who posted it, its event, lineup, tracks, friends also there, tags, tagged friends and engagement
 // (with, when currentUserID is set, whether the caller liked it). One query
 // per relation, whatever the number of reviews.
 func (h *Handlers) hydrateReviews(ctx context.Context, reviews []db.Review, currentUserID *string) ([]ReviewDTO, error) {
@@ -43,16 +43,18 @@ func (h *Handlers) hydrateReviews(ctx context.Context, reviews []db.Review, curr
 	if err != nil {
 		return nil, err
 	}
-	suggestions := map[string][]db.TrackSuggestion{}
-	if len(unidentified) > 0 {
-		hidden, err := h.hiddenUsers(ctx, currentUserID)
-		if err != nil {
-			return nil, err
-		}
-		suggestions, err = queries.GetSuggestionsByTrackIDs(ctx, h.Pool, unidentified, slices.Collect(maps.Keys(hidden)))
-		if err != nil {
-			return nil, err
-		}
+	hidden, err := h.hiddenUsers(ctx, currentUserID)
+	if err != nil {
+		return nil, err
+	}
+	hiddenIDs := slices.Collect(maps.Keys(hidden))
+	suggestions, err := queries.GetSuggestionsByTrackIDs(ctx, h.Pool, unidentified, hiddenIDs)
+	if err != nil {
+		return nil, err
+	}
+	alsoThere, err := queries.GetAlsoThereByReviewIDs(ctx, h.Pool, ids, hiddenIDs)
+	if err != nil {
+		return nil, err
 	}
 	for _, ts := range tracks {
 		for i := range ts {
@@ -100,6 +102,7 @@ func (h *Handlers) hydrateReviews(ctx context.Context, reviews []db.Review, curr
 			Review:       r,
 			Lineup:       orEmpty(lineups[r.ID]),
 			Tracks:       orEmpty(tracks[r.ID]),
+			AlsoThere:    orEmpty(alsoThere[r.ID]),
 			TaggedUsers:  orEmpty(tagged[r.ID]),
 			Tags:         orEmpty(tags[r.ID]),
 			LikeCount:    e.LikeCount,

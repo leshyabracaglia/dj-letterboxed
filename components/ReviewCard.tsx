@@ -118,9 +118,12 @@ function EngagementCounts({ review }: { review: Review }) {
   );
 }
 
-// Tags, then the reviewer's name tag and the like/comment counts (or, on the
-// review's own page, `actions`), along the bottom of either card.
+// Tags, who they went with and which friends logged the night too, then the
+// reviewer's name tag and the like/comment counts (or, on the review's own
+// page, `actions`), along the bottom of either card.
 function CardFooter({ review, expanded, actions }: { review: Review; expanded: boolean; actions?: ReactNode }) {
+  const tagged = new Set(review.taggedUsers.map((u) => u.id));
+  const alsoThere = review.alsoThere.filter((u) => !tagged.has(u.id));
   return (
     <View className="gap-y-2">
       <ReviewTags tags={review.tags} limit={expanded ? undefined : 3} />
@@ -128,6 +131,26 @@ function CardFooter({ review, expanded, actions }: { review: Review; expanded: b
         <Text variant="display" className="text-lg text-paper/85">
           With {review.taggedUsers.map((u) => `@${u.username}`).join(", ")}
         </Text>
+      )}
+      {!!alsoThere.length && (
+        <View className="flex-row flex-wrap items-center gap-1.5">
+          <Icon name="people" size={14} className="text-paper/85" />
+          <Text variant="display" className="text-lg text-paper/85">
+            Also there:{" "}
+            {alsoThere.map((u, i) => (
+              <Text key={u.id}>
+                {!!i && ", "}
+                {expanded ? (
+                  <Link href={ROUTES.USER(u.username)}>
+                    <Text className="underline">@{u.username}</Text>
+                  </Link>
+                ) : (
+                  `@${u.username}`
+                )}
+              </Text>
+            ))}
+          </Text>
+        </View>
       )}
       <View className="flex-row flex-wrap items-center justify-between gap-2">
         <View className="flex-row items-center gap-2">

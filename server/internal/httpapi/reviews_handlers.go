@@ -383,6 +383,7 @@ func (h *Handlers) CreateReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.notifyTagged(user, review.ID, taggedIDs)
+	h.notifyAlsoThere(user, review.ID)
 
 	dtos, err := h.hydrateReviews(ctx, []db.Review{*review}, &user.ID)
 	if err != nil {

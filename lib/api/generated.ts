@@ -3370,6 +3370,11 @@ export interface components {
              *     stands). Logging the venue for that night shows as verified.
              */
             checkedInAt: string;
+            /**
+             * @description FriendsHere are the caller's friends (mutual follows) who checked in
+             *     at the same venue in the last few hours; each gets a push.
+             */
+            friendsHere: components["schemas"]["User"][];
             venue: components["schemas"]["NearbyVenue"];
         };
         Dj: {
@@ -3530,7 +3535,7 @@ export interface components {
             reviewId: string | null;
             subject: string | null;
             /** @enum {string} */
-            type: "follow" | "like" | "comment" | "tag" | "id_suggested" | "id_accepted";
+            type: "follow" | "like" | "comment" | "tag" | "id_suggested" | "id_accepted" | "also_there";
         };
         NotificationsResponse: {
             items: components["schemas"]["Notification"][];
@@ -3637,6 +3642,11 @@ export interface components {
             userId: string;
         };
         ReviewDTO: {
+            /**
+             * @description AlsoThere are the poster's friends (people they follow who follow
+             *     them back) who logged the same night.
+             */
+            alsoThere: components["schemas"]["User"][];
             city: string | null;
             commentCount: number;
             createdAt: string;

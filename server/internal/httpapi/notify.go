@@ -112,6 +112,51 @@ func (h *Handlers) notifyTrackID(actor *db.User, userID, reviewID, kind, title s
 	})
 }
 
+// notifyAlsoThere tells actor's friends who already logged the night out
+// reviewID that actor was there too (each only once per night).
+func (h *Handlers) notifyAlsoThere(actor *db.User, reviewID string) {
+	h.notifyAsync(func(ctx context.Context) error {
+		friends, err := queries.GetAlsoThereByReviewIDs(ctx, h.Pool, []string{reviewID}, nil)
+		if err != nil || len(friends[reviewID]) == 0 {
+			return err
+		}
+		info, err := queries.GetReviewNotifyInfo(ctx, h.Pool, reviewID)
+		if err != nil {
+			return err
+		}
+		text := displayName(actor) + " was there too"
+		if info.Subject != "" {
+			text = displayName(actor) + " was at " + info.Subject + " too"
+		}
+		var errs []error
+		for _, friend := range friends[reviewID] {
+			errs = append(errs, h.recordAndPush(ctx, queries.CreateNotificationParams{
+				UserID: friend.ID, ActorID: actor.ID, Type: "also_there", ReviewID: &reviewID,
+			}, text, map[string]string{
+				"type": "also_there", "reviewId": reviewID,
+			}))
+		}
+		return errors.Join(errs...)
+	})
+}
+
+// notifyHereToo pushes to each of friends that actor just checked in at the
+// venue they're at. It's a push only, not kept in the notifications list.
+func (h *Handlers) notifyHereToo(actor *db.User, venueName string, friends []db.User) {
+	if len(friends) == 0 {
+		return
+	}
+	h.notifyAsync(func(ctx context.Context) error {
+		var errs []error
+		for _, friend := range friends {
+			errs = append(errs, h.sendToUser(ctx, friend.ID, displayName(actor)+" just checked in at "+venueName+" too", map[string]string{
+				"type": "here_too", "username": actor.Username,
+			}))
+		}
+		return errors.Join(errs...)
+	})
+}
+
 func (h *Handlers) notifyAsync(send func(ctx context.Context) error) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), notifyTimeout)
