@@ -91,6 +91,27 @@ func (h *Handlers) notifyTagged(actor *db.User, reviewID string, userIDs []strin
 	})
 }
 
+// notifyTrackID tells userID about an ID request on reviewID: that actor
+// suggested what an unidentified track on their night was ("id_suggested",
+// with the title), or accepted the one they suggested ("id_accepted").
+func (h *Handlers) notifyTrackID(actor *db.User, userID, reviewID, kind, title string) {
+	h.notifyAsync(func(ctx context.Context) error {
+		info, err := queries.GetReviewNotifyInfo(ctx, h.Pool, reviewID)
+		if err != nil {
+			return err
+		}
+		text := displayName(actor) + " thinks the ID on your night" + ofSubject(info.Subject) + " is " + truncate(title, 80)
+		if kind == "id_accepted" {
+			text = displayName(actor) + " says you got the ID" + ofSubject(info.Subject) + " right"
+		}
+		return h.recordAndPush(ctx, queries.CreateNotificationParams{
+			UserID: userID, ActorID: actor.ID, Type: kind, ReviewID: &reviewID,
+		}, text, map[string]string{
+			"type": kind, "reviewId": reviewID,
+		})
+	})
+}
+
 func (h *Handlers) notifyAsync(send func(ctx context.Context) error) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), notifyTimeout)

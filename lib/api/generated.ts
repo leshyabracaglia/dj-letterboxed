@@ -1711,6 +1711,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/track-suggestions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take back a suggestion you made, or turn one down on your own night */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description suggestion id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description the night, without the suggestion */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReviewDTO"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/track-suggestions/{id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept a suggestion for an unidentified track on the caller's own night: it names the track, crediting whoever suggested it */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description suggestion id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description the night, with the track named */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReviewDTO"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tracks/resolve": {
         parameters: {
             query?: never;
@@ -1810,6 +1906,86 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tracks/{id}/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Suggest what an unidentified track on someone's night is (an ID request); the night's own poster naming it identifies it straight away */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description track id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description the track */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["suggestTrackRequest"];
+                };
+            };
+            responses: {
+                /** @description the night, with the suggestion */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReviewDTO"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description the track's already identified */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -2967,7 +3143,7 @@ export interface components {
             reviewId: string | null;
             subject: string | null;
             /** @enum {string} */
-            type: "follow" | "like" | "comment" | "tag";
+            type: "follow" | "like" | "comment" | "tag" | "id_suggested" | "id_accepted";
         };
         NotificationsResponse: {
             items: components["schemas"]["Notification"][];
@@ -3126,9 +3302,15 @@ export interface components {
             djId: string | null;
             externalId: string | null;
             id: string;
+            identifiedBy: components["schemas"]["User"] | null;
             note: string | null;
             reviewId: string;
             source: string;
+            /**
+             * @description Suggestions are what people think an unidentified track is, oldest
+             *     first; only on a review's tracks, and only while it's unidentified.
+             */
+            suggestions?: components["schemas"]["TrackSuggestion"][];
             title: string | null;
             url: string | null;
         };
@@ -3166,6 +3348,18 @@ export interface components {
             source: string;
             title: string;
             url: string | null;
+        };
+        TrackSuggestion: {
+            artist: string | null;
+            artworkUrl: string | null;
+            createdAt: string;
+            externalId: string | null;
+            id: string;
+            source: string;
+            title: string;
+            trackId: string;
+            url: string | null;
+            user: components["schemas"]["User"];
         };
         UnreadNotificationsResponse: {
             count: number;
@@ -3301,6 +3495,14 @@ export interface components {
         };
         setFavoritesRequest: {
             reviewIds: string[];
+        };
+        suggestTrackRequest: {
+            artist?: string;
+            artworkUrl?: string;
+            externalId?: string;
+            source: string;
+            title: string;
+            url?: string;
         };
         trackInput: {
             artist?: string;

@@ -10,6 +10,7 @@ import { CommentCount, CommentSection } from "@/components/review/Comments";
 import { LikeButton } from "@/components/review/LikeButton";
 import { DeleteReviewButton, WhoWasThereButton } from "@/components/review/OwnerActions";
 import { ShareStoryButton } from "@/components/review/ShareStoryButton";
+import { TrackIdRequest } from "@/components/review/TrackIdRequest";
 import { findCachedReview } from "@/lib/api/cache";
 import { useApi, unwrap } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/queryKeys";
@@ -120,6 +121,7 @@ function ReviewDetailBody({
           index={0}
           paper={paper}
           expanded
+          trackExtra={(track) => loaded && <TrackIdRequest review={review} track={track} />}
           actions={
             <View className="flex-row items-center gap-2">
               <LikeButton

@@ -100,6 +100,28 @@ type ReviewTrack struct {
 	Artist     *string `json:"artist" extensions:"x-nullable"`
 	ArtworkURL *string `json:"artworkUrl" extensions:"x-nullable"`
 	Note       *string `json:"note" extensions:"x-nullable"`
+	// IdentifiedBy is who named a track that was posted unidentified (see
+	// TrackSuggestion), once its poster accepted their suggestion.
+	IdentifiedByUserID *string `json:"-"`
+	IdentifiedBy       *User   `json:"identifiedBy" extensions:"x-nullable"`
+	// Suggestions are what people think an unidentified track is, oldest
+	// first; only on a review's tracks, and only while it's unidentified.
+	Suggestions []TrackSuggestion `json:"suggestions,omitempty"`
+}
+
+// TrackSuggestion is someone's answer to an ID request: what they think an
+// unidentified track on someone's night was.
+type TrackSuggestion struct {
+	ID         string    `json:"id"`
+	TrackID    string    `json:"trackId"`
+	User       User      `json:"user"`
+	Source     string    `json:"source"`
+	ExternalID *string   `json:"externalId" extensions:"x-nullable"`
+	URL        *string   `json:"url" extensions:"x-nullable"`
+	Title      string    `json:"title"`
+	Artist     *string   `json:"artist" extensions:"x-nullable"`
+	ArtworkURL *string   `json:"artworkUrl" extensions:"x-nullable"`
+	CreatedAt  time.Time `json:"createdAt"`
 }
 
 type ReviewComment struct {

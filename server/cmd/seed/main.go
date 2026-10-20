@@ -534,8 +534,11 @@ func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User,
 		tags:   []string{"older crowd"},
 		lineup: []set{wrote(mallGrab, "Lo-fi house on a sunny afternoon, it was fine."), seen(joy)},
 		// Nothing written about Joy's set, just a track: it still shows as
-		// a set.
-		tracks: []track{onSoundCloud(joy, "joyorbison/flight-fm", "Flight FM", "Joy Orbison", "The one track that got the whole patio moving.")},
+		// a set. Mall Grab's ID has no suggestions yet.
+		tracks: []track{
+			onSoundCloud(joy, "joyorbison/flight-fm", "Flight FM", "Joy Orbison", "The one track that got the whole patio moving."),
+			unidentified(mallGrab, "Some lo-fi house record with a Rhodes loop and a vocal that just said 'tonight'."),
+		},
 	})
 
 	// Another city, for the location-based search and city picker.
@@ -588,6 +591,35 @@ func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User,
 	must(0, queries.SetFavoriteReviews(ctx, pool, bob.ID, []string{marathonNight.ID}))
 	must(0, queries.SetFavoriteReviews(ctx, pool, carla.ID, []string{rushNight.ID, b2bNight.ID}))
 
+	// ID requests: the ID on bob's Innervisions night has two suggestions
+	// waiting (alice found it on Spotify, carla typed one in); the acid track
+	// on his marathon night dev named and bob accepted, so it's credited to
+	// dev. Each left the notification it would have.
+	idTrack := func(notePrefix string) string {
+		var id string
+		must(0, pool.QueryRow(ctx, "SELECT id FROM review_tracks WHERE note LIKE $1 || '%'", notePrefix).Scan(&id))
+		return id
+	}
+	innervisionsID := idTrack("ID - the one with the strings")
+	must(queries.CreateTrackSuggestion(ctx, pool, innervisionsID, alice.ID, queries.TrackSuggestionInput{
+		Source: domain.TrackSourceSpotify, ExternalID: strPtr("4kSuggestedStrings0000a"), URL: strPtr("https://open.spotify.com/track/4kSuggestedStrings0000a"),
+		Title: "Strings of Life", Artist: strPtr("Rhythim Is Rhythim"), ArtworkURL: strPtr(seedArt("strings-of-life")),
+	}))
+	must(queries.CreateTrackSuggestion(ctx, pool, innervisionsID, carla.ID, queries.TrackSuggestionInput{
+		Source: domain.TrackSourceManual, Title: "Sueño Latino", Artist: strPtr("Sueño Latino"),
+	}))
+	acid := must(queries.CreateTrackSuggestion(ctx, pool, idTrack("The acid track he closed on"), dev.ID, queries.TrackSuggestionInput{
+		Source: domain.TrackSourceManual, Title: "Acid Tracks", Artist: strPtr("Phuture"),
+	}))
+	must(0, queries.AcceptTrackSuggestion(ctx, pool, acid))
+	for _, n := range []queries.CreateNotificationParams{
+		{UserID: bob.ID, ActorID: alice.ID, Type: "id_suggested", ReviewID: strPtr(reviewOfTrack(ctx, pool, innervisionsID))},
+		{UserID: bob.ID, ActorID: carla.ID, Type: "id_suggested", ReviewID: strPtr(reviewOfTrack(ctx, pool, innervisionsID))},
+		{UserID: dev.ID, ActorID: bob.ID, Type: "id_accepted", ReviewID: &marathonNight.ID},
+	} {
+		must(queries.CreateNotification(ctx, pool, n))
+	}
+
 	// carla checked in at fabric on a trip without logging the night: it's
 	// in her passport (no nights) and one of her favorite venues, with Good
 	// Room. bob has one favorite; alice and dev none.
@@ -597,6 +629,13 @@ func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User,
 	must(0, queries.SetFavoriteVenues(ctx, pool, carla.ID, []string{goodRoom.ID, fabric.ID}))
 	must(0, queries.SetFavoriteVenues(ctx, pool, bob.ID, []string{mirage.ID}))
 	return nil
+}
+
+// reviewOfTrack is the review a seeded track is on.
+func reviewOfTrack(ctx context.Context, pool queries.DBTX, trackID string) string {
+	var id string
+	must(0, pool.QueryRow(ctx, "SELECT review_id FROM review_tracks WHERE id = $1", trackID).Scan(&id))
+	return id
 }
 
 func must[T any](v T, err error) T {

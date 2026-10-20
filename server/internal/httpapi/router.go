@@ -113,6 +113,9 @@ func NewRouter(cfg RouterConfig) http.Handler {
 				r.Get("/tracks/search", h.SearchTracks)
 				r.Get("/tracks/resolve", h.ResolveTrackLink)
 			})
+			r.With(limitByUser(60, time.Hour)).Post("/tracks/{id}/suggestions", h.SuggestTrackID)
+			r.Post("/track-suggestions/{id}/accept", h.AcceptTrackSuggestion)
+			r.Delete("/track-suggestions/{id}", h.DeleteTrackSuggestion)
 
 			r.Get("/follows/is-following/{userId}", h.IsFollowing)
 			r.Post("/follows/{userId}", h.Follow)

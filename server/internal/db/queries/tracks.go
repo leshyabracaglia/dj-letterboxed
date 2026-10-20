@@ -3,6 +3,7 @@ package queries
 import (
 	"cmp"
 	"context"
+	"errors"
 	"slices"
 
 	"github.com/jackc/pgx/v5"
@@ -41,10 +42,10 @@ func AddReviewTracks(ctx context.Context, q DBTX, reviewID string, tracks []Trac
 	return err
 }
 
-const reviewTrackCols = `t.id, t.review_id, t.dj_id, t.source, t.external_id, t.url, t.title, t.artist, t.artwork_url, t.note`
+const reviewTrackCols = `t.id, t.review_id, t.dj_id, t.source, t.external_id, t.url, t.title, t.artist, t.artwork_url, t.note, t.identified_by_user_id`
 
-func scanReviewTrack(row pgx.Row, t *db.ReviewTrack) error {
-	return row.Scan(&t.ID, &t.ReviewID, &t.DjID, &t.Source, &t.ExternalID, &t.URL, &t.Title, &t.Artist, &t.ArtworkURL, &t.Note)
+func scanReviewTrack(row pgx.Row, t *db.ReviewTrack, extra ...any) error {
+	return row.Scan(append([]any{&t.ID, &t.ReviewID, &t.DjID, &t.Source, &t.ExternalID, &t.URL, &t.Title, &t.Artist, &t.ArtworkURL, &t.Note, &t.IdentifiedByUserID}, extra...)...)
 }
 
 // GetTracksByReviewIDs returns each given review's tracks in the order they
@@ -95,8 +96,7 @@ func GetDjTopTracks(ctx context.Context, q DBTX, djID string, excludeUserIDs []s
 	}
 	tracks, err := collect(rows, nil, func(row pgx.CollectableRow) (TopTrack, error) {
 		var top TopTrack
-		t := &top.Track
-		err := row.Scan(&t.ID, &t.ReviewID, &t.DjID, &t.Source, &t.ExternalID, &t.URL, &t.Title, &t.Artist, &t.ArtworkURL, &t.Note, &top.Picks)
+		err := scanReviewTrack(row, &top.Track, &top.Picks)
 		return top, err
 	})
 	if err != nil {
@@ -107,4 +107,114 @@ func GetDjTopTracks(ctx context.Context, q DBTX, djID string, excludeUserIDs []s
 		tracks = tracks[:limit]
 	}
 	return tracks, nil
+}
+
+// GetTrack returns one track on a review, with the review's owner.
+func GetTrack(ctx context.Context, q DBTX, trackID string) (*db.ReviewTrack, string, error) {
+	var t db.ReviewTrack
+	var ownerID string
+	err := scanReviewTrack(q.QueryRow(ctx, `
+		SELECT `+reviewTrackCols+`, r.user_id
+		FROM review_tracks t JOIN reviews r ON r.id = t.review_id
+		WHERE t.id = $1`, trackID), &t, &ownerID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, "", ErrNotFound
+	}
+	return &t, ownerID, err
+}
+
+// TrackSuggestionInput is what someone thinks an unidentified track is.
+type TrackSuggestionInput struct {
+	Source     string
+	ExternalID *string
+	URL        *string
+	Title      string
+	Artist     *string
+	ArtworkURL *string
+}
+
+// CreateTrackSuggestion records userID's suggestion for trackID and returns
+// its id; a repeat of one they already made returns that one's.
+func CreateTrackSuggestion(ctx context.Context, q DBTX, trackID, userID string, in TrackSuggestionInput) (string, error) {
+	var id string
+	err := q.QueryRow(ctx, `
+		WITH inserted AS (
+			INSERT INTO track_suggestions (track_id, user_id, source, external_id, url, title, artist, artwork_url)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			ON CONFLICT DO NOTHING
+			RETURNING id
+		)
+		SELECT id FROM inserted
+		UNION ALL
+		SELECT id FROM track_suggestions
+		WHERE track_id = $1 AND user_id = $2 AND lower(title) = lower($6) AND lower(coalesce(artist, '')) = lower(coalesce($7, ''))
+		LIMIT 1`,
+		trackID, userID, in.Source, in.ExternalID, in.URL, in.Title, in.Artist, in.ArtworkURL).Scan(&id)
+	return id, err
+}
+
+// TrackSuggestionRef is a suggestion with who it's from, its track, and
+// that track's review and owner, for deciding who may act on it.
+type TrackSuggestionRef struct {
+	ID, TrackID, UserID, ReviewID, OwnerID string
+}
+
+func GetTrackSuggestionRef(ctx context.Context, q DBTX, id string) (*TrackSuggestionRef, error) {
+	var s TrackSuggestionRef
+	err := q.QueryRow(ctx, `
+		SELECT s.id, s.track_id, s.user_id, t.review_id, r.user_id
+		FROM track_suggestions s
+		JOIN review_tracks t ON t.id = s.track_id
+		JOIN reviews r ON r.id = t.review_id
+		WHERE s.id = $1`, id).Scan(&s.ID, &s.TrackID, &s.UserID, &s.ReviewID, &s.OwnerID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	return &s, err
+}
+
+// AcceptTrackSuggestion fills in the suggestion's track with it, credits
+// whoever made it, and clears the track's suggestions (it's identified now).
+func AcceptTrackSuggestion(ctx context.Context, q DBTX, id string) error {
+	if _, err := q.Exec(ctx, `
+		UPDATE review_tracks t
+		SET source = s.source, external_id = s.external_id, url = s.url, title = s.title,
+			artist = s.artist, artwork_url = s.artwork_url, identified_by_user_id = s.user_id
+		FROM track_suggestions s
+		WHERE s.id = $1 AND t.id = s.track_id`, id); err != nil {
+		return err
+	}
+	_, err := q.Exec(ctx, `
+		DELETE FROM track_suggestions
+		WHERE track_id = (SELECT track_id FROM track_suggestions WHERE id = $1)`, id)
+	return err
+}
+
+func DeleteTrackSuggestion(ctx context.Context, q DBTX, id string) error {
+	_, err := q.Exec(ctx, "DELETE FROM track_suggestions WHERE id = $1", id)
+	return err
+}
+
+// GetSuggestionsByTrackIDs returns each given track's suggestions, oldest
+// first, keyed by track id, leaving out those by excludeUserIDs.
+func GetSuggestionsByTrackIDs(ctx context.Context, q DBTX, trackIDs, excludeUserIDs []string) (map[string][]db.TrackSuggestion, error) {
+	if len(trackIDs) == 0 {
+		return map[string][]db.TrackSuggestion{}, nil
+	}
+	if excludeUserIDs == nil {
+		excludeUserIDs = []string{}
+	}
+	rows, err := q.Query(ctx, `
+		SELECT s.id, s.track_id, s.source, s.external_id, s.url, s.title, s.artist, s.artwork_url, s.created_at, `+qualifiedUserCols+`
+		FROM track_suggestions s
+		JOIN users u ON u.id = s.user_id
+		WHERE s.track_id = ANY($1) AND NOT (s.user_id = ANY($2))
+		ORDER BY s.track_id, s.created_at`, trackIDs, excludeUserIDs)
+	return collectGrouped(rows, err, func(row pgx.CollectableRow) (keyed[db.TrackSuggestion], error) {
+		var k keyed[db.TrackSuggestion]
+		s := &k.Value
+		err := row.Scan(append([]any{&s.ID, &s.TrackID, &s.Source, &s.ExternalID, &s.URL, &s.Title, &s.Artist, &s.ArtworkURL, &s.CreatedAt}, &s.User.ID, &s.User.ClerkID, &s.User.Username, &s.User.DisplayName, &s.User.Bio, &s.User.AvatarURL, &s.User.CreatedAt, &s.User.UpdatedAt)...)
+		k.Key = s.TrackID
+		return k, err
+	})
 }

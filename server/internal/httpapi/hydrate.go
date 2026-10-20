@@ -2,6 +2,8 @@ package httpapi
 
 import (
 	"context"
+	"maps"
+	"slices"
 
 	"beatboxd/server/internal/db"
 	"beatboxd/server/internal/db/queries"
@@ -18,9 +20,52 @@ func (h *Handlers) hydrateReviews(ctx context.Context, reviews []db.Review, curr
 	}
 	ids := mapField(reviews, func(r db.Review) string { return r.ID })
 
-	users, err := queries.GetUsersByIDs(ctx, h.Pool, queries.DedupeStrings(mapField(reviews, func(r db.Review) string { return r.UserID })))
+	tracks, err := queries.GetTracksByReviewIDs(ctx, h.Pool, ids)
 	if err != nil {
 		return nil, err
+	}
+	// Who named identified tracks are hydrated with the posters; unidentified
+	// tracks get the suggestions of what they are (not from anyone hidden
+	// from the caller).
+	userIDs := mapField(reviews, func(r db.Review) string { return r.UserID })
+	var unidentified []string
+	for _, ts := range tracks {
+		for _, t := range ts {
+			if t.IdentifiedByUserID != nil {
+				userIDs = append(userIDs, *t.IdentifiedByUserID)
+			}
+			if t.Title == nil {
+				unidentified = append(unidentified, t.ID)
+			}
+		}
+	}
+	users, err := queries.GetUsersByIDs(ctx, h.Pool, queries.DedupeStrings(userIDs))
+	if err != nil {
+		return nil, err
+	}
+	suggestions := map[string][]db.TrackSuggestion{}
+	if len(unidentified) > 0 {
+		hidden, err := h.hiddenUsers(ctx, currentUserID)
+		if err != nil {
+			return nil, err
+		}
+		suggestions, err = queries.GetSuggestionsByTrackIDs(ctx, h.Pool, unidentified, slices.Collect(maps.Keys(hidden)))
+		if err != nil {
+			return nil, err
+		}
+	}
+	for _, ts := range tracks {
+		for i := range ts {
+			t := &ts[i]
+			if t.IdentifiedByUserID != nil {
+				if u, ok := users[*t.IdentifiedByUserID]; ok {
+					t.IdentifiedBy = &u
+				}
+			}
+			if t.Title == nil {
+				t.Suggestions = orEmpty(suggestions[t.ID])
+			}
+		}
 	}
 	var eventIDs []string
 	for _, r := range reviews {
@@ -33,10 +78,6 @@ func (h *Handlers) hydrateReviews(ctx context.Context, reviews []db.Review, curr
 		return nil, err
 	}
 	lineups, err := queries.GetLineupsByReviewIDs(ctx, h.Pool, ids)
-	if err != nil {
-		return nil, err
-	}
-	tracks, err := queries.GetTracksByReviewIDs(ctx, h.Pool, ids)
 	if err != nil {
 		return nil, err
 	}

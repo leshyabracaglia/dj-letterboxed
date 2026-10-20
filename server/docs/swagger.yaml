@@ -300,6 +300,8 @@ definitions:
         - like
         - comment
         - tag
+        - id_suggested
+        - id_accepted
         type: string
     required:
     - actor
@@ -701,6 +703,10 @@ definitions:
         x-nullable: true
       id:
         type: string
+      identifiedBy:
+        allOf:
+        - $ref: '#/definitions/User'
+        x-nullable: true
       note:
         type: string
         x-nullable: true
@@ -708,6 +714,13 @@ definitions:
         type: string
       source:
         type: string
+      suggestions:
+        description: |-
+          Suggestions are what people think an unidentified track is, oldest
+          first; only on a review's tracks, and only while it's unidentified.
+        items:
+          $ref: '#/definitions/TrackSuggestion'
+        type: array
       title:
         type: string
         x-nullable: true
@@ -720,6 +733,7 @@ definitions:
     - djId
     - externalId
     - id
+    - identifiedBy
     - note
     - reviewId
     - source
@@ -821,6 +835,44 @@ definitions:
     - source
     - title
     - url
+    type: object
+  TrackSuggestion:
+    properties:
+      artist:
+        type: string
+        x-nullable: true
+      artworkUrl:
+        type: string
+        x-nullable: true
+      createdAt:
+        type: string
+      externalId:
+        type: string
+        x-nullable: true
+      id:
+        type: string
+      source:
+        type: string
+      title:
+        type: string
+      trackId:
+        type: string
+      url:
+        type: string
+        x-nullable: true
+      user:
+        $ref: '#/definitions/User'
+    required:
+    - artist
+    - artworkUrl
+    - createdAt
+    - externalId
+    - id
+    - source
+    - title
+    - trackId
+    - url
+    - user
     type: object
   UnreadNotificationsResponse:
     properties:
@@ -1149,6 +1201,24 @@ definitions:
         type: array
     required:
     - reviewIds
+    type: object
+  suggestTrackRequest:
+    properties:
+      artist:
+        type: string
+      artworkUrl:
+        type: string
+      externalId:
+        type: string
+      source:
+        type: string
+      title:
+        type: string
+      url:
+        type: string
+    required:
+    - source
+    - title
     type: object
   trackInput:
     properties:
@@ -2147,6 +2217,100 @@ paths:
         used first
       tags:
       - tags
+  /api/track-suggestions/{id}:
+    delete:
+      parameters:
+      - description: suggestion id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: the night, without the suggestion
+          schema:
+            $ref: '#/definitions/ReviewDTO'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Take back a suggestion you made, or turn one down on your own night
+      tags:
+      - tracks
+  /api/track-suggestions/{id}/accept:
+    post:
+      parameters:
+      - description: suggestion id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: the night, with the track named
+          schema:
+            $ref: '#/definitions/ReviewDTO'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 'Accept a suggestion for an unidentified track on the caller''s own
+        night: it names the track, crediting whoever suggested it'
+      tags:
+      - tracks
+  /api/tracks/{id}/suggestions:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: track id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: the track
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/suggestTrackRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: the night, with the suggestion
+          schema:
+            $ref: '#/definitions/ReviewDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "409":
+          description: the track's already identified
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Suggest what an unidentified track on someone's night is (an ID request);
+        the night's own poster naming it identifies it straight away
+      tags:
+      - tracks
   /api/tracks/resolve:
     get:
       parameters:

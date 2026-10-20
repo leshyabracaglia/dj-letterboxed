@@ -86,6 +86,10 @@ function describe(n: Notification): string {
       return `commented on your review${of}`;
     case "tag":
       return n.subject ? `tagged you at ${n.subject}` : "tagged you in their night out";
+    case "id_suggested":
+      return `knows the ID on your night${of}`;
+    case "id_accepted":
+      return `says you got the ID${of} right`;
   }
 }
 

@@ -131,3 +131,17 @@ test("a DJ page collects the tracks people loved from their sets", async ({ page
   // An unidentified track isn't a top track.
   await expect(shown(page.getByText("Anyone?", { exact: false }))).toHaveCount(0);
 });
+
+test("an ID on a night shows who named it, and what people think an open one is", async ({ page }) => {
+  // bob's marathon night: dev named the acid track he closed on.
+  await page.goto("/event/floating-points-all-night-long-twelve-hour-marathon-edition");
+  await shown(page.getByRole("link").filter({ hasText: "Got there at two in the afternoon" })).click();
+  await expect(shown(page.getByText("ID'd by @deep_house_dev_420", { exact: false }))).toBeVisible();
+
+  // bob's Innervisions night: an open ID with two suggestions.
+  await page.goto("/dj/dixon");
+  await logRow(page, "Innervisions New York", "bob").click();
+  await expect(text(page, "@alice thinks it's")).toBeVisible();
+  await expect(text(page, "@carla thinks it's")).toBeVisible();
+  await expect(text(page, "Sueño Latino")).toBeVisible();
+});

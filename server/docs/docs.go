@@ -1450,6 +1450,84 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/track-suggestions/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tracks"
+                ],
+                "summary": "Take back a suggestion you made, or turn one down on your own night",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "suggestion id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "the night, without the suggestion",
+                        "schema": {
+                            "$ref": "#/definitions/ReviewDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/track-suggestions/{id}/accept": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tracks"
+                ],
+                "summary": "Accept a suggestion for an unidentified track on the caller's own night: it names the track, crediting whoever suggested it",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "suggestion id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "the night, with the track named",
+                        "schema": {
+                            "$ref": "#/definitions/ReviewDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/api/tracks/resolve": {
             "get": {
                 "produces": [
@@ -1520,6 +1598,75 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tracks/{id}/suggestions": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tracks"
+                ],
+                "summary": "Suggest what an unidentified track on someone's night is (an ID request); the night's own poster naming it identifies it straight away",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "track id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "the track",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/suggestTrackRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "the night, with the suggestion",
+                        "schema": {
+                            "$ref": "#/definitions/ReviewDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "409": {
+                        "description": "the track's already identified",
                         "schema": {
                             "$ref": "#/definitions/errorEnvelope"
                         }
@@ -2823,7 +2970,9 @@ const docTemplate = `{
                         "follow",
                         "like",
                         "comment",
-                        "tag"
+                        "tag",
+                        "id_suggested",
+                        "id_accepted"
                     ]
                 }
             }
@@ -3348,6 +3497,7 @@ const docTemplate = `{
                 "djId",
                 "externalId",
                 "id",
+                "identifiedBy",
                 "note",
                 "reviewId",
                 "source",
@@ -3374,6 +3524,14 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "identifiedBy": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/User"
+                        }
+                    ],
+                    "x-nullable": true
+                },
                 "note": {
                     "type": "string",
                     "x-nullable": true
@@ -3383,6 +3541,13 @@ const docTemplate = `{
                 },
                 "source": {
                     "type": "string"
+                },
+                "suggestions": {
+                    "description": "Suggestions are what people think an unidentified track is, oldest\nfirst; only on a review's tracks, and only while it's unidentified.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/TrackSuggestion"
+                    }
                 },
                 "title": {
                     "type": "string",
@@ -3530,6 +3695,57 @@ const docTemplate = `{
                 "url": {
                     "type": "string",
                     "x-nullable": true
+                }
+            }
+        },
+        "TrackSuggestion": {
+            "type": "object",
+            "required": [
+                "artist",
+                "artworkUrl",
+                "createdAt",
+                "externalId",
+                "id",
+                "source",
+                "title",
+                "trackId",
+                "url",
+                "user"
+            ],
+            "properties": {
+                "artist": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "artworkUrl": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "externalId": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "id": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "trackId": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "user": {
+                    "$ref": "#/definitions/User"
                 }
             }
         },
@@ -3998,6 +4214,33 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "suggestTrackRequest": {
+            "type": "object",
+            "required": [
+                "source",
+                "title"
+            ],
+            "properties": {
+                "artist": {
+                    "type": "string"
+                },
+                "artworkUrl": {
+                    "type": "string"
+                },
+                "externalId": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
                 }
             }
         },

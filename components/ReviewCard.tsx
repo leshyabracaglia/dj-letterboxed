@@ -36,14 +36,27 @@ const TRACKS_SHOWN = 1;
 // Tracks highlighted from a set or the night: on a list card the first
 // TRACKS_SHOWN (note clamped) and a count of the rest; on the review's own
 // page all of them, in full.
-function Tracks({ tracks, paper, expanded }: { tracks: ReviewTrack[]; paper: Paper; expanded: boolean }) {
+function Tracks({
+  tracks,
+  paper,
+  expanded,
+  trackExtra,
+}: {
+  tracks: ReviewTrack[];
+  paper: Paper;
+  expanded: boolean;
+  trackExtra?: (track: ReviewTrack) => ReactNode;
+}) {
   if (!tracks.length) return null;
   const shown = expanded ? tracks : tracks.slice(0, TRACKS_SHOWN);
   const hidden = tracks.length - shown.length;
   return (
     <View className="mt-3 gap-3">
       {shown.map((track) => (
-        <TrackRow key={track.id} track={track} noteLines={expanded ? undefined : 2} />
+        <View key={track.id}>
+          <TrackRow track={track} noteLines={expanded ? undefined : 2} />
+          {expanded && trackExtra?.(track)}
+        </View>
       ))}
       {!!hidden && (
         <Text variant="display" className={`text-base ${paper.inkClassName}`}>
@@ -224,6 +237,8 @@ type CardProps = {
   paper: Paper;
   expanded: boolean;
   actions?: ReactNode;
+  // Under each track on the review's own page (its ID request).
+  trackExtra?: (track: ReviewTrack) => ReactNode;
 };
 
 // A wire paper clip, drawn as two nested loops. Absolutely positioned with
@@ -266,7 +281,7 @@ function Polaroid({ uri, paper, rotate }: { uri?: string | null; paper: Paper; r
 // that DJ's review (see soloSet): big name, and their photo as a polaroid
 // clipped to the card's top edge on the right, the night's passport stamp
 // over the bottom corner.
-function DjReviewCard({ review, set, paper, expanded, actions }: CardProps & { set: LineupEntry }) {
+function DjReviewCard({ review, set, paper, expanded, actions, trackExtra }: CardProps & { set: LineupEntry }) {
   const subject = reviewSubject(review, set);
   return (
     <Card
@@ -317,7 +332,7 @@ function DjReviewCard({ review, set, paper, expanded, actions }: CardProps & { s
         </Text>
       )}
       <View className="pr-16">
-        <Tracks tracks={tracksFrom(review, set.dj.id)} paper={paper} expanded={expanded} />
+        <Tracks tracks={tracksFrom(review, set.dj.id)} paper={paper} expanded={expanded} trackExtra={trackExtra} />
       </View>
       <View className="pr-20">
         <View className="mt-3" />
@@ -338,11 +353,13 @@ function SetReviews({
   sets,
   paper,
   expanded,
+  trackExtra,
 }: {
   review: Review;
   sets: LineupEntry[];
   paper: Paper;
   expanded: boolean;
+  trackExtra?: (track: ReviewTrack) => ReactNode;
 }) {
   const shown = expanded ? sets : sets.slice(0, SETS_SHOWN);
   const hidden = sets.length - shown.length;
@@ -377,7 +394,7 @@ function SetReviews({
                 {set.reviewText}
               </Text>
             )}
-            <Tracks tracks={tracksFrom(review, set.dj.id)} paper={paper} expanded={expanded} />
+            <Tracks tracks={tracksFrom(review, set.dj.id)} paper={paper} expanded={expanded} trackExtra={trackExtra} />
           </View>
         </View>
       ))}
@@ -394,7 +411,7 @@ function SetReviews({
 // event name, its lineup), its passport stamp, review and tracks from the
 // night, then each DJ reviewed on it - or, with none, its lineup as a row of
 // photos.
-function NightReviewCard({ review, paper, expanded, actions }: CardProps) {
+function NightReviewCard({ review, paper, expanded, actions, trackExtra }: CardProps) {
   const sets = reviewedSets(review);
   const lineup = review.lineup.map((entry) => entry.dj);
   const unreviewed = review.lineup.filter((entry) => !entry.reviewText).map((entry) => entry.dj);
@@ -488,11 +505,11 @@ function NightReviewCard({ review, paper, expanded, actions }: CardProps) {
           {review.reviewText}
         </Text>
       )}
-      <Tracks tracks={tracksFrom(review, null)} paper={paper} expanded={expanded} />
+      <Tracks tracks={tracksFrom(review, null)} paper={paper} expanded={expanded} trackExtra={trackExtra} />
       {!!sets.length && (
         <>
           <View className="mt-3" />
-          <SetReviews review={review} sets={sets} paper={paper} expanded={expanded} />
+          <SetReviews review={review} sets={sets} paper={paper} expanded={expanded} trackExtra={trackExtra} />
         </>
       )}
       {!!sets.length && !!unreviewed.length && (
@@ -516,14 +533,16 @@ export function ReviewCard({
   paper = paperAt(index),
   expanded = false,
   actions,
+  trackExtra,
 }: {
   review: Review;
   index: number;
   paper?: Paper;
   expanded?: boolean;
   actions?: ReactNode;
+  trackExtra?: (track: ReviewTrack) => ReactNode;
 }) {
-  const props = { review, paper, expanded, actions };
+  const props = { review, paper, expanded, actions, trackExtra };
   // A night out is one post. Only one that's really a single DJ's review (a
   // night from before nights were rated, see soloSet) gets the DJ card.
   const set = soloSet(review);

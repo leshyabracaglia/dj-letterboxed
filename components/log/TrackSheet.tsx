@@ -66,7 +66,15 @@ export function TrackSheet({
 }
 
 // Step one: the search box, which reads a pasted link instead of searching.
-function FindTrack({ onPick }: { onPick: (track: Partial<DraftTrack>) => void }) {
+// `allowUnknown` offers "It's an ID" too. Also how someone names an ID on
+// another person's night (components/review/TrackIdRequest).
+export function FindTrack({
+  onPick,
+  allowUnknown = true,
+}: {
+  onPick: (track: Partial<DraftTrack>) => void;
+  allowUnknown?: boolean;
+}) {
   const api = useApi();
   const [value, setValue] = useState("");
   const typed = value.trim();
@@ -132,14 +140,18 @@ function FindTrack({ onPick }: { onPick: (track: Partial<DraftTrack>) => void })
             onPress={() => onPick({ title: typed })}
           />
         )}
-        <SheetSectionLabel>Don&apos;t know what it was?</SheetSectionLabel>
-        <SheetRow
-          left={<CircleIcon name="help" />}
-          title="It's an ID"
-          subtitle="Describe it - someone else who was there might know"
-          plain
-          onPress={() => onPick({})}
-        />
+        {allowUnknown && (
+          <>
+            <SheetSectionLabel>Don&apos;t know what it was?</SheetSectionLabel>
+            <SheetRow
+              left={<CircleIcon name="help" />}
+              title="It's an ID"
+              subtitle="Describe it - someone else who was there might know"
+              plain
+              onPress={() => onPick({})}
+            />
+          </>
+        )}
       </ScrollView>
     </>
   );

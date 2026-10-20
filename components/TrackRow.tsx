@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
 import { Image, Linking, Pressable, View } from "react-native";
 
-import { Icon, Text } from "./ui";
+import { Icon, Stamp, Text } from "./ui";
 import type { ReviewTrack } from "@/lib/api/types";
 
 /** What a track row shows; a review's track, a search result, or a draft
  * one all fit. */
-export type TrackLike = Pick<ReviewTrack, "title" | "artist" | "artworkUrl" | "url" | "source" | "note">;
+export type TrackLike = Pick<ReviewTrack, "title" | "artist" | "artworkUrl" | "url" | "source" | "note"> & {
+  identifiedBy?: ReviewTrack["identifiedBy"];
+};
 
 const SOURCE_LABELS: Record<string, string> = {
   spotify: "Spotify",
@@ -24,8 +26,9 @@ export function trackTitle(track: Pick<ReviewTrack, "title">): string {
 
 /** A track: cover art, title and artist, where it's from, and the note
  * someone wrote about it. Opens its link, if it has one. `trailing` sits on
- * the right (a pick count, a remove button). `showNote` false leaves the note
- * out (search results). */
+ * the right (a pick count, a remove button); an ID someone else named gets
+ * an "ID'D" stamp there instead, crediting them. `showNote` false leaves the
+ * note out (search results). */
 export function TrackRow({
   track,
   trailing,
@@ -40,7 +43,14 @@ export function TrackRow({
 }) {
   const { url } = track;
   const from = SOURCE_LABELS[track.source];
-  const subtitle = [track.title ? track.artist : "Unidentified", from].filter(Boolean).join(" · ");
+  const { identifiedBy } = track;
+  const subtitle = [
+    track.title ? track.artist : "Unidentified",
+    from,
+    identifiedBy && `ID'd by @${identifiedBy.username}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <View className="gap-1.5">
       <View className="flex-row items-center gap-3">
@@ -79,7 +89,17 @@ export function TrackRow({
             )}
           </View>
         </Pressable>
-        {trailing}
+        {trailing ??
+          (!!identifiedBy && (
+            <Stamp
+              label="ID'D"
+              rim={`@${identifiedBy.username} · `}
+              size={44}
+              color="purple"
+              rotate={-10}
+              accessibilityLabel={`Named by @${identifiedBy.username}`}
+            />
+          ))}
       </View>
       {showNote && !!track.note && (
         <Text className="text-sm italic leading-5 text-paper/90" numberOfLines={noteLines}>

@@ -13,7 +13,7 @@ import (
 type CreateNotificationParams struct {
 	UserID    string
 	ActorID   string
-	Type      string // follow, like, comment or tag
+	Type      string // follow, like, comment, tag, id_suggested or id_accepted
 	ReviewID  *string
 	CommentID *string
 }
@@ -41,7 +41,7 @@ func CreateNotification(ctx context.Context, q DBTX, p CreateNotificationParams)
 
 type Notification struct {
 	ID        string    `json:"id"`
-	Type      string    `json:"type" enums:"follow,like,comment,tag"`
+	Type      string    `json:"type" enums:"follow,like,comment,tag,id_suggested,id_accepted"`
 	CreatedAt time.Time `json:"createdAt"`
 	IsUnread  bool      `json:"isUnread"`
 	Actor     db.User   `json:"actor"`
