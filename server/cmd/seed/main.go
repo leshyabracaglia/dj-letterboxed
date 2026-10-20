@@ -632,13 +632,18 @@ func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User,
 	must(0, queries.AddListItem(ctx, pool, sunset.ID, honeyNight.ID, &honey.ID, strPtr("The garden at golden hour.")))
 	must(queries.CreateList(ctx, pool, alice.ID, "To revisit", strPtr("Nights I want to hear again.")))
 
-	// bob and carla follow each other and both logged Basement: each card
-	// lists the other as also there, and carla heard bob was there too.
-	var carlaBasement string
-	must(0, pool.QueryRow(ctx, "SELECT id FROM reviews WHERE user_id = $1 AND event_id = $2", carla.ID, basementEvent.ID).Scan(&carlaBasement))
-	must(queries.CreateNotification(ctx, pool, queries.CreateNotificationParams{
-		UserID: carla.ID, ActorID: bob.ID, Type: "also_there", ReviewID: &carlaBasement,
-	}))
+	// bob and carla follow each other and both checked in at Basement on
+	// the same night, so each was told the other was there too.
+	for _, u := range []*db.User{bob, carla} {
+		must(pool.Exec(ctx, `
+			INSERT INTO check_ins (user_id, venue_id, distance_m, accuracy_m, created_at)
+			VALUES ($1, $2, 30, 15, '2026-09-13T01:15:00Z')`, u.ID, basement.ID))
+	}
+	for _, pair := range [][2]*db.User{{bob, carla}, {carla, bob}} {
+		must(queries.CreateNotification(ctx, pool, queries.CreateNotificationParams{
+			UserID: pair[0].ID, ActorID: pair[1].ID, Type: "here_too", VenueID: &basement.ID,
+		}))
+	}
 
 	// carla checked in at fabric on a trip without logging the night: it's
 	// in her passport (no nights) and one of her favorite venues, with Good

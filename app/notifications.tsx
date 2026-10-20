@@ -90,8 +90,8 @@ function describe(n: Notification): string {
       return `knows the ID on your night${of}`;
     case "id_accepted":
       return `says you got the ID${of} right`;
-    case "also_there":
-      return n.subject ? `was at ${n.subject} too` : "was there too";
+    case "here_too":
+      return n.subject ? `is at ${n.subject} too` : "is here too";
   }
 }
 

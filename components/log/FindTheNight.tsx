@@ -307,8 +307,8 @@ function CheckInStrip() {
           <Text variant="display" className="text-xl leading-5 text-paper">
             Checked in at {checkIn.data.venue.name}
           </Text>
-          {/* Friends (mutual follows) who checked in there tonight; they've
-              been told you're here too. */}
+          {/* Friends (mutual follows) who checked in there tonight; you've
+              each been told the other's here. */}
           {!!friends.length && (
             <Text variant="display" className="text-lg leading-5 text-primary-dark">
               {friends.map((u) => `@${u.username}`).join(", ")} {friends.length === 1 ? "is" : "are"} here too

@@ -3164,7 +3164,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a user's review stats: totals, most-seen and recently seen DJs, top venues, their passport of venues and favorite venues */
+        /** Get a user's review stats: totals, most-seen and recently seen DJs, their passport of venues and favorite venues */
         get: {
             parameters: {
                 query?: never;
@@ -3372,7 +3372,8 @@ export interface components {
             checkedInAt: string;
             /**
              * @description FriendsHere are the caller's friends (mutual follows) who checked in
-             *     at the same venue in the last few hours; each gets a push.
+             *     at the same venue tonight; they and the caller are each told the
+             *     other's there.
              */
             friendsHere: components["schemas"]["User"][];
             venue: components["schemas"]["NearbyVenue"];
@@ -3529,13 +3530,13 @@ export interface components {
              */
             nightLogged: boolean;
             /**
-             * @description The night out it's about (not on follows), and its title (see
-             *     nightTitleSQL).
+             * @description The night out it's about (not on follows or here_too), and its title
+             *     (see nightTitleSQL) - or, on a here_too, the venue's name.
              */
             reviewId: string | null;
             subject: string | null;
             /** @enum {string} */
-            type: "follow" | "like" | "comment" | "tag" | "id_suggested" | "id_accepted" | "also_there";
+            type: "follow" | "like" | "comment" | "tag" | "id_suggested" | "id_accepted" | "here_too";
         };
         NotificationsResponse: {
             items: components["schemas"]["Notification"][];
@@ -3642,11 +3643,6 @@ export interface components {
             userId: string;
         };
         ReviewDTO: {
-            /**
-             * @description AlsoThere are the poster's friends (people they follow who follow
-             *     them back) who logged the same night.
-             */
-            alsoThere: components["schemas"]["User"][];
             city: string | null;
             commentCount: number;
             createdAt: string;
@@ -3738,10 +3734,6 @@ export interface components {
             picks: number;
             track: components["schemas"]["ReviewTrack"];
         };
-        TopVenue: {
-            reviewCount: number;
-            venue: string;
-        };
         TrackMatch: {
             artist: string;
             artworkUrl: string | null;
@@ -3801,7 +3793,6 @@ export interface components {
             passport: components["schemas"]["PassportStamp"][];
             recentDjs: components["schemas"]["RecentDj"][];
             topDjs: components["schemas"]["TopDj"][];
-            topVenues: components["schemas"]["TopVenue"][];
             /** @description TotalReviews is how many nights out they've logged. */
             totalReviews: number;
             uniqueDjs: number;

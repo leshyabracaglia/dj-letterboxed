@@ -11,7 +11,7 @@ const SECTIONS: InfoSection[] = [
   {
     title: "Logging a night",
     body: [
-      "Open the log tab to see nights near you, or search for the event, venue or DJ. Rate the night and any DJs you caught, add a review and tags, and tag the friends you went with.",
+      "Open the log tab to see nights near you, or search for the event, venue or DJ. Write about the night and any sets you caught, add the tracks that stood out, add tags, and tag the friends you went with.",
       "Once a night is logged it can't be edited, except for who you tagged as being there (“Tag who was there” on its page). To change anything else, delete the review from its page and log it again.",
     ],
   },

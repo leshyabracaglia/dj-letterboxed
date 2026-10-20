@@ -13,7 +13,7 @@ module.exports = {
       fontFamily: {
         sans: ["Roboto_400Regular", "sans-serif"],
         // Primary font (Jersey 10, a pixel display face): branding/headings
-        // via `font-display`, and numeric displays (stats, counts, ratings)
+        // via `font-display`, and numeric displays (stats, counts)
         // via `font-numeric` — see components/ui/Text.tsx for how both opt out
         // of the weight-mapping override.
         display: ["Jersey10_400Regular", "sans-serif"],

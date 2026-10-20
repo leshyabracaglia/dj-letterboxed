@@ -57,12 +57,14 @@ type CheckInResponse struct {
 	// stands). Logging the venue for that night shows as verified.
 	CheckedInAt time.Time `json:"checkedInAt"`
 	// FriendsHere are the caller's friends (mutual follows) who checked in
-	// at the same venue in the last few hours; each gets a push.
+	// at the same venue tonight; they and the caller are each told the
+	// other's there.
 	FriendsHere []db.User `json:"friendsHere"`
 }
 
-// friendsHereWindow is how recently a friend's check-in counts as tonight.
-const friendsHereWindow = 6 * time.Hour
+// friendsHereWindow is how recently a friend's check-in counts as the same
+// night.
+const friendsHereWindow = 12 * time.Hour
 
 func validLatLng(lat, lng float64) bool {
 	return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
@@ -227,7 +229,7 @@ func (h *Handlers) CheckIn(w http.ResponseWriter, r *http.Request) {
 		InternalError(w, err)
 		return
 	}
-	h.notifyHereToo(user, venue.Name, friends)
+	h.notifyHereToo(user, venue.ID, venue.Name, friends)
 	WriteJSON(w, http.StatusOK, CheckInResponse{
 		Venue:       NearbyVenue{ID: &venue.ID, PlaceID: venue.GooglePlaceID, Name: venue.Name, City: venue.City, DistanceM: distanceM},
 		CheckedInAt: at,

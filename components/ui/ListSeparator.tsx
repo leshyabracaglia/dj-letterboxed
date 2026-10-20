@@ -3,7 +3,7 @@ import { View } from "react-native";
 // Space between stacked cards in a plain View: `gap` classes, for laying
 // cards out without a FlatList. Torn cards need more room for their ragged
 // edges and the stamps hanging off them.
-export const CARD_GAP = "gap-4";
+const CARD_GAP = "gap-4";
 export const TORN_CARD_GAP = "gap-10";
 
 // Space between a FlatList's items, as its ItemSeparatorComponent (a

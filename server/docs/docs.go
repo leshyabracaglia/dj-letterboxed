@@ -2697,7 +2697,7 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "Get a user's review stats: totals, most-seen and recently seen DJs, top venues, their passport of venues and favorite venues",
+                "summary": "Get a user's review stats: totals, most-seen and recently seen DJs, their passport of venues and favorite venues",
                 "parameters": [
                     {
                         "type": "string",
@@ -2878,7 +2878,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "friendsHere": {
-                    "description": "FriendsHere are the caller's friends (mutual follows) who checked in\nat the same venue in the last few hours; each gets a push.",
+                    "description": "FriendsHere are the caller's friends (mutual follows) who checked in\nat the same venue tonight; they and the caller are each told the\nother's there.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/User"
@@ -3502,7 +3502,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "reviewId": {
-                    "description": "The night out it's about (not on follows), and its title (see\nnightTitleSQL).",
+                    "description": "The night out it's about (not on follows or here_too), and its title\n(see nightTitleSQL) - or, on a here_too, the venue's name.",
                     "type": "string",
                     "x-nullable": true
                 },
@@ -3519,7 +3519,7 @@ const docTemplate = `{
                         "tag",
                         "id_suggested",
                         "id_accepted",
-                        "also_there"
+                        "here_too"
                     ]
                 }
             }
@@ -3911,7 +3911,6 @@ const docTemplate = `{
         "ReviewDTO": {
             "type": "object",
             "required": [
-                "alsoThere",
                 "city",
                 "commentCount",
                 "createdAt",
@@ -3935,13 +3934,6 @@ const docTemplate = `{
                 "verified"
             ],
             "properties": {
-                "alsoThere": {
-                    "description": "AlsoThere are the poster's friends (people they follow who follow\nthem back) who logged the same night.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/User"
-                    }
-                },
                 "city": {
                     "type": "string",
                     "x-nullable": true
@@ -4220,21 +4212,6 @@ const docTemplate = `{
                 }
             }
         },
-        "TopVenue": {
-            "type": "object",
-            "required": [
-                "reviewCount",
-                "venue"
-            ],
-            "properties": {
-                "reviewCount": {
-                    "type": "integer"
-                },
-                "venue": {
-                    "type": "string"
-                }
-            }
-        },
         "TrackMatch": {
             "type": "object",
             "required": [
@@ -4425,7 +4402,6 @@ const docTemplate = `{
                 "passport",
                 "recentDjs",
                 "topDjs",
-                "topVenues",
                 "totalReviews",
                 "uniqueDjs"
             ],
@@ -4454,12 +4430,6 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/TopDj"
-                    }
-                },
-                "topVenues": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/TopVenue"
                     }
                 },
                 "totalReviews": {

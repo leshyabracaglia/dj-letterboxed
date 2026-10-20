@@ -6,7 +6,7 @@ import type { ReviewTrack } from "@/lib/api/types";
 
 /** What a track row shows; a review's track, a search result, or a draft
  * one all fit. */
-export type TrackLike = Pick<ReviewTrack, "title" | "artist" | "artworkUrl" | "url" | "source" | "note"> & {
+type TrackLike = Pick<ReviewTrack, "title" | "artist" | "artworkUrl" | "url" | "source" | "note"> & {
   identifiedBy?: ReviewTrack["identifiedBy"];
 };
 
@@ -20,7 +20,7 @@ const SOURCE_LABELS: Record<string, string> = {
 const ART_SIZE = 44;
 
 /** A track's name: its title, or for an unidentified one "ID". */
-export function trackTitle(track: Pick<ReviewTrack, "title">): string {
+function trackTitle(track: Pick<ReviewTrack, "title">): string {
   return track.title || "ID";
 }
 

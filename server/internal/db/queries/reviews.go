@@ -179,8 +179,8 @@ func ListReviewsByUser(ctx context.Context, q DBTX, userID string, cursor *time.
 	return listReviewsPage(ctx, q, "user_id = $1", "seen_at", []any{userID}, cursor, limit)
 }
 
-// ListReviewsByDj returns the nights out djID was on the lineup of, rated or
-// not, ordered seen_at desc.
+// ListReviewsByDj returns the nights out djID was on the lineup of, written
+// about or not, ordered seen_at desc.
 func ListReviewsByDj(ctx context.Context, q DBTX, djID string, cursor *time.Time, limit int) ([]db.Review, error) {
 	return listReviewsPage(ctx, q, "id IN (SELECT review_id FROM review_lineup WHERE dj_id = $1)", "seen_at", []any{djID}, cursor, limit)
 }

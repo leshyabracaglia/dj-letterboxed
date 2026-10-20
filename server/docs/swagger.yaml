@@ -20,7 +20,8 @@ definitions:
       friendsHere:
         description: |-
           FriendsHere are the caller's friends (mutual follows) who checked in
-          at the same venue in the last few hours; each gets a push.
+          at the same venue tonight; they and the caller are each told the
+          other's there.
         items:
           $ref: '#/definitions/User'
         type: array
@@ -458,8 +459,8 @@ definitions:
         type: boolean
       reviewId:
         description: |-
-          The night out it's about (not on follows), and its title (see
-          nightTitleSQL).
+          The night out it's about (not on follows or here_too), and its title
+          (see nightTitleSQL) - or, on a here_too, the venue's name.
         type: string
         x-nullable: true
       subject:
@@ -473,7 +474,7 @@ definitions:
         - tag
         - id_suggested
         - id_accepted
-        - also_there
+        - here_too
         type: string
     required:
     - actor
@@ -757,13 +758,6 @@ definitions:
     type: object
   ReviewDTO:
     properties:
-      alsoThere:
-        description: |-
-          AlsoThere are the poster's friends (people they follow who follow
-          them back) who logged the same night.
-        items:
-          $ref: '#/definitions/User'
-        type: array
       city:
         type: string
         x-nullable: true
@@ -844,7 +838,6 @@ definitions:
           they've logged the night themselves (the page prompts them to if not).
         type: boolean
     required:
-    - alsoThere
     - city
     - commentCount
     - createdAt
@@ -991,16 +984,6 @@ definitions:
     required:
     - picks
     - track
-    type: object
-  TopVenue:
-    properties:
-      reviewCount:
-        type: integer
-      venue:
-        type: string
-    required:
-    - reviewCount
-    - venue
     type: object
   TrackMatch:
     properties:
@@ -1157,10 +1140,6 @@ definitions:
         items:
           $ref: '#/definitions/TopDj'
         type: array
-      topVenues:
-        items:
-          $ref: '#/definitions/TopVenue'
-        type: array
       totalReviews:
         description: TotalReviews is how many nights out they've logged.
         type: integer
@@ -1171,7 +1150,6 @@ definitions:
     - passport
     - recentDjs
     - topDjs
-    - topVenues
     - totalReviews
     - uniqueDjs
     type: object
@@ -2965,7 +2943,7 @@ paths:
           schema:
             $ref: '#/definitions/errorEnvelope'
       summary: 'Get a user''s review stats: totals, most-seen and recently seen DJs,
-        top venues, their passport of venues and favorite venues'
+        their passport of venues and favorite venues'
       tags:
       - users
   /api/users/me:

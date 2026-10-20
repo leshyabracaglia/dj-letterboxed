@@ -3,9 +3,11 @@
 Letterboxd for DJ sets, and a community-built database of the
 electronic music scene.
 
-Each night you log adds to a shared record of who played where and how it
-went. Every DJ, venue and event gets its own page, and the reviews, ratings and
-stats pile up there over time.
+Each night you log adds to a shared record of who played where, what they
+played and how it felt. There are no star ratings: it's about talking through
+sets, the tracks that stood out and the vibe of the room. Every DJ, venue and
+event gets its own page, and the reviews, tracks and stats pile up there over
+time.
 
 **[beatboxd.com](https://www.beatboxd.com)** · iOS via TestFlight
 
@@ -14,21 +16,30 @@ stats pile up there over time.
 ### Your diary
 
 - **Log a night**: pick the event, venue and date, choose whether it was a
-  day or night party (or both), add everyone on the lineup, then rate the night
-  and/or each DJ (1–5 stars) with a written review.
+  day or night party (or both), add everyone on the lineup, then write about
+  the night and any of the sets you caught.
+- **Tracks**: highlight up to ten tracks from the night, each with a note on
+  why it stuck. Search Spotify, paste a Spotify, SoundCloud, Apple Music or
+  Shazam link, type one in, or post an unidentified ID for others to name.
+- **Passport**: every night gets a dated passport stamp, and your profile
+  collects a stamp for every club you've logged a night at or checked in at.
 - **Tags and friends**: describe the crowd and the room with tags ("packed",
   "great sound", "groovy", or your own), and tag the friends you went with.
-- **Profile**: your stats (top DJs, top venues, totals), favorite reviews,
-  and shareable story images.
+- **Profile**: most-seen and recently seen DJs, your passport, up to three
+  favorite clubs, your lists, and shareable story images.
+- **Lists**: curate nights, or single sets, from anyone's logs ("Best closing
+  sets of 2026"), each with a note.
 
 ### The database
 
-- **DJs**: average rating, review count, genres, and every review of them.
+- **DJs**: how many times people have seen them, a portrait of how people
+  describe them (a pull quote, where they're seen most, the words on their
+  nights), the tracks people loved from their sets, and every review of them.
   New DJs can be pulled from Spotify.
 - **Venues**: linked to Google Places, with the events they've hosted.
 - **Events**: each night has its lineup and its reviews. Recurring series
   ("Innervisions") group their nights across venues and cities, showing who's
-  played, where, and how each night rated.
+  played, where, and how many nights people logged.
 - Everything is built from what users log. There's no editorial layer, so the
   data grows with the community.
 
@@ -36,8 +47,14 @@ stats pile up there over time.
 
 - Follow people and get a feed of their logs.
 - Like and comment on reviews.
+- ID requests: suggest what an unidentified track on someone's night was;
+  they accept the right one and you get the credit.
+- Tag the friends you went with on a night.
+- Check in at a club, and if a friend (you follow each other) checks in there
+  the same night, you both get a notification that the other is there too.
 - Leaderboard among the people you follow.
-- Push notifications for new followers, likes and comments.
+- Push notifications for new followers, likes, comments, tags, ID requests
+  and friends checked in at the same club.
 
 ## Stack
 
@@ -70,7 +87,7 @@ Prerequisites: Node, Go, and Docker.
    ```
    npm run dev:api
    npm run db:migrate
-   npm run db:seed      # optional: two users, a few DJs, an event, reviews
+   npm run db:seed      # optional: users, DJs, events, nights, tracks, lists
    ```
 4. Start the app:
    ```
@@ -107,7 +124,7 @@ lib/                  API client and hooks, auth, routes, push notifications
 server/
   cmd/                api, migrate, seed entrypoints
   internal/httpapi/   HTTP handlers, one file per domain
-  internal/domain/    Business logic and external clients (Spotify, Places, Expo push)
+  internal/domain/    Business logic and external clients (Spotify, track links, Places, RA, Expo push)
   internal/db/        Models and hand-written SQL queries
   migrations/         Numbered .up.sql / .down.sql pairs
   docs/               Generated OpenAPI spec

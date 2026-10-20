@@ -13,10 +13,17 @@ import (
 type CreateNotificationParams struct {
 	UserID    string
 	ActorID   string
-	Type      string // follow, like, comment, tag, id_suggested, id_accepted or also_there
+	Type      string // follow, like, comment, tag, id_suggested, id_accepted or here_too
 	ReviewID  *string
 	CommentID *string
+	// The venue a here_too is about.
+	VenueID *string
 }
+
+// hereTooRepeatWindow is how long a here_too between the same two people
+// at the same venue counts as the same night, so checking in again doesn't
+// tell them twice.
+const hereTooRepeatWindow = "12 hours"
 
 // CreateNotification records a notification for p.UserID and reports
 // whether it's new: false for one to yourself, one between users who've
@@ -25,14 +32,18 @@ type CreateNotificationParams struct {
 func CreateNotification(ctx context.Context, q DBTX, p CreateNotificationParams) (bool, error) {
 	var id string
 	err := q.QueryRow(ctx, `
-		INSERT INTO notifications (user_id, actor_id, type, review_id, comment_id)
-		SELECT $1, $2, $3, $4, $5
+		INSERT INTO notifications (user_id, actor_id, type, review_id, comment_id, venue_id)
+		SELECT $1, $2, $3, $4, $5, $6
 		WHERE $1::uuid <> $2::uuid AND NOT EXISTS (
 			SELECT 1 FROM blocks
 			WHERE (blocker_id = $1 AND blocked_id = $2) OR (blocker_id = $2 AND blocked_id = $1)
-		)
+		) AND NOT ($3 = 'here_too' AND EXISTS (
+			SELECT 1 FROM notifications x
+			WHERE x.user_id = $1 AND x.actor_id = $2 AND x.type = 'here_too' AND x.venue_id = $6
+				AND x.created_at > now() - interval '`+hereTooRepeatWindow+`'
+		))
 		ON CONFLICT DO NOTHING
-		RETURNING id`, p.UserID, p.ActorID, p.Type, p.ReviewID, p.CommentID).Scan(&id)
+		RETURNING id`, p.UserID, p.ActorID, p.Type, p.ReviewID, p.CommentID, p.VenueID).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -41,12 +52,12 @@ func CreateNotification(ctx context.Context, q DBTX, p CreateNotificationParams)
 
 type Notification struct {
 	ID        string    `json:"id"`
-	Type      string    `json:"type" enums:"follow,like,comment,tag,id_suggested,id_accepted,also_there"`
+	Type      string    `json:"type" enums:"follow,like,comment,tag,id_suggested,id_accepted,here_too"`
 	CreatedAt time.Time `json:"createdAt"`
 	IsUnread  bool      `json:"isUnread"`
 	Actor     db.User   `json:"actor"`
-	// The night out it's about (not on follows), and its title (see
-	// nightTitleSQL).
+	// The night out it's about (not on follows or here_too), and its title
+	// (see nightTitleSQL) - or, on a here_too, the venue's name.
 	ReviewID *string `json:"reviewId" extensions:"x-nullable"`
 	Subject  *string `json:"subject" extensions:"x-nullable"`
 	// The comment's text, on comments.
@@ -81,7 +92,7 @@ func ListNotifications(ctx context.Context, q DBTX, userID string, before *time.
 	rows, err := q.Query(ctx, `
 		SELECT n.id, n.type, n.created_at, n.created_at > me.notifications_seen_at,
 			`+qualifiedUserCols+`,
-			n.review_id, `+nightTitleSQL("theirs", "e")+`, c.body,
+			n.review_id, coalesce(`+nightTitleSQL("theirs", "e")+`, v.name), c.body,
 			n.type = 'tag' AND `+sameNightLoggedCond+`
 		FROM notifications n
 		JOIN users me ON me.id = n.user_id
@@ -89,6 +100,7 @@ func ListNotifications(ctx context.Context, q DBTX, userID string, before *time.
 		LEFT JOIN reviews theirs ON theirs.id = n.review_id
 		LEFT JOIN events e ON e.id = theirs.event_id
 		LEFT JOIN review_comments c ON c.id = n.comment_id
+		LEFT JOIN venues v ON v.id = n.venue_id
 		WHERE n.user_id = $1
 			AND ($2::timestamptz IS NULL OR n.created_at < $2)
 			AND NOT EXISTS (

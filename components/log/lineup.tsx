@@ -34,7 +34,7 @@ const RESULT_ROW_HEIGHT = 64;
 const VISIBLE_RESULT_ROWS = 5;
 
 // "Who did you catch?": the listed lineup as checkboxes. Ticked DJs go on the
-// log and get a card below to rate their set.
+// log and get a card below to write about their set.
 export function CaughtChecklist({ lineup, onToggle }: { lineup: DraftLineupEntry[]; onToggle: (key: string) => void }) {
   return (
     <View className="border border-white/10 bg-zine-panel/90">
@@ -62,7 +62,7 @@ export function CaughtChecklist({ lineup, onToggle }: { lineup: DraftLineupEntry
   );
 }
 
-// ---- Rate the sets -----------------------------------------------------
+// ---- The sets ----------------------------------------------------------
 
 const COMMUNITY_ADDED_LABEL = "Added by the community";
 

@@ -90,7 +90,7 @@ func (h *Handlers) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
 
 // GetUserStats godoc
 //
-//	@Summary	Get a user's review stats: totals, most-seen and recently seen DJs, top venues, their passport of venues and favorite venues
+//	@Summary	Get a user's review stats: totals, most-seen and recently seen DJs, their passport of venues and favorite venues
 //	@Tags		users
 //	@Produce	json
 //	@Param		username	path		string	true	"username"
@@ -121,11 +121,6 @@ func (h *Handlers) GetUserStats(w http.ResponseWriter, r *http.Request) {
 		InternalError(w, err)
 		return
 	}
-	topVenues, err := queries.GetTopVenuesForUser(r.Context(), h.Pool, user.ID)
-	if err != nil {
-		InternalError(w, err)
-		return
-	}
 	passport, favoriteVenues, err := h.passportAndFavorites(r.Context(), user.ID)
 	if err != nil {
 		InternalError(w, err)
@@ -137,7 +132,6 @@ func (h *Handlers) GetUserStats(w http.ResponseWriter, r *http.Request) {
 		UniqueDjs:      totals.UniqueDjs,
 		TopDjs:         orEmpty(topDjs),
 		RecentDjs:      orEmpty(recentDjs),
-		TopVenues:      orEmpty(topVenues),
 		Passport:       orEmpty(passport),
 		FavoriteVenues: orEmpty(favoriteVenues),
 	})

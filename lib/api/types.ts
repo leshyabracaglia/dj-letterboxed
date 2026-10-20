@@ -37,8 +37,6 @@ export type LineupEntry = Schemas["LineupEntry"];
 export type ReviewTrack = Schemas["ReviewTrack"];
 /** A track found by search or a pasted link, not yet on a review. */
 export type TrackMatch = Schemas["TrackMatch"];
-/** A track people highlighted from a DJ's sets, and on how many nights. */
-export type TopTrack = Schemas["TopTrack"];
 export type ReviewComment = Schemas["ReviewComment"];
 /** A curated list of nights, or single DJs' sets on them. */
 export type ListSummary = Schemas["ListSummary"];

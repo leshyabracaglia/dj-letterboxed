@@ -8,8 +8,8 @@ import { TornEdge } from "./TornEdge";
 import { colors } from "@/lib/colors";
 
 // Zine panels: square-cornered paper in the card palette, tacked to the
-// wall at a slight angle. `neutral` is the near-black panel (rating levels,
-// people, form sections); `primary`/`accent` are the purple and red paper.
+// wall at a slight angle. `neutral` is the near-black panel (DJ page
+// panels, people, form sections); `primary`/`accent` are the purple and red paper.
 const TINTS = {
   neutral: { className: "bg-zine-panel/90 border border-white/10", color: colors.zine.panel },
   primary: { className: "bg-zine-purple", color: colors.zine.purple },

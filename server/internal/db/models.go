@@ -51,9 +51,9 @@ type Event struct {
 
 // Review is one person's night out, and the post: which event (if it had a
 // name), where, which day, whether they went during the day, at night or
-// both, and what they thought of it. The DJs they saw, each optionally rated,
-// are its lineup (review_lineup); likes, comments, tagged friends and tags
-// hang off it too.
+// both, and what they thought of it. The DJs they saw, each with anything
+// said about their set, are its lineup (review_lineup); tracks, likes,
+// comments, tagged friends and tags hang off it too.
 type Review struct {
 	ID     string `json:"id"`
 	UserID string `json:"userId"`

@@ -37,10 +37,6 @@ func GetDjBySlug(ctx context.Context, q DBTX, slug string) (*db.Dj, error) {
 	return scanDj(q.QueryRow(ctx, "SELECT "+djCols+" FROM djs WHERE slug = $1", slug))
 }
 
-func GetDjByID(ctx context.Context, q DBTX, id string) (*db.Dj, error) {
-	return scanDj(q.QueryRow(ctx, "SELECT "+djCols+" FROM djs WHERE id = $1", id))
-}
-
 func GetDjBySpotifyID(ctx context.Context, q DBTX, spotifyID string) (*db.Dj, error) {
 	return scanDj(q.QueryRow(ctx, "SELECT "+djCols+" FROM djs WHERE spotify_id = $1", spotifyID))
 }

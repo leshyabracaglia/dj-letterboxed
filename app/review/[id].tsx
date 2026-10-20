@@ -27,7 +27,7 @@ function LogItTooPrompt({ review }: { review: ReviewDetail }) {
   return (
     <View className="w-full max-w-xl items-center gap-3 rounded-2xl border border-accent/40 bg-accent/10 p-4">
       <Text className="text-center text-base text-paper">
-        @{review.user.username} tagged you here. Log the night and rate the sets you caught.
+        @{review.user.username} tagged you here. Log the night and the sets you caught.
       </Text>
       <Button onPress={() => router.push(ROUTES.REVIEW_FROM(review.id))} className="w-full py-3">
         <Text className="font-semibold text-paper">Log this night</Text>
@@ -137,7 +137,7 @@ function ReviewDetailBody({
         />
       </View>
 
-      {/* Clear of the torn edge and rating stamp hanging off the card. */}
+      {/* Clear of the torn edge and passport stamp hanging off the card. */}
       <View className="mt-14 w-full items-center gap-4">
         {isAuthor && <WhoWasThereButton review={review} />}
         {loaded && !!me && <AddToListButton review={review} />}

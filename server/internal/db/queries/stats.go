@@ -98,22 +98,6 @@ func GetRecentDjsForUser(ctx context.Context, q DBTX, userID string) ([]RecentDj
 	})
 }
 
-type TopVenue struct {
-	Venue       string `json:"venue"`
-	ReviewCount int64  `json:"reviewCount"`
-}
-
-func GetTopVenuesForUser(ctx context.Context, q DBTX, userID string) ([]TopVenue, error) {
-	rows, err := q.Query(ctx, `
-		SELECT venue, COUNT(*) AS review_count
-		FROM reviews
-		WHERE user_id = $1 AND venue IS NOT NULL
-		GROUP BY venue
-		ORDER BY review_count DESC
-		LIMIT 5`, userID)
-	return collect(rows, err, pgx.RowToStructByPos[TopVenue])
-}
-
 // PassportStamp is a venue someone has been to, for the passport on their
 // profile: one they logged a night at (Nights counts them) or only checked
 // in at (Nights 0).
