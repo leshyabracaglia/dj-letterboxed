@@ -215,6 +215,9 @@ type updateSettingsRequest struct {
 	// Whether to get a push when people you follow log nights while you've
 	// been away.
 	ReengagePush *bool `json:"reengagePush,omitempty"`
+	// The "What's new" sheet version just closed. It only ever moves
+	// forward, so an older build can't make a newer sheet show again.
+	WhatsNewSeen *int `json:"whatsNewSeen,omitempty"`
 }
 
 // UpdateSettings godoc
@@ -239,7 +242,7 @@ func (h *Handlers) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 		BadRequest(w, "invalid request body")
 		return
 	}
-	settings, err := queries.UpdateUserSettings(r.Context(), h.Pool, user.ID, req.ReengagePush)
+	settings, err := queries.UpdateUserSettings(r.Context(), h.Pool, user.ID, req.ReengagePush, req.WhatsNewSeen)
 	if err != nil {
 		InternalError(w, err)
 		return

@@ -1248,7 +1248,7 @@ const docTemplate = `{
                 "tags": [
                     "moderation"
                 ],
-                "summary": "Report a review, comment or user for moderation",
+                "summary": "Report a review, comment, track clip or user for moderation",
                 "parameters": [
                     {
                         "description": "what's reported, and why",
@@ -1859,6 +1859,133 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tracks/{id}/clip": {
+            "get": {
+                "produces": [
+                    "audio/mp4"
+                ],
+                "tags": [
+                    "tracks"
+                ],
+                "summary": "Stream an unidentified track's recording (inline, for the app's player; supports Range requests)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "track id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "audio/mp4"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tracks"
+                ],
+                "summary": "Attach a recording (at most 15 seconds, AAC in MP4/M4A) to an unidentified track on the caller's own night, replacing any; the body is the audio",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "track id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "the recording's length",
+                        "name": "X-Clip-Duration-Ms",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "the night, with the clip",
+                        "schema": {
+                            "$ref": "#/definitions/ReviewDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    },
+                    "409": {
+                        "description": "the track's already identified",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tracks"
+                ],
+                "summary": "Remove the recording from an unidentified track on the caller's own night",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "track id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "the night, without the clip",
+                        "schema": {
+                            "$ref": "#/definitions/ReviewDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/errorEnvelope"
                         }
@@ -4041,6 +4168,7 @@ const docTemplate = `{
             "required": [
                 "artist",
                 "artworkUrl",
+                "clipDurationMs",
                 "djId",
                 "externalId",
                 "id",
@@ -4058,6 +4186,11 @@ const docTemplate = `{
                 },
                 "artworkUrl": {
                     "type": "string",
+                    "x-nullable": true
+                },
+                "clipDurationMs": {
+                    "description": "ClipDurationMs is the length of the recording of an unidentified track\n(streamed from GET /api/tracks/{id}/clip), if its poster made one.",
+                    "type": "integer",
                     "x-nullable": true
                 },
                 "djId": {
@@ -4386,12 +4519,17 @@ const docTemplate = `{
         "UserSettings": {
             "type": "object",
             "required": [
-                "reengagePush"
+                "reengagePush",
+                "whatsNewSeen"
             ],
             "properties": {
                 "reengagePush": {
                     "description": "Whether they get the \"people you follow logged nights\" push after\nbeing away (see httpapi/reengage.go).",
                     "type": "boolean"
+                },
+                "whatsNewSeen": {
+                    "description": "The newest \"What's new\" sheet they've closed (0 = none).",
+                    "type": "integer"
                 }
             }
         },
@@ -4626,6 +4764,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "reviewId": {
+                    "type": "string"
+                },
+                "trackId": {
+                    "description": "An audio clip on a track (reported against its night and poster).",
                     "type": "string"
                 },
                 "userId": {
@@ -4886,6 +5028,10 @@ const docTemplate = `{
                 "reengagePush": {
                     "description": "Whether to get a push when people you follow log nights while you've\nbeen away.",
                     "type": "boolean"
+                },
+                "whatsNewSeen": {
+                    "description": "The \"What's new\" sheet version just closed. It only ever moves\nforward, so an older build can't make a newer sheet show again.",
+                    "type": "integer"
                 }
             }
         }

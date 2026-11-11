@@ -11,19 +11,22 @@ import { DarkTheme, Stack, ThemeProvider } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AppState, Linking, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { Button, Page, Text, useIsDesktopWeb } from "@/components/ui";
 import { WebNav } from "@/components/WebNav";
+import { WHATS_NEW_VERSION, WhatsNewSheet } from "@/components/WhatsNewSheet";
 import { ApiError, useApi, unwrap } from "@/lib/api/client";
+import { useSettings, useUpdateSettings } from "@/lib/api/hooks";
 import { queryKeys } from "@/lib/api/queryKeys";
-import { AuthProvider } from "@/lib/auth";
+import { AuthProvider, useCurrentUser } from "@/lib/auth";
 import { usePushNotifications } from "@/lib/push";
 import { tokenCache } from "@/lib/clerk-token-cache";
 import { isIos } from "@/lib/platform";
 import { colors } from "@/lib/colors";
+import { needsOnboarding } from "@/lib/user";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -102,6 +105,25 @@ function PushNotifications() {
   return null;
 }
 
+// Shows the "What's new" sheet once per account (on whichever device opens
+// the new build first) to a set-up user who hasn't closed this version yet.
+function WhatsNew() {
+  const { me, isSignedIn } = useCurrentUser();
+  const settings = useSettings(isSignedIn && !!me && !needsOnboarding(me.username));
+  const update = useUpdateSettings();
+  const [closed, setClosed] = useState(false);
+
+  if (closed || !settings.data || settings.data.whatsNewSeen >= WHATS_NEW_VERSION) return null;
+  return (
+    <WhatsNewSheet
+      onClose={() => {
+        setClosed(true);
+        update.mutate({ whatsNewSeen: WHATS_NEW_VERSION });
+      }}
+    />
+  );
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Roboto_400Regular,
@@ -160,6 +182,7 @@ export default function RootLayout() {
                   <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                   <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 </Stack>
+                <WhatsNew />
               </ForceUpdateGate>
             </ThemeProvider>
           </AuthProvider>

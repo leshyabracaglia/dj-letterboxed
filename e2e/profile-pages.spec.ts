@@ -147,6 +147,9 @@ test("an ID on a night shows who named it, and what people think an open one is"
   await expect(text(page, "@alice thinks it's")).toBeVisible();
   await expect(text(page, "@carla thinks it's")).toBeVisible();
   await expect(text(page, "Sueño Latino")).toBeVisible();
+  // bob recorded it: anyone can play the clip, and report it.
+  await expect(shown(page.getByRole("button", { name: "Play the clip" }))).toBeVisible();
+  await expect(text(page, "Report clip")).toBeVisible();
 });
 
 test("a profile's lists open to their nights and sets, with notes", async ({ page }) => {

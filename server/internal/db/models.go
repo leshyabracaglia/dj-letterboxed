@@ -107,6 +107,9 @@ type ReviewTrack struct {
 	// Suggestions are what people think an unidentified track is, oldest
 	// first; only on a review's tracks, and only while it's unidentified.
 	Suggestions []TrackSuggestion `json:"suggestions,omitempty"`
+	// ClipDurationMs is the length of the recording of an unidentified track
+	// (streamed from GET /api/tracks/{id}/clip), if its poster made one.
+	ClipDurationMs *int32 `json:"clipDurationMs" extensions:"x-nullable"`
 }
 
 // TrackSuggestion is someone's answer to an ID request: what they think an

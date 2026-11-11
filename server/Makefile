@@ -20,8 +20,13 @@ migrate-up:
 migrate-down:
 	DATABASE_URL=$(DATABASE_URL) go run ./cmd/migrate down
 
+# Your own Clerk account, to give it a life in the fixtures (see
+# seedYou in cmd/seed): read from .env unless set on the command line.
+SEED_CLERK_ID ?= $(shell sed -n 's/^SEED_CLERK_ID=//p' .env 2>/dev/null)
+SEED_USERNAME ?= $(shell sed -n 's/^SEED_USERNAME=//p' .env 2>/dev/null)
+
 seed:
-	DATABASE_URL=$(DATABASE_URL) go run ./cmd/seed
+	DATABASE_URL=$(DATABASE_URL) SEED_CLERK_ID=$(SEED_CLERK_ID) SEED_USERNAME=$(SEED_USERNAME) go run ./cmd/seed
 
 # Drops all local dev tables (down), reapplies every migration (up), and
 # reloads the fixture data. Only ever targets DATABASE_URL (defaults to the

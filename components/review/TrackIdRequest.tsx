@@ -3,19 +3,23 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 
 import { FindTrack } from "@/components/log/TrackSheet";
+import { ModerationButton } from "@/components/ModerationSheet";
+import { ClipPlayer, ClipRecorder, type LocalClip } from "@/components/TrackClip";
 import { TrackRow } from "@/components/TrackRow";
 import { DashedButton, Sheet, Text } from "@/components/ui";
-import { errorMessage, unwrap, useApi } from "@/lib/api/client";
+import { apiUrl, errorMessage, unwrap, useApi } from "@/lib/api/client";
 import { patchCachedReview } from "@/lib/api/cache";
-import type { Review, ReviewTrack } from "@/lib/api/types";
+import { useUploadTrackClip } from "@/lib/api/hooks";
+import type { Review, ReviewDetail, ReviewTrack } from "@/lib/api/types";
 import { useCurrentUser } from "@/lib/auth";
 import { showAlert } from "@/lib/dialog";
 
-/** An unidentified track's ID request, under it on its night's page: what
- * people think it is, and a way to say. The night's poster accepts the
- * right one (or names it themselves); whoever suggested one can take it
- * back. */
-export function TrackIdRequest({ review, track }: { review: Review; track: ReviewTrack }) {
+/** An unidentified track's ID request, under it on its night's page: its
+ * clip if it has one (to play, or report; its poster can record or remove
+ * it), what people think it is, and a way to say. The night's poster
+ * accepts the right one (or names it themselves); whoever suggested one can
+ * take it back. */
+export function TrackIdRequest({ review, track }: { review: ReviewDetail; track: ReviewTrack }) {
   const api = useApi();
   const queryClient = useQueryClient();
   const { me } = useCurrentUser();
@@ -53,6 +57,17 @@ export function TrackIdRequest({ review, track }: { review: Review; track: Revie
     onSuccess: applied,
     onError,
   });
+  const uploadClip = useUploadTrackClip();
+  const recordClip = useMutation({
+    mutationFn: (clip: LocalClip) => uploadClip(track.id, clip.uri, clip.durationMs),
+    onSuccess: applied,
+    onError,
+  });
+  const removeClip = useMutation({
+    mutationFn: () => unwrap(api.DELETE("/api/tracks/{id}/clip", { params: { path: { id: track.id } } })),
+    onSuccess: applied,
+    onError,
+  });
 
   if (track.title) return null;
   const suggestions = track.suggestions ?? [];
@@ -60,6 +75,29 @@ export function TrackIdRequest({ review, track }: { review: Review; track: Revie
 
   return (
     <View className="mt-2 gap-2 border-l-2 border-paper/30 pl-3">
+      {track.clipDurationMs ? (
+        <View className="gap-1">
+          <ClipPlayer uri={apiUrl(`/api/tracks/${track.id}/clip`)} durationMs={track.clipDurationMs} />
+          {isOwner ? (
+            <SuggestionAction
+              label="Remove the clip"
+              disabled={removeClip.isPending}
+              onPress={() => removeClip.mutate()}
+            />
+          ) : (
+            <View className="self-start">
+              <ModerationButton user={review.user} target={{ trackId: track.id }} label="Report clip" />
+            </View>
+          )}
+        </View>
+      ) : (
+        isOwner &&
+        (recordClip.isPending ? (
+          <Text className="text-sm text-paper/60">Uploading the clip…</Text>
+        ) : (
+          <ClipRecorder onRecorded={(clip) => recordClip.mutate(clip)} />
+        ))
+      )}
       {suggestions.map((s) => (
         <View key={s.id} className="gap-1.5">
           <Text variant="display" className="text-sm text-paper/70">

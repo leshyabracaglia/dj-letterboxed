@@ -47,8 +47,9 @@ time.
 
 - Follow people and get a feed of their logs.
 - Like and comment on reviews.
-- ID requests: suggest what an unidentified track on someone's night was;
-  they accept the right one and you get the credit.
+- ID requests: record up to 15 seconds of a track you couldn't name, and
+  others can listen and suggest what it was; accept the right one and they
+  get the credit.
 - Tag the friends you went with on a night.
 - Check in at a club, and if a friend (you follow each other) checks in there
   the same night, you both get a notification that the other is there too.

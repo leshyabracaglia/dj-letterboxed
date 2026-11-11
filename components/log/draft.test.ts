@@ -6,6 +6,7 @@ import {
   type DraftLineupEntry,
   type DraftTrack,
   emptyDraft,
+  loggedTracks,
   type ReviewDraft,
   trackInputCount,
   trackInputs,
@@ -73,5 +74,24 @@ describe("trackInputs", () => {
   it("leaves out empty tracks and those of a DJ no longer caught", () => {
     expect(trackInputs([blank, { ...blank, djKey: "dj-gone", match: rej }], [dixon], djIdFor)).toEqual([]);
     expect(trackInputCount([blank, { ...blank, djKey: "dj-gone" }, { ...blank, djKey: dixon.key }], [dixon])).toBe(2);
+  });
+
+  it("keeps each logged track with the draft it came from, in order, recording and all", () => {
+    const clip = { uri: "file:///clip.m4a", durationMs: 6000 };
+    const id = { ...blank, key: "id", djKey: dixon.key, note: "Strings at 4am", clip };
+    const logged = loggedTracks(
+      [{ ...blank, key: "empty" }, { ...blank, key: "rej", match: rej }, id],
+      [dixon],
+      djIdFor,
+    );
+    expect(logged.map(({ track }) => track.key)).toEqual(["rej", "id"]);
+    expect(logged[1].track.clip).toBe(clip);
+    expect(logged[1].input).toEqual({
+      djId: "dj-dixon",
+      source: "manual",
+      title: undefined,
+      artist: undefined,
+      note: "Strings at 4am",
+    });
   });
 });

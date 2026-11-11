@@ -82,4 +82,41 @@ describe("logFormReducer", () => {
     );
     expect(state).toEqual({ ...initialLogFormState(), draft: expect.any(Object) });
   });
+
+  describe("tracks", () => {
+    const rej = { key: "t1", title: "Rej", artist: "Âme", note: "" };
+
+    it("opens the track sheet for a DJ's set, and saving adds the track and closes it", () => {
+      const opened = run({ type: "openTrackSheet", djKey: "dj-dj-dixon" });
+      expect(opened.trackSheet).toEqual({ djKey: "dj-dj-dixon", editingKey: undefined });
+
+      const saved = logFormReducer(opened, { type: "saveTrack", track: { ...rej, djKey: "dj-dj-dixon" } });
+      expect(saved.draft.tracks).toEqual([{ ...rej, djKey: "dj-dj-dixon" }]);
+      expect(saved.trackSheet).toBeUndefined();
+    });
+
+    it("saving an edited track replaces it in place", () => {
+      const state = run(
+        { type: "saveTrack", track: rej },
+        { type: "saveTrack", track: { key: "t2", title: "", artist: "", note: "Sax at 3am" } },
+        { type: "openTrackSheet", editingKey: "t1" },
+        { type: "saveTrack", track: { ...rej, note: "The riff" } },
+      );
+      expect(state.draft.tracks.map((t) => [t.key, t.note])).toEqual([
+        ["t1", "The riff"],
+        ["t2", "Sax at 3am"],
+      ]);
+    });
+
+    it("removes a track, and closing the sheet saves nothing", () => {
+      const state = run(
+        { type: "saveTrack", track: rej },
+        { type: "openTrackSheet" },
+        { type: "closeTrackSheet" },
+        { type: "removeTrack", key: "t1" },
+      );
+      expect(state.draft.tracks).toEqual([]);
+      expect(state.trackSheet).toBeUndefined();
+    });
+  });
 });

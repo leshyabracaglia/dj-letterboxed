@@ -23,6 +23,12 @@ function resolveApiUrl() {
 
 const API_URL = resolveApiUrl();
 
+/** A full URL for an API path, for the little openapi-fetch doesn't cover:
+ * a media URL handed to a player, or a raw file upload. */
+export function apiUrl(path: string): string {
+  return `${API_URL}${path}`;
+}
+
 export class ApiError extends Error {
   code: string;
   status: number;
@@ -42,7 +48,7 @@ export function errorMessage(err: unknown, fallback: string): string {
 // The server's error body: `{ error: { code, message } }`.
 type ErrorBody = { error?: { code?: string; message?: string } };
 
-function toApiError(response: Response, body: unknown): ApiError {
+export function toApiError(response: Response, body: unknown): ApiError {
   const { error } = (body ?? {}) as ErrorBody;
   return new ApiError(response.status, error?.code ?? "UNKNOWN", error?.message ?? response.statusText);
 }

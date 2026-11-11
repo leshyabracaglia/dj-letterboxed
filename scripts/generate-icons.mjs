@@ -1,5 +1,5 @@
-// Renders the app's logo - the red "5" stamp (components/ui/Stamp.tsx, from
-// when nights were rated, drawn here as SVG at icon resolution) - into every icon asset
+// Renders the app's logo - the red star stamp (components/ui/Stamp.tsx's
+// look, drawn here as SVG at icon resolution) - into every icon asset
 // app.json points at, plus the favicon and the logo mark. Uses the Playwright
 // Chromium the e2e suite already installs, so the stamp's ring text is set in
 // the real Jersey 10 font.
@@ -17,10 +17,21 @@ const font = readFileSync(
 ).toString("base64");
 
 const RED = "#E5484D";
-const RING_TEXT = "BEATBOXD · RATED · BEATBOXD · RATED · ";
+const RING_TEXT = "BEATBOXD · LOGGED · BEATBOXD · LOGGED · ";
+
+/** The points of a five-pointed star centered on (cx, cy), `r` to its tips,
+ * pointing straight up. */
+function starPoints(cx, cy, r) {
+  const inner = r * 0.42;
+  return Array.from({ length: 10 }, (_, i) => {
+    const radius = i % 2 ? inner : r;
+    const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+    return `${(cx + radius * Math.cos(angle)).toFixed(2)},${(cy + radius * Math.sin(angle)).toFixed(2)}`;
+  }).join(" ");
+}
 
 /** The stamp as an SVG `size` px square: black disc, red rim, the ring text
- * around it, an inner ring and a white 5. Proportions match Stamp. With
+ * around it, an inner ring and a white star. Proportions match Stamp. With
  * `mono`, everything is drawn in one flat white (Android's themed icon). */
 function stampSvg(size, { mono = false, rotate = -8 } = {}) {
   const c = size / 2;
@@ -32,7 +43,6 @@ function stampSvg(size, { mono = false, rotate = -8 } = {}) {
   const innerR = size * 0.3;
   const fg = mono ? "#FFFFFF" : RED;
   const disc = mono ? "none" : "#050405";
-  const five = mono ? "#FFFFFF" : "#FFFFFF";
   return `
 <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <defs>
@@ -44,7 +54,7 @@ function stampSvg(size, { mono = false, rotate = -8 } = {}) {
       <textPath href="#ring" textLength="${2 * Math.PI * textR * 0.985}" lengthAdjust="spacing">${RING_TEXT}</textPath>
     </text>
     <circle cx="${c}" cy="${c}" r="${innerR}" fill="none" stroke="${fg}" stroke-width="${size * 0.015}" />
-    <text x="${c}" y="${c}" font-size="${size * 0.4}" fill="${five}" text-anchor="middle" dominant-baseline="central">5</text>
+    <polygon points="${starPoints(c, c + innerR * 0.06, innerR * 0.72)}" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="${size * 0.012}" stroke-linejoin="round" />
   </g>
 </svg>`;
 }

@@ -1,11 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useApi, unwrap } from "@/lib/api/client";
+import { useUploadTrackClip } from "@/lib/api/hooks";
 import { queryKeys } from "@/lib/api/queryKeys";
 import type { CreateDjInput, CreateReviewInput, Dj, Paginated, Review } from "@/lib/api/types";
 import { useCurrentUser } from "@/lib/auth";
+import { showAlert } from "@/lib/dialog";
 import { parseDateInputValue } from "@/lib/format";
-import { type DraftLineupEntry, type EventPick, type ReviewDraft, trackInputs, type VenuePick } from "./draft";
+import { type DraftLineupEntry, type EventPick, loggedTracks, type ReviewDraft, type VenuePick } from "./draft";
 
 type WhereAndWhen = Omit<CreateReviewInput, "reviewText" | "lineup" | "tracks" | "tags" | "taggedUserIds">;
 
@@ -53,6 +55,7 @@ export function useLogNight() {
   const createDj = useMutation({
     mutationFn: (input: CreateDjInput) => unwrap(api.POST("/api/djs", { body: input })),
   });
+  const uploadClip = useUploadTrackClip();
   const createReview = useMutation({
     mutationFn: (input: CreateReviewInput) => unwrap(api.POST("/api/reviews", { body: input })),
   });
@@ -85,18 +88,36 @@ export function useLogNight() {
     }
     const djFor = (entry: DraftLineupEntry) => djsByKey.get(entry.key)!;
 
+    const tracks = loggedTracks(draft.tracks, caught, (e) => djFor(e).id);
     // The response is the whole post, as the feed and profiles show it.
-    const post = await createReview.mutateAsync({
+    let post = await createReview.mutateAsync({
       ...whereAndWhen(draft),
       reviewText: draft.reviewText.trim() || undefined,
       lineup: caught.map((e) => ({
         djId: djFor(e).id,
         reviewText: e.reviewText.trim() || undefined,
       })),
-      tracks: trackInputs(draft.tracks, caught, (e) => djFor(e).id),
+      tracks: tracks.map(({ input }) => input),
       tags: draft.tags,
       taggedUserIds: draft.taggedUsers.map((u) => u.id),
     });
+
+    // Recordings of IDs go up once their tracks exist (the saved tracks come
+    // back in the order they were sent). A failed one doesn't undo the
+    // night: it can be recorded again from the night's page.
+    let clipFailed = false;
+    for (const [i, { track }] of tracks.entries()) {
+      const saved = post.tracks[i];
+      if (!track.clip || !saved || saved.title) continue;
+      try {
+        post = await uploadClip(saved.id, track.clip.uri, track.clip.durationMs);
+      } catch {
+        clipFailed = true;
+      }
+    }
+    if (clipFailed) {
+      showAlert("A clip didn't upload", "Your night's logged. You can record the clip again from its page.");
+    }
 
     const reviewsKey = queryKeys.reviews.byUser(me.username);
     // Profiles list newest-seen first, so slot it in by seenAt rather than

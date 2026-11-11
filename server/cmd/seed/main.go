@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"os"
 	"time"
@@ -608,6 +609,8 @@ func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User,
 	must(queries.CreateTrackSuggestion(ctx, pool, innervisionsID, carla.ID, queries.TrackSuggestionInput{
 		Source: domain.TrackSourceManual, Title: "Sueño Latino", Artist: strPtr("Sueño Latino"),
 	}))
+	// bob recorded the strings ID at the club, so it has a clip to play.
+	must(0, queries.SetTrackClip(ctx, pool, innervisionsID, "audio/mp4", idClip, 6000))
 	acid := must(queries.CreateTrackSuggestion(ctx, pool, idTrack("The acid track he closed on"), dev.ID, queries.TrackSuggestionInput{
 		Source: domain.TrackSourceManual, Title: "Acid Tracks", Artist: strPtr("Phuture"),
 	}))
@@ -653,8 +656,239 @@ func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User,
 		VALUES ($1, $2, 25, 10, '2026-06-06T00:30:00Z')`, carla.ID, fabric.ID))
 	must(0, queries.SetFavoriteVenues(ctx, pool, carla.ID, []string{goodRoom.ID, fabric.ID}))
 	must(0, queries.SetFavoriteVenues(ctx, pool, bob.ID, []string{mirage.ID}))
+
+	// newbie just signed up: no nights, avatar, bio, lists or followers,
+	// for every empty state on a profile. They follow carla.
+	newbie := must(queries.CreateUser(ctx, pool, "seed_newbie", "newbie", nil, nil, nil))
+	must(queries.Follow(ctx, pool, newbie.ID, carla.ID))
+
+	// rowdy left a comment on the marathon night that alice blocked them
+	// over (so she doesn't see it, or rowdy) and carla reported.
+	rowdy := must(queries.CreateUser(ctx, pool, "seed_rowdy", "rowdy", strPtr("Rowdy"), strPtr("Here for the afters."), nil))
+	rowdyComment := must(queries.AddComment(ctx, pool, marathonNight.ID, rowdy.ID, "Twelve hours of noodling, you lot will clap for anything."))
+	must(0, queries.Block(ctx, pool, alice.ID, rowdy.ID))
+	must(queries.CreateReport(ctx, pool, queries.CreateReportParams{
+		ReporterID: carla.ID, ReportedUserID: rowdy.ID, CommentID: &rowdyComment.ID,
+		Reason: "harassment", Content: &rowdyComment.Body,
+	}))
+
+	if clerkID := os.Getenv("SEED_CLERK_ID"); clerkID != "" {
+		seedYou(ctx, pool, clerkID, logNight, youFixtures{
+			alice: alice, bob: bob, carla: carla, dev: dev, newbie: newbie, rowdy: rowdy,
+			rushNight: rushNight, marathonNight: marathonNight, closers: closers,
+			kettama: kettama, honey: honey, djPython: djPython, shygirl: shygirl, peggy: peggy, joy: joy,
+			goodRoom: goodRoom, nowadays: nowadays, leBain: leBain, mirage: mirage,
+			rush: rush, misterSat: misterSat,
+		})
+	}
+
+	// Every follow, like, comment and tag above left the notification the
+	// app would have sent (the ID and here_too ones were made as they
+	// happened). Then they're spread out five hours apart, newest first,
+	// with each person having read all but their newest three.
+	must(pool.Exec(ctx, `
+		INSERT INTO notifications (user_id, actor_id, type, review_id, comment_id)
+		SELECT * FROM (
+			SELECT following_id AS user_id, follower_id AS actor_id, 'follow' AS type, NULL::uuid AS review_id, NULL::uuid AS comment_id FROM follows
+			UNION ALL
+			SELECT r.user_id, l.user_id, 'like', r.id, NULL FROM review_likes l JOIN reviews r ON r.id = l.review_id
+			UNION ALL
+			SELECT r.user_id, c.user_id, 'comment', r.id, c.id FROM review_comments c JOIN reviews r ON r.id = c.review_id
+			UNION ALL
+			SELECT t.tagged_user_id, r.user_id, 'tag', r.id, NULL FROM review_tags t JOIN reviews r ON r.id = t.review_id
+		) n
+		WHERE n.user_id <> n.actor_id AND NOT EXISTS (
+			SELECT 1 FROM blocks
+			WHERE (blocker_id = n.user_id AND blocked_id = n.actor_id) OR (blocker_id = n.actor_id AND blocked_id = n.user_id)
+		)
+		ON CONFLICT DO NOTHING`))
+	must(pool.Exec(ctx, `
+		UPDATE notifications n SET created_at = now() - interval '5 hours' * o.rn
+		FROM (
+			SELECT id, row_number() OVER (PARTITION BY user_id ORDER BY created_at DESC, id) - 1 AS rn
+			FROM notifications
+		) o
+		WHERE o.id = n.id`))
+	must(pool.Exec(ctx, "UPDATE users SET notifications_seen_at = now() - interval '12 hours'"))
 	return nil
 }
+
+// youFixtures is what seedYou builds on from seedVariations.
+type youFixtures struct {
+	alice, bob, carla, dev, newbie, rowdy         *db.User
+	rushNight, marathonNight                      *db.Review
+	closers                                       *queries.List
+	kettama, honey, djPython, shygirl, peggy, joy *db.Dj
+	goodRoom, nowadays, leBain, mirage            *db.Venue
+	rush, misterSat                               *db.Event
+}
+
+// seedYou gives the developer's own Clerk account (SEED_CLERK_ID, set in
+// server/.env; SEED_USERNAME names it, "you" by default) a life in the
+// fixtures, so signing in locally shows a full feed, profile and
+// notifications rather than a brand new account: nights of every kind
+// (verified, with IDs waiting to be named, written about and not), friends
+// and followers, a night they were tagged on but haven't logged, an ID they
+// named, a list, favorites, someone blocked, and the What's new sheet still
+// to see. It stays clear of what e2e/ asserts on, and e2e never sets it.
+func seedYou(ctx context.Context, pool queries.DBTX, clerkID string, logNight logNightFunc, f youFixtures) {
+	username := os.Getenv("SEED_USERNAME")
+	if username == "" {
+		username = "you"
+	}
+	you := must(queries.CreateUser(ctx, pool, clerkID, username, strPtr("You"),
+		strPtr("Logging every night out so I remember what they played."), strPtr("https://i.pravatar.cc/300?img=12")))
+	must(pool.Exec(ctx, "UPDATE users SET whats_new_seen = 0 WHERE id = $1", you.ID))
+	log := func(n night) *db.Review { n.user = you; return must(logNight(n)) }
+
+	// Rush at Good Room with carla, checked in (verified) - she and you
+	// were each told the other was there too - and tagged by her.
+	rushNight := log(night{
+		event: f.rush, venue: f.goodRoom, seenAt: "2026-10-03T22:00:00Z", isNight: true,
+		text:   "Went in for one track and stayed till close. KETTAMA played every edit you've heard and somehow it still worked.",
+		tags:   []string{"sweaty", "packed"},
+		lineup: []set{wrote(f.kettama, "Breaks into piano house into breaks, for two hours straight. The back room never stopped jumping.")},
+		tracks: []track{
+			onSpotify(f.kettama, "7yourKettamaTrack00001", "It Gets Better", "KETTAMA", "The drop everyone was waiting for."),
+		},
+	})
+	must(pool.Exec(ctx, `
+		INSERT INTO check_ins (user_id, venue_id, distance_m, accuracy_m, created_at)
+		VALUES ($1, $2, 55, 20, '2026-10-04T02:45:00Z')`, you.ID, f.goodRoom.ID))
+	must(0, queries.SetReviewTags(ctx, pool, f.rushNight.ID, []string{f.dev.ID, you.ID}))
+	for _, pair := range [][2]*db.User{{you, f.carla}, {f.carla, you}} {
+		must(queries.CreateNotification(ctx, pool, queries.CreateNotificationParams{
+			UserID: pair[0].ID, ActorID: pair[1].ID, Type: "here_too", VenueID: &f.goodRoom.ID,
+		}))
+	}
+
+	// DJ Python at Le Bain: two IDs, one with a clip and two suggestions to
+	// pick from, one with nothing yet (record a clip for it on device).
+	leBainNight := log(night{
+		venue: f.leBain, seenAt: "2026-10-24T23:00:00Z", isNight: true,
+		text: "Rooftop in the cold with blankets. Slow, warm, perfect.", tags: []string{"chill", "friendly"},
+		lineup: []set{wrote(f.djPython, "Ninety minutes of deep reggaeton that never got above a whisper.")},
+		tracks: []track{
+			unidentified(f.djPython, "ID - the one with the rain sample and the marimba. Recorded a bit of it."),
+			unidentified(nil, "Whatever was playing in the lift on the way up."),
+		},
+	})
+	var clipID string
+	must(0, pool.QueryRow(ctx, "SELECT id FROM review_tracks WHERE review_id = $1 AND dj_id IS NOT NULL", leBainNight.ID).Scan(&clipID))
+	must(0, queries.SetTrackClip(ctx, pool, clipID, "audio/mp4", idClip, 6000))
+	must(queries.CreateTrackSuggestion(ctx, pool, clipID, f.alice.ID, queries.TrackSuggestionInput{
+		Source: domain.TrackSourceSpotify, ExternalID: strPtr("5kSuggestedMarimba0000a"), URL: strPtr("https://open.spotify.com/track/5kSuggestedMarimba0000a"),
+		Title: "Dulce", Artist: strPtr("DJ Python"), ArtworkURL: strPtr(seedArt("dulce")),
+	}))
+	must(queries.CreateTrackSuggestion(ctx, pool, clipID, f.carla.ID, queries.TrackSuggestionInput{
+		Source: domain.TrackSourceManual, Title: "Pia", Artist: strPtr("DJ Python"),
+	}))
+	for _, actor := range []*db.User{f.alice, f.carla} {
+		must(queries.CreateNotification(ctx, pool, queries.CreateNotificationParams{
+			UserID: you.ID, ActorID: actor.ID, Type: "id_suggested", ReviewID: &leBainNight.ID,
+		}))
+	}
+
+	// Mister Saturday: a day into night with nothing said about the night
+	// itself, just two sets - the popular one of yours.
+	misterSatNight := log(night{
+		event: f.misterSat, venue: f.nowadays, seenAt: "2026-10-11T16:00:00Z", isDay: true, isNight: true,
+		tags: []string{"sunset", "friendly"},
+		lineup: []set{
+			wrote(f.honey, "She played Thinking of You at sunset again and I cried again."),
+			wrote(f.joy, "Garage at midnight, the whole yard skipping."),
+			seen(f.peggy),
+		},
+		tracks: []track{
+			onSpotify(f.honey, "0r4bwyQf8rTn6CBOEHTgAp", "Thinking of You", "Sister Sledge", ""),
+			shazamed(f.joy, "1600000001", "flight fm", "Joy Orbison", "Shazam got it on the third try."),
+		},
+	})
+
+	// A night with nothing written at all: just where and who.
+	quietNight := log(night{
+		venue: f.mirage, seenAt: "2026-08-15T21:00:00Z", isNight: true,
+		lineup: []set{seen(f.peggy), seen(f.shygirl)},
+	})
+
+	// Likes and comments on yours (rowdy's is hidden: you blocked them).
+	for _, l := range []struct {
+		review *db.Review
+		users  []*db.User
+	}{
+		{misterSatNight, []*db.User{f.alice, f.bob, f.carla, f.dev}},
+		{rushNight, []*db.User{f.carla}},
+		{leBainNight, []*db.User{f.bob}},
+	} {
+		for _, u := range l.users {
+			must(queries.LikeReview(ctx, pool, l.review.ID, u.ID))
+		}
+	}
+	for _, c := range []struct {
+		review *db.Review
+		user   *db.User
+		body   string
+	}{
+		{misterSatNight, f.carla, "Saw you by the speaker during Joy, should've said hi!"},
+		{misterSatNight, f.bob, "Thinking of You at sunset is undefeated."},
+		{rushNight, f.carla, "Best night of the month."},
+		{leBainNight, f.rowdy, "Rooftop sets are for people who don't like dancing."},
+	} {
+		must(queries.AddComment(ctx, pool, c.review.ID, c.user.ID, c.body))
+	}
+	// Your own likes and comments elsewhere.
+	must(queries.LikeReview(ctx, pool, f.marathonNight.ID, you.ID))
+	must(queries.LikeReview(ctx, pool, f.rushNight.ID, you.ID))
+	must(queries.AddComment(ctx, pool, f.rushNight.ID, you.ID, "That back room! See you at the next one."))
+
+	// carla is a friend (you follow each other); you follow alice and bob,
+	// and bob follows back but alice doesn't; newbie follows you too.
+	for _, fl := range [][2]*db.User{
+		{you, f.alice}, {you, f.bob}, {you, f.carla}, {f.carla, you}, {f.bob, you}, {f.newbie, you},
+	} {
+		must(queries.Follow(ctx, pool, fl[0].ID, fl[1].ID))
+	}
+
+	// bob tagged you on the marathon, which you haven't logged yourself,
+	// so its notification offers to log it.
+	must(0, queries.SetReviewTags(ctx, pool, f.marathonNight.ID, []string{f.alice.ID, f.carla.ID, you.ID}))
+
+	// You named the lo-fi house ID on dev's Good Room night, and dev
+	// accepted it. Your suggestion on bob's Innervisions ID is still
+	// waiting, alongside alice's and carla's.
+	var lofiID, stringsID string
+	must(0, pool.QueryRow(ctx, "SELECT id FROM review_tracks WHERE note LIKE 'Some lo-fi house record%'").Scan(&lofiID))
+	must(0, pool.QueryRow(ctx, "SELECT id FROM review_tracks WHERE note LIKE 'ID - the one with the strings%'").Scan(&stringsID))
+	lofi := must(queries.CreateTrackSuggestion(ctx, pool, lofiID, you.ID, queries.TrackSuggestionInput{
+		Source: domain.TrackSourceManual, Title: "Tonight", Artist: strPtr("DJ Seinfeld"),
+	}))
+	must(0, queries.AcceptTrackSuggestion(ctx, pool, lofi))
+	must(queries.CreateNotification(ctx, pool, queries.CreateNotificationParams{
+		UserID: you.ID, ActorID: f.dev.ID, Type: "id_accepted", ReviewID: strPtr(reviewOfTrack(ctx, pool, lofiID)),
+	}))
+	must(queries.CreateTrackSuggestion(ctx, pool, stringsID, you.ID, queries.TrackSuggestionInput{
+		Source: domain.TrackSourceManual, Title: "Can You Feel It", Artist: strPtr("Mr. Fingers"),
+	}))
+	must(queries.CreateNotification(ctx, pool, queries.CreateNotificationParams{
+		UserID: f.bob.ID, ActorID: you.ID, Type: "id_suggested", ReviewID: strPtr(reviewOfTrack(ctx, pool, stringsID)),
+	}))
+
+	// A list of your own, your set on bob's list, favorites, and a block.
+	list := must(queries.CreateList(ctx, pool, you.ID, "Nights I'd relive", strPtr("If I could go back to one, it'd be one of these.")))
+	must(0, queries.AddListItem(ctx, pool, list.ID, misterSatNight.ID, &f.honey.ID, strPtr("Sunset, again.")))
+	must(0, queries.AddListItem(ctx, pool, list.ID, f.marathonNight.ID, nil, strPtr("Wasn't even there, still counts.")))
+	must(0, queries.AddListItem(ctx, pool, list.ID, rushNight.ID, nil, nil))
+	must(0, queries.AddListItem(ctx, pool, f.closers.ID, misterSatNight.ID, &f.joy.ID, nil))
+	must(0, queries.SetFavoriteReviews(ctx, pool, you.ID, []string{misterSatNight.ID, rushNight.ID, quietNight.ID}))
+	must(0, queries.SetFavoriteVenues(ctx, pool, you.ID, []string{f.goodRoom.ID, f.nowadays.ID, f.leBain.ID}))
+	must(0, queries.Block(ctx, pool, you.ID, f.rowdy.ID))
+}
+
+// idClip is a six-second stand-in recording for a seeded ID (a kick and a
+// two-note synth line), as the app records them: AAC in an M4A file.
+//
+//go:embed id-clip.m4a
+var idClip []byte
 
 // reviewOfTrack is the review a seeded track is on.
 func reviewOfTrack(ctx context.Context, pool queries.DBTX, trackID string) string {

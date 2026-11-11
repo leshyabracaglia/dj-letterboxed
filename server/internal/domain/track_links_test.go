@@ -71,3 +71,22 @@ func TestParseTrackLink(t *testing.T) {
 		}
 	}
 }
+
+// TestIsTrackArtworkURL: a track shows cover art only from the services
+// tracks come from, over https, so a typed-in URL can't be a tracking pixel.
+func TestIsTrackArtworkURL(t *testing.T) {
+	for raw, want := range map[string]bool{
+		"https://i.scdn.co/image/ab67616d0000b273":                        true,
+		"https://i1.sndcdn.com/artworks-000067273316-smsiqx-t500x500.jpg": true,
+		"https://is1-ssl.mzstatic.com/image/thumb/Music/300x300bb.jpg":    true,
+		"http://i.scdn.co/image/ab67616d0000b273":                         false,
+		"https://tracker.example/pixel.gif":                               false,
+		"https://i.scdn.co.evil.example/image.jpg":                        false,
+		"https://evil.example/sndcdn.com/image.jpg":                       false,
+		"not a url": false,
+	} {
+		if got := IsTrackArtworkURL(raw); got != want {
+			t.Errorf("IsTrackArtworkURL(%q) = %v, want %v", raw, got, want)
+		}
+	}
+}

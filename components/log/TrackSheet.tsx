@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Image, Pressable, ScrollView, TextInput, View } from "react-native";
 
+import { ClipPlayer, ClipRecorder } from "@/components/TrackClip";
 import { TrackRow } from "@/components/TrackRow";
 import { Button, DashedButton, Icon, KEYBOARD_DISMISS_PROPS, Sheet, Text } from "@/components/ui";
 import { errorMessage, unwrap, useApi } from "@/lib/api/client";
@@ -245,6 +246,29 @@ function TrackDetails({
           lines={3}
         />
       </View>
+
+      {unidentified && (
+        <View className="gap-2">
+          <FieldLabel>A clip (optional)</FieldLabel>
+          {track.clip ? (
+            <>
+              <ClipPlayer uri={track.clip.uri} durationMs={track.clip.durationMs} />
+              <Pressable
+                onPress={() => set({ clip: undefined })}
+                hitSlop={6}
+                accessibilityRole="button"
+                className="self-start"
+              >
+                <Text variant="display" className="text-base text-paper/70 underline">
+                  Record it again
+                </Text>
+              </Pressable>
+            </>
+          ) : (
+            <ClipRecorder onRecorded={(clip) => set({ clip })} />
+          )}
+        </View>
+      )}
 
       {!!error && <Text className="text-danger-dark">{error}</Text>}
       <Button onPress={save} className="py-3">

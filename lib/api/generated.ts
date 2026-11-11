@@ -1467,7 +1467,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Report a review, comment or user for moderation */
+        /** Report a review, comment, track clip or user for moderation */
         post: {
             parameters: {
                 query?: never;
@@ -2188,6 +2188,137 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tracks/{id}/clip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stream an unidentified track's recording (inline, for the app's player; supports Range requests) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description track id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "audio/mp4": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        /** Attach a recording (at most 15 seconds, AAC in MP4/M4A) to an unidentified track on the caller's own night, replacing any; the body is the audio */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description the recording's length */
+                    "X-Clip-Duration-Ms": number;
+                };
+                path: {
+                    /** @description track id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description the night, with the clip */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReviewDTO"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+                /** @description the track's already identified */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Remove the recording from an unidentified track on the caller's own night */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description track id */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description the night, without the clip */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReviewDTO"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -3692,6 +3823,11 @@ export interface components {
         ReviewTrack: {
             artist: string | null;
             artworkUrl: string | null;
+            /**
+             * @description ClipDurationMs is the length of the recording of an unidentified track
+             *     (streamed from GET /api/tracks/{id}/clip), if its poster made one.
+             */
+            clipDurationMs: number | null;
             djId: string | null;
             externalId: string | null;
             id: string;
@@ -3782,6 +3918,8 @@ export interface components {
              *     being away (see httpapi/reengage.go).
              */
             reengagePush: boolean;
+            /** @description The newest "What's new" sheet they've closed (0 = none). */
+            whatsNewSeen: number;
         };
         UserStatsResponse: {
             /** @description FavoriteVenues are the ones they pinned, #1 first (at most 3). */
@@ -3852,6 +3990,8 @@ export interface components {
             /** @description spam, harassment, hate, sexual, violence or other. */
             reason: string;
             reviewId?: string;
+            /** @description An audio clip on a track (reported against its night and poster). */
+            trackId?: string;
             userId?: string;
         };
         createReviewRequest: {
@@ -3932,6 +4072,11 @@ export interface components {
              *     been away.
              */
             reengagePush?: boolean;
+            /**
+             * @description The "What's new" sheet version just closed. It only ever moves
+             *     forward, so an older build can't make a newer sheet show again.
+             */
+            whatsNewSeen?: number;
         };
     };
     responses: never;

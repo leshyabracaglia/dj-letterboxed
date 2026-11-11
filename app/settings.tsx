@@ -1,5 +1,4 @@
 import { useUser } from "@clerk/expo";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, Stack } from "expo-router";
 import { useState } from "react";
 import { Pressable, Switch, View } from "react-native";
@@ -15,9 +14,9 @@ import {
   TextField,
   usePageContentStyle,
 } from "@/components/ui";
-import { errorMessage, useApi, unwrap } from "@/lib/api/client";
-import { queryKeys } from "@/lib/api/queryKeys";
-import type { UpdateSettingsInput, User } from "@/lib/api/types";
+import { errorMessage } from "@/lib/api/client";
+import { useSettings, useUpdateSettings } from "@/lib/api/hooks";
+import type { User } from "@/lib/api/types";
 import { useCurrentUser, useUpdateProfile } from "@/lib/auth";
 import { pickAndUploadAvatar } from "@/lib/avatarUpload";
 import { clerkErrorMessage } from "@/lib/clerk";
@@ -120,20 +119,10 @@ function EditProfileForm({ me }: { me: User }) {
 // comments, tags) are controlled from the phone's settings; the
 // re-engagement push is optional on top of those, so it gets its own switch.
 function NotificationSettings() {
-  const api = useApi();
-  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
 
-  const settings = useQuery({
-    queryKey: queryKeys.users.settings(),
-    queryFn: () => unwrap(api.GET("/api/users/me/settings")),
-  });
-  const update = useMutation({
-    mutationFn: (input: UpdateSettingsInput) => unwrap(api.PATCH("/api/users/me/settings", { body: input })),
-    onMutate: () => setError(null),
-    onSuccess: (saved) => queryClient.setQueryData(queryKeys.users.settings(), saved),
-    onError: (err) => setError(errorMessage(err, "Could not save that setting.")),
-  });
+  const settings = useSettings();
+  const update = useUpdateSettings();
 
   const reengagePush = update.isPending ? !!update.variables.reengagePush : (settings.data?.reengagePush ?? true);
 
@@ -149,7 +138,13 @@ function NotificationSettings() {
         </View>
         <Switch
           value={reengagePush}
-          onValueChange={(value) => update.mutate({ reengagePush: value })}
+          onValueChange={(value) => {
+            setError(null);
+            update.mutate(
+              { reengagePush: value },
+              { onError: (err) => setError(errorMessage(err, "Could not save that setting.")) },
+            );
+          }}
           disabled={!settings.data || update.isPending}
           trackColor={{ false: colors.muted, true: colors.primary }}
           accessibilityLabel="Notify me when people I follow log nights while I'm away"

@@ -11,7 +11,7 @@ import { useCurrentUser } from "@/lib/auth";
 import { ROUTES } from "@/lib/routes";
 import { colors } from "@/lib/colors";
 
-type ReportTarget = { reviewId: string } | { commentId: string } | { userId: string };
+type ReportTarget = { reviewId: string } | { commentId: string } | { trackId: string } | { userId: string };
 
 const REPORT_REASONS: { reason: ReportReason; label: string }[] = [
   { reason: "spam", label: "Spam" },

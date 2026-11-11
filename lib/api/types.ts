@@ -109,7 +109,9 @@ export type SetFavoritesInput = Schemas["setFavoritesRequest"];
 export type ReportReason = "spam" | "harassment" | "hate" | "sexual" | "violence" | "other";
 
 /** POST /reports: exactly one review, comment or user, and why. */
-export type CreateReportInput = ({ reviewId: string } | { commentId: string } | { userId: string }) & {
+export type CreateReportInput = (
+  { reviewId: string } | { commentId: string } | { trackId: string } | { userId: string }
+) & {
   reason: ReportReason;
 };
 

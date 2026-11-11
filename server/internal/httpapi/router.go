@@ -84,6 +84,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/users/{username}/favorites", h.GetFavoriteReviews)
 			r.Get("/users/{username}/lists", h.ListUserLists)
 			r.Get("/lists/{id}", h.GetList)
+			r.Get("/tracks/{id}/clip", h.GetTrackClip)
 			r.Get("/feed/popular", h.GetPopular)
 		})
 
@@ -118,6 +119,8 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.With(limitByUser(60, time.Hour)).Post("/tracks/{id}/suggestions", h.SuggestTrackID)
 			r.Post("/track-suggestions/{id}/accept", h.AcceptTrackSuggestion)
 			r.Delete("/track-suggestions/{id}", h.DeleteTrackSuggestion)
+			r.With(limitByUser(30, time.Hour)).Put("/tracks/{id}/clip", h.PutTrackClip)
+			r.Delete("/tracks/{id}/clip", h.DeleteTrackClip)
 
 			r.Get("/follows/is-following/{userId}", h.IsFollowing)
 			r.Post("/follows/{userId}", h.Follow)

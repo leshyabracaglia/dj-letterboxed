@@ -25,6 +25,19 @@ describe("review cache helpers", () => {
     expect(queryClient.getQueryData<any>(queryKeys.venues.byId("v1")).reviews[0].likeCount).toBe(2);
   });
 
+  it("patches a review on a list page, but not the list itself", () => {
+    // A list has an id and an author too; only a night has a lineup.
+    const review = aReview({ id: "r1", likeCount: 1 });
+    const list = { id: "r1", userId: "user-1", title: "Best closers", items: [{ id: "i1", review }] };
+    queryClient.setQueryData(queryKeys.lists.byId("l1"), list);
+
+    patchCachedReview(queryClient, "r1", (r) => ({ ...r, likeCount: 2 }));
+
+    const patched = queryClient.getQueryData<any>(queryKeys.lists.byId("l1"));
+    expect(patched.title).toBe("Best closers");
+    expect(patched.items[0].review.likeCount).toBe(2);
+  });
+
   it("leaves other reviews (and their objects) untouched", () => {
     const other = aReview({ id: "r2" });
     const data = { items: [other] };

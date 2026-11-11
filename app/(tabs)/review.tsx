@@ -307,6 +307,23 @@ export default function CreateReviewScreen() {
         <View className="mt-8 gap-4">
           <SectionHeading
             number={listedLineup.length ? "03" : "02"}
+            title="The tracks"
+            numberClassName="text-primary-dark"
+            aside={trackCount ? `${trackCount} of ${MAX_TRACKS}` : undefined}
+          />
+          <Card tint="accent" torn className="gap-3 pb-5">
+            <Tape style={{ top: -10, left: 40 }} rotate={-3} />
+            <Text className="text-zine-red-ink">
+              The ones that stuck with you, Shazamed or still an ID. Say who played them, or leave them as the
+              night&apos;s.
+            </Text>
+            <DraftTrackList tracks={draft.tracks.filter((t) => !t.djKey)} addLabel="Add a track" {...trackActions()} />
+          </Card>
+        </View>
+
+        <View className="mt-8 gap-4">
+          <SectionHeading
+            number={listedLineup.length ? "04" : "03"}
             title="The night overall"
             numberClassName="text-stamp-red"
           />
@@ -327,14 +344,6 @@ export default function CreateReviewScreen() {
                 onChangeText={(reviewText) => updateDraft({ reviewText })}
                 placeholder="How was the night?"
                 lines={5}
-              />
-            </View>
-            <View className="gap-2">
-              <FieldLabel>Tracks from the night</FieldLabel>
-              <DraftTrackList
-                tracks={draft.tracks.filter((t) => !t.djKey)}
-                addLabel="A track you can't pin to a DJ"
-                {...trackActions()}
               />
             </View>
             <View className="gap-2">

@@ -1,9 +1,14 @@
 package httpapi
 
 import (
+	"bytes"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -261,4 +266,162 @@ func (h *Handlers) trackSuggestion(w http.ResponseWriter, r *http.Request) (*que
 		return nil, false
 	}
 	return s, true
+}
+
+const (
+	// maxClipBytes bounds a clip's upload: 15 seconds of the app's AAC
+	// recording is well under it.
+	maxClipBytes = 512 << 10
+	maxClipMs    = 15_500
+)
+
+// clipContentTypes are the recordings the app makes (AAC in an MP4/M4A
+// container), which every platform can play back.
+var clipContentTypes = map[string]bool{"audio/mp4": true, "audio/m4a": true, "audio/x-m4a": true, "audio/aac": true}
+
+// readClip reads an uploaded clip from the request: an M4A file, by its
+// Content-Type and its bytes, of at most maxClipMs (the X-Clip-Duration-Ms
+// header) and maxClipBytes. It returns a 400 message if it isn't one.
+func readClip(r *http.Request) (audio []byte, durationMs int, errMsg string) {
+	contentType := strings.TrimSpace(strings.Split(r.Header.Get("Content-Type"), ";")[0])
+	if !clipContentTypes[contentType] {
+		return nil, 0, "a clip must be an M4A recording"
+	}
+	durationMs, err := strconv.Atoi(r.Header.Get("X-Clip-Duration-Ms"))
+	if err != nil || durationMs < 1 || durationMs > maxClipMs {
+		return nil, 0, "a clip can be at most 15 seconds"
+	}
+	audio, err = io.ReadAll(io.LimitReader(r.Body, maxClipBytes+1))
+	if err != nil {
+		return nil, 0, "couldn't read the clip"
+	}
+	// An MP4/M4A file starts with its "ftyp" box; anything else isn't one,
+	// whatever it says it is.
+	if len(audio) > maxClipBytes || len(audio) < 12 || string(audio[4:8]) != "ftyp" {
+		return nil, 0, "a clip must be an M4A recording of at most 15 seconds"
+	}
+	return audio, durationMs, ""
+}
+
+// clipTrack loads the track in the path for a change to its clip by its
+// night's poster; anyone else gets a 404. A track that's been named can't
+// take a clip (409).
+func (h *Handlers) clipTrack(w http.ResponseWriter, r *http.Request) (*db.ReviewTrack, *db.User, bool) {
+	user, ok := mustUser(w, r)
+	if !ok {
+		return nil, nil, false
+	}
+	trackID := chi.URLParam(r, "id")
+	if !uuidPattern.MatchString(trackID) {
+		NotFound(w)
+		return nil, nil, false
+	}
+	track, ownerID, err := queries.GetTrack(r.Context(), h.Pool, trackID)
+	if errors.Is(err, queries.ErrNotFound) || (err == nil && ownerID != user.ID) {
+		NotFound(w)
+		return nil, nil, false
+	}
+	if err != nil {
+		InternalError(w, err)
+		return nil, nil, false
+	}
+	if track.Title != nil {
+		WriteError(w, http.StatusConflict, "ALREADY_IDENTIFIED", "that track's already been named")
+		return nil, nil, false
+	}
+	return track, user, true
+}
+
+// PutTrackClip godoc
+//
+//	@Summary	Attach a recording (at most 15 seconds, AAC in MP4/M4A) to an unidentified track on the caller's own night, replacing any; the body is the audio
+//	@Tags		tracks
+//	@Accept		audio/mp4
+//	@Produce	json
+//	@Param		id					path		string	true	"track id"
+//	@Param		X-Clip-Duration-Ms	header		int		true	"the recording's length"
+//	@Success	200					{object}	ReviewDTO	"the night, with the clip"
+//	@Failure	400					{object}	errorEnvelope
+//	@Failure	404					{object}	errorEnvelope
+//	@Failure	409					{object}	errorEnvelope	"the track's already identified"
+//	@Security	BearerAuth
+//	@Router		/api/tracks/{id}/clip [put]
+func (h *Handlers) PutTrackClip(w http.ResponseWriter, r *http.Request) {
+	track, user, ok := h.clipTrack(w, r)
+	if !ok {
+		return
+	}
+	audio, durationMs, msg := readClip(r)
+	if msg != "" {
+		BadRequest(w, msg)
+		return
+	}
+	if err := queries.SetTrackClip(r.Context(), h.Pool, track.ID, "audio/mp4", audio, int32(durationMs)); err != nil {
+		InternalError(w, err)
+		return
+	}
+	h.reviewResponse(w, r, track.ReviewID, user.ID)
+}
+
+// DeleteTrackClip godoc
+//
+//	@Summary	Remove the recording from an unidentified track on the caller's own night
+//	@Tags		tracks
+//	@Produce	json
+//	@Param		id	path		string	true	"track id"
+//	@Success	200	{object}	ReviewDTO	"the night, without the clip"
+//	@Failure	404	{object}	errorEnvelope
+//	@Security	BearerAuth
+//	@Router		/api/tracks/{id}/clip [delete]
+func (h *Handlers) DeleteTrackClip(w http.ResponseWriter, r *http.Request) {
+	track, user, ok := h.clipTrack(w, r)
+	if !ok {
+		return
+	}
+	if err := queries.DeleteTrackClip(r.Context(), h.Pool, track.ID); err != nil {
+		InternalError(w, err)
+		return
+	}
+	h.reviewResponse(w, r, track.ReviewID, user.ID)
+}
+
+// GetTrackClip godoc
+//
+//	@Summary	Stream an unidentified track's recording (inline, for the app's player; supports Range requests)
+//	@Tags		tracks
+//	@Produce	audio/mp4
+//	@Param		id	path	string	true	"track id"
+//	@Success	200
+//	@Failure	404	{object}	errorEnvelope
+//	@Router		/api/tracks/{id}/clip [get]
+func (h *Handlers) GetTrackClip(w http.ResponseWriter, r *http.Request) {
+	trackID := chi.URLParam(r, "id")
+	if !uuidPattern.MatchString(trackID) {
+		NotFound(w)
+		return
+	}
+	clip, err := queries.GetTrackClip(r.Context(), h.Pool, trackID)
+	if errors.Is(err, queries.ErrNotFound) {
+		NotFound(w)
+		return
+	}
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	hidden, err := h.hiddenUsers(r.Context(), optionalUserID(r))
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	if hidden[clip.OwnerID] {
+		NotFound(w)
+		return
+	}
+	w.Header().Set("Content-Type", clip.ContentType)
+	// Played in place, not saved: no filename, and not kept in shared caches.
+	w.Header().Set("Content-Disposition", "inline")
+	w.Header().Set("Cache-Control", "private, max-age=300")
+	// ServeContent answers the Range requests iOS's player makes.
+	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(clip.Audio))
 }

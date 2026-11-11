@@ -42,10 +42,11 @@ func AddReviewTracks(ctx context.Context, q DBTX, reviewID string, tracks []Trac
 	return err
 }
 
-const reviewTrackCols = `t.id, t.review_id, t.dj_id, t.source, t.external_id, t.url, t.title, t.artist, t.artwork_url, t.note, t.identified_by_user_id`
+const reviewTrackCols = `t.id, t.review_id, t.dj_id, t.source, t.external_id, t.url, t.title, t.artist, t.artwork_url, t.note, t.identified_by_user_id,
+	(SELECT c.duration_ms FROM track_clips c WHERE c.track_id = t.id)`
 
 func scanReviewTrack(row pgx.Row, t *db.ReviewTrack, extra ...any) error {
-	return row.Scan(append([]any{&t.ID, &t.ReviewID, &t.DjID, &t.Source, &t.ExternalID, &t.URL, &t.Title, &t.Artist, &t.ArtworkURL, &t.Note, &t.IdentifiedByUserID}, extra...)...)
+	return row.Scan(append([]any{&t.ID, &t.ReviewID, &t.DjID, &t.Source, &t.ExternalID, &t.URL, &t.Title, &t.Artist, &t.ArtworkURL, &t.Note, &t.IdentifiedByUserID, &t.ClipDurationMs}, extra...)...)
 }
 
 // GetTracksByReviewIDs returns each given review's tracks in the order they
@@ -174,7 +175,8 @@ func GetTrackSuggestionRef(ctx context.Context, q DBTX, id string) (*TrackSugges
 }
 
 // AcceptTrackSuggestion fills in the suggestion's track with it, credits
-// whoever made it, and clears the track's suggestions (it's identified now).
+// whoever made it, and clears the track's suggestions and its clip (it's
+// identified now).
 func AcceptTrackSuggestion(ctx context.Context, q DBTX, id string) error {
 	if _, err := q.Exec(ctx, `
 		UPDATE review_tracks t
@@ -184,10 +186,51 @@ func AcceptTrackSuggestion(ctx context.Context, q DBTX, id string) error {
 		WHERE s.id = $1 AND t.id = s.track_id`, id); err != nil {
 		return err
 	}
+	if _, err := q.Exec(ctx, `
+		DELETE FROM track_clips
+		WHERE track_id = (SELECT track_id FROM track_suggestions WHERE id = $1)`, id); err != nil {
+		return err
+	}
 	_, err := q.Exec(ctx, `
 		DELETE FROM track_suggestions
 		WHERE track_id = (SELECT track_id FROM track_suggestions WHERE id = $1)`, id)
 	return err
+}
+
+// SetTrackClip saves (or replaces) the recording of trackID.
+func SetTrackClip(ctx context.Context, q DBTX, trackID, contentType string, audio []byte, durationMs int32) error {
+	_, err := q.Exec(ctx, `
+		INSERT INTO track_clips (track_id, content_type, audio, duration_ms) VALUES ($1, $2, $3, $4)
+		ON CONFLICT (track_id) DO UPDATE SET content_type = $2, audio = $3, duration_ms = $4, created_at = now()`,
+		trackID, contentType, audio, durationMs)
+	return err
+}
+
+func DeleteTrackClip(ctx context.Context, q DBTX, trackID string) error {
+	_, err := q.Exec(ctx, "DELETE FROM track_clips WHERE track_id = $1", trackID)
+	return err
+}
+
+// TrackClip is a clip's audio, with whose night it's on (to check who may
+// hear it).
+type TrackClip struct {
+	ContentType string
+	Audio       []byte
+	OwnerID     string
+}
+
+func GetTrackClip(ctx context.Context, q DBTX, trackID string) (*TrackClip, error) {
+	var c TrackClip
+	err := q.QueryRow(ctx, `
+		SELECT c.content_type, c.audio, r.user_id
+		FROM track_clips c
+		JOIN review_tracks t ON t.id = c.track_id
+		JOIN reviews r ON r.id = t.review_id
+		WHERE c.track_id = $1`, trackID).Scan(&c.ContentType, &c.Audio, &c.OwnerID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	return &c, err
 }
 
 func DeleteTrackSuggestion(ctx context.Context, q DBTX, id string) error {

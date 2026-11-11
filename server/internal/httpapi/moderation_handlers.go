@@ -158,13 +158,15 @@ type createReportRequest struct {
 	ReviewID  *string `json:"reviewId,omitempty"`
 	CommentID *string `json:"commentId,omitempty"`
 	UserID    *string `json:"userId,omitempty"`
+	// An audio clip on a track (reported against its night and poster).
+	TrackID *string `json:"trackId,omitempty"`
 	// spam, harassment, hate, sexual, violence or other.
 	Reason string `json:"reason"`
 }
 
 // CreateReport godoc
 //
-//	@Summary	Report a review, comment or user for moderation
+//	@Summary	Report a review, comment, track clip or user for moderation
 //	@Tags		moderation
 //	@Accept		json
 //	@Produce	json
@@ -208,13 +210,26 @@ func (h *Handlers) CreateReport(w http.ResponseWriter, r *http.Request) {
 			p.ReviewID, p.ReportedUserID, p.Content = &rv.ID, rv.UserID, rv.ReviewText
 			onReviewID = rv.ID
 		}
+	case req.TrackID != nil && uuidPattern.MatchString(*req.TrackID):
+		// The clip itself isn't copied into the report; the content says
+		// which track's clip it is, so it can be found (and deleted) by id.
+		var t *db.ReviewTrack
+		var ownerID string
+		if t, ownerID, err = queries.GetTrack(ctx, h.Pool, *req.TrackID); err == nil {
+			content := "Audio clip on track " + t.ID
+			if t.Note != nil {
+				content += ": " + *t.Note
+			}
+			p.ReviewID, p.ReportedUserID, p.Content = &t.ReviewID, ownerID, &content
+			onReviewID = t.ReviewID
+		}
 	case req.UserID != nil && uuidPattern.MatchString(*req.UserID):
 		var u *db.User
 		if u, err = queries.GetUserByID(ctx, h.Pool, *req.UserID); err == nil {
 			p.ReportedUserID, p.Content = u.ID, u.Bio
 		}
 	default:
-		BadRequest(w, "reviewId, commentId or userId is required")
+		BadRequest(w, "reviewId, commentId, trackId or userId is required")
 		return
 	}
 	if errors.Is(err, queries.ErrNotFound) {

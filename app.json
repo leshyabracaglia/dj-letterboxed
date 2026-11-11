@@ -72,6 +72,12 @@
           "color": "#884ACF",
           "defaultChannel": "default"
         }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Beatboxd uses the microphone only when you record a short clip of a track you couldn't name, so others can help identify it."
+        }
       ]
     ],
     "experiments": {

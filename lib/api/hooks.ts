@@ -6,11 +6,13 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useAuth } from "@clerk/expo";
 
 import { useCurrentUser } from "@/lib/auth";
 
-import { useApi, unwrap } from "./client";
+import { apiUrl, toApiError, useApi, unwrap } from "./client";
 import { queryKeys } from "./queryKeys";
+import type { UpdateSettingsInput, Review } from "./types";
 
 // The review tab writes a freshly created review into this same cache entry
 // (queryKeys.reviews.byUser), so keep the key and page size in one place.
@@ -226,5 +228,49 @@ export function useUserLists(username: string | undefined, reviewId?: string) {
             }),
           )
       : skipToken,
+  });
+}
+
+/** Uploads a recording (a local file `uri`, M4A) as the clip of an
+ * unidentified track on the caller's own night, resolving to the night as
+ * it now is. A raw upload, which openapi-fetch's JSON bodies don't cover. */
+export function useUploadTrackClip() {
+  const { getToken } = useAuth();
+  return async (trackId: string, uri: string, durationMs: number): Promise<Review> => {
+    const audio = await (await fetch(uri)).blob();
+    const token = await getToken();
+    const response = await fetch(apiUrl(`/api/tracks/${trackId}/clip`), {
+      method: "PUT",
+      headers: {
+        "Content-Type": "audio/mp4",
+        "X-Clip-Duration-Ms": String(Math.round(durationMs)),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: audio,
+    });
+    const body: unknown = await response.json().catch(() => null);
+    if (!response.ok) throw toApiError(response, body);
+    // The spec types this response (PUT /api/tracks/{id}/clip), but not
+    // through openapi-fetch, so it's read as what that path returns.
+    return body as Review;
+  };
+}
+
+// The caller's own settings (Settings screen, and the root layout's "What's
+// new" check). Pass false to wait until someone is signed in and set up.
+export function useSettings(ready = true) {
+  const api = useApi();
+  return useQuery({
+    queryKey: queryKeys.users.settings(),
+    queryFn: ready ? () => unwrap(api.GET("/api/users/me/settings")) : skipToken,
+  });
+}
+
+export function useUpdateSettings() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateSettingsInput) => unwrap(api.PATCH("/api/users/me/settings", { body: input })),
+    onSuccess: (saved) => queryClient.setQueryData(queryKeys.users.settings(), saved),
   });
 }

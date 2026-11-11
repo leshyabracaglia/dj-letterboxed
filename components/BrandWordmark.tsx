@@ -2,7 +2,7 @@ import { Image, View } from "react-native";
 
 import { Text } from "./ui";
 
-// The logo - the red "5" stamp (assets/logo-mark.png, rendered by
+// The logo - the red star stamp (assets/logo-mark.png, rendered by
 // scripts/generate-icons.mjs) - beside "BeatBox'd" in glowing pixel type.
 // `compact` is the smaller cut for the desktop navbar; `dot` swaps the
 // stamp for a plain glowing white dot (the phone feed header).

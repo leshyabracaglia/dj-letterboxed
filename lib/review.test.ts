@@ -71,6 +71,7 @@ describe("tracks on a night", () => {
     artworkUrl: null,
     note: null,
     identifiedBy: null,
+    clipDurationMs: null,
   });
 
   it("counts a set with only a track as reviewed, and the post as that DJ's", () => {

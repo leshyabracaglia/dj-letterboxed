@@ -868,6 +868,12 @@ definitions:
       artworkUrl:
         type: string
         x-nullable: true
+      clipDurationMs:
+        description: |-
+          ClipDurationMs is the length of the recording of an unidentified track
+          (streamed from GET /api/tracks/{id}/clip), if its poster made one.
+        type: integer
+        x-nullable: true
       djId:
         type: string
         x-nullable: true
@@ -903,6 +909,7 @@ definitions:
     required:
     - artist
     - artworkUrl
+    - clipDurationMs
     - djId
     - externalId
     - id
@@ -1115,8 +1122,12 @@ definitions:
           Whether they get the "people you follow logged nights" push after
           being away (see httpapi/reengage.go).
         type: boolean
+      whatsNewSeen:
+        description: The newest "What's new" sheet they've closed (0 = none).
+        type: integer
     required:
     - reengagePush
+    - whatsNewSeen
     type: object
   UserStatsResponse:
     properties:
@@ -1280,6 +1291,9 @@ definitions:
         description: spam, harassment, hate, sexual, violence or other.
         type: string
       reviewId:
+        type: string
+      trackId:
+        description: An audio clip on a track (reported against its night and poster).
         type: string
       userId:
         type: string
@@ -1458,6 +1472,11 @@ definitions:
           Whether to get a push when people you follow log nights while you've
           been away.
         type: boolean
+      whatsNewSeen:
+        description: |-
+          The "What's new" sheet version just closed. It only ever moves
+          forward, so an older build can't make a newer sheet show again.
+        type: integer
     type: object
 info:
   contact: {}
@@ -2292,7 +2311,7 @@ paths:
             $ref: '#/definitions/errorEnvelope'
       security:
       - BearerAuth: []
-      summary: Report a review, comment or user for moderation
+      summary: Report a review, comment, track clip or user for moderation
       tags:
       - moderation
   /api/reviews:
@@ -2618,6 +2637,90 @@ paths:
       - BearerAuth: []
       summary: 'Accept a suggestion for an unidentified track on the caller''s own
         night: it names the track, crediting whoever suggested it'
+      tags:
+      - tracks
+  /api/tracks/{id}/clip:
+    delete:
+      parameters:
+      - description: track id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: the night, without the clip
+          schema:
+            $ref: '#/definitions/ReviewDTO'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Remove the recording from an unidentified track on the caller's own
+        night
+      tags:
+      - tracks
+    get:
+      parameters:
+      - description: track id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - audio/mp4
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: Stream an unidentified track's recording (inline, for the app's player;
+        supports Range requests)
+      tags:
+      - tracks
+    put:
+      consumes:
+      - audio/mp4
+      parameters:
+      - description: track id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: the recording's length
+        in: header
+        name: X-Clip-Duration-Ms
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: the night, with the clip
+          schema:
+            $ref: '#/definitions/ReviewDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+        "409":
+          description: the track's already identified
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Attach a recording (at most 15 seconds, AAC in MP4/M4A) to an unidentified
+        track on the caller's own night, replacing any; the body is the audio
       tags:
       - tracks
   /api/tracks/{id}/suggestions:

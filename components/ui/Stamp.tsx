@@ -15,13 +15,15 @@ function rimText(rim: string): string {
 }
 
 /** A rubber-stamp seal: `label` (one line, or a few) in the middle of a
- * black disc, `rim` set around its edge. */
+ * black disc, `rim` set around its edge. `labelScale` shrinks (or grows)
+ * the label from the size that fills the inner ring. */
 export function Stamp({
   label,
   rim = DEFAULT_RIM,
   size = 72,
   color = "red",
   rotate = -8,
+  labelScale = 1,
   accessibilityLabel,
 }: {
   label: string | string[];
@@ -29,6 +31,7 @@ export function Stamp({
   size?: number;
   color?: keyof typeof RING_COLORS;
   rotate?: number;
+  labelScale?: number;
   accessibilityLabel: string;
 }) {
   const ring = RING_COLORS[color];
@@ -39,7 +42,7 @@ export function Stamp({
   const longest = Math.max(...lines.map((line) => line.length));
   // Big for a number, shrinking to keep a word or a few lines inside the
   // inner ring (Jersey 10 runs about half an em wide).
-  const fontSize = Math.min(size * 0.4, (size * 0.56) / (longest * 0.5), (size * 0.5) / lines.length);
+  const fontSize = labelScale * Math.min(size * 0.4, (size * 0.56) / (longest * 0.5), (size * 0.5) / lines.length);
 
   return (
     <View

@@ -147,11 +147,15 @@ type UserSettings struct {
 	// Whether they get the "people you follow logged nights" push after
 	// being away (see httpapi/reengage.go).
 	ReengagePush bool `json:"reengagePush"`
+	// The newest "What's new" sheet they've closed (0 = none).
+	WhatsNewSeen int `json:"whatsNewSeen"`
 }
 
 func GetUserSettings(ctx context.Context, q DBTX, userID string) (*UserSettings, error) {
 	var s UserSettings
-	if err := q.QueryRow(ctx, "SELECT reengage_push FROM users WHERE id = $1", userID).Scan(&s.ReengagePush); err != nil {
+	err := q.QueryRow(ctx, "SELECT reengage_push, whats_new_seen FROM users WHERE id = $1", userID).
+		Scan(&s.ReengagePush, &s.WhatsNewSeen)
+	if err != nil {
 		return nil, err
 	}
 	return &s, nil
@@ -159,12 +163,13 @@ func GetUserSettings(ctx context.Context, q DBTX, userID string) (*UserSettings,
 
 // UpdateUserSettings changes the settings given (nil leaves one as is) and
 // returns them all.
-func UpdateUserSettings(ctx context.Context, q DBTX, userID string, reengagePush *bool) (*UserSettings, error) {
+func UpdateUserSettings(ctx context.Context, q DBTX, userID string, reengagePush *bool, whatsNewSeen *int) (*UserSettings, error) {
 	var s UserSettings
 	err := q.QueryRow(ctx, `
-		UPDATE users SET reengage_push = COALESCE($2, reengage_push)
+		UPDATE users SET reengage_push = COALESCE($2, reengage_push),
+			whats_new_seen = GREATEST(whats_new_seen, COALESCE($3, 0))
 		WHERE id = $1
-		RETURNING reengage_push`, userID, reengagePush).Scan(&s.ReengagePush)
+		RETURNING reengage_push, whats_new_seen`, userID, reengagePush, whatsNewSeen).Scan(&s.ReengagePush, &s.WhatsNewSeen)
 	if err != nil {
 		return nil, err
 	}

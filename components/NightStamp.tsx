@@ -22,6 +22,7 @@ export function NightStamp({
       color={Number(day) % 2 === 0 ? "purple" : "red"}
       size={size}
       rotate={rotate}
+      labelScale={0.85}
       accessibilityLabel={`Logged ${month} ${day}`}
     />
   );

@@ -10,6 +10,7 @@ import type {
   User,
   VenueSummary,
 } from "@/lib/api/types";
+import type { LocalClip } from "@/components/TrackClip";
 import { parseDateInputValue, plural, toDateInputValue } from "@/lib/format";
 
 // The log screen's form model: what's picked and typed so far, and the
@@ -40,7 +41,8 @@ export const MAX_TRACKS = 10;
 // A track to highlight on the night: one found on a music service (`match`)
 // or typed in (`title`/`artist`, both blank for an unidentified one, which
 // then needs a note). `djKey` is the lineup entry who played it; none is a
-// track from the night as a whole.
+// track from the night as a whole. An unidentified one can carry a
+// recording (`clip`), uploaded once the night's logged.
 export type DraftTrack = {
   key: string;
   djKey?: string;
@@ -48,6 +50,7 @@ export type DraftTrack = {
   title: string;
   artist: string;
   note: string;
+  clip?: LocalClip;
 };
 
 // An existing event ("Innervisions NY"), a new one created by name when the
@@ -100,8 +103,18 @@ export function trackInputs(
   caught: DraftLineupEntry[],
   djIdFor: (entry: DraftLineupEntry) => string,
 ): TrackInput[] {
+  return loggedTracks(tracks, caught, djIdFor).map(({ input }) => input);
+}
+
+/** trackInputs, each with the draft track it came from - in the order the
+ * night's saved tracks come back, so a recording can follow its track. */
+export function loggedTracks(
+  tracks: DraftTrack[],
+  caught: DraftLineupEntry[],
+  djIdFor: (entry: DraftLineupEntry) => string,
+): { track: DraftTrack; input: TrackInput }[] {
   const byKey = new Map(caught.map((e) => [e.key, e]));
-  return tracks.flatMap((track) => {
+  return tracks.flatMap((track): { track: DraftTrack; input: TrackInput }[] => {
     const entry = track.djKey ? byKey.get(track.djKey) : undefined;
     if (track.djKey && !entry) return [];
     const djId = entry ? djIdFor(entry) : undefined;
@@ -110,20 +123,25 @@ export function trackInputs(
     if (match) {
       return [
         {
-          djId,
-          source: match.source,
-          externalId: match.externalId,
-          url: match.url ?? undefined,
-          title: match.title,
-          artist: match.artist || undefined,
-          artworkUrl: match.artworkUrl ?? undefined,
-          note,
+          track,
+          input: {
+            djId,
+            source: match.source,
+            externalId: match.externalId,
+            url: match.url ?? undefined,
+            title: match.title,
+            artist: match.artist || undefined,
+            artworkUrl: match.artworkUrl ?? undefined,
+            note,
+          },
         },
       ];
     }
     const title = track.title.trim() || undefined;
     if (!title && !note) return [];
-    return [{ djId, source: "manual", title, artist: (title && track.artist.trim()) || undefined, note }];
+    return [
+      { track, input: { djId, source: "manual", title, artist: (title && track.artist.trim()) || undefined, note } },
+    ];
   });
 }
 
