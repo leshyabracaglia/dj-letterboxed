@@ -21,7 +21,8 @@ import { invalidateReviewLists } from "@/lib/api/cache";
 import { queryKeys } from "@/lib/api/queryKeys";
 import type { CheckInInput, CheckInPlace, EventSummary, NearbyVenue, RAArea, RAEvent } from "@/lib/api/types";
 import { parseDateInputValue, toDateInputValue } from "@/lib/format";
-import { getCurrentPlace, getPreciseFix } from "@/lib/location";
+import { getPreciseFix, type PreciseFixError } from "@/lib/checkInLocation";
+import { getCurrentPlace } from "@/lib/location";
 import { withTimeout } from "@/lib/async";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { addDays, type BlankSeed, nightsLogged, shortDayLabel, startOfToday } from "./draft";
@@ -243,6 +244,13 @@ const CHECK_IN_ERRORS: Record<string, string> = {
   IMPRECISE_LOCATION: "Your location is too rough to check in. Turn on precise location and try again.",
 };
 
+// What to tell someone whose location couldn't be read, by reason.
+const LOCATE_ERRORS: Record<PreciseFixError, string> = {
+  denied: "Allow Beatboxd to use your location (in Settings) to check in.",
+  services_off: "Location is turned off on your phone. Turn it on to check in.",
+  unavailable: "Couldn't pin down where you are. Turning on Wi-Fi helps indoors, even without joining a network.",
+};
+
 // A nearby venue is a saved one (id) or a Google place not on Beatboxd yet.
 function checkInPlace(venue: NearbyVenue): CheckInPlace {
   return venue.id ? { venueId: venue.id } : { placeId: venue.placeId ?? "" };
@@ -267,8 +275,9 @@ function CheckInStrip() {
   });
   const locate = useMutation({
     mutationFn: async () => {
-      const fix = await withTimeout(getPreciseFix(), LOCATE_TIMEOUT_MS).catch(() => null);
-      if (!fix) return null;
+      const result = await getPreciseFix();
+      if ("error" in result) return result;
+      const { fix } = result;
       const { venues } = await unwrap(
         api.GET("/api/check-ins/nearby", {
           params: {
@@ -286,8 +295,8 @@ function CheckInStrip() {
     },
     onSuccess: (found) => {
       setMessage(undefined);
-      if (!found) {
-        setMessage("Couldn't get your location. Allow location access to check in.");
+      if ("error" in found) {
+        setMessage(LOCATE_ERRORS[found.error]);
       } else if (!found.venues.length) {
         setMessage("Couldn't find a club or bar right where you are.");
       } else {
