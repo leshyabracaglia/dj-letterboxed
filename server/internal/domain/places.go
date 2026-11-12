@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
@@ -337,17 +338,35 @@ func (c *PlacesClient) Details(ctx context.Context, placeID, sessionToken string
 
 // cityFromAddressComponents picks the most city-like component: locality
 // covers most places, postal_town is the UK equivalent, and some places
-// (e.g. inside a NYC borough) only carry a sublocality.
+// (e.g. inside a NYC borough) only carry a sublocality. Two places name a
+// smaller area than people go by: Tokyo's wards come back as the locality
+// ("Taito City"), so anywhere in Tokyo is Tokyo; and much of Indonesia
+// (Bali among it) has no locality at all, only a regency ("Kabupaten
+// Badung"), so a regency gives way to its province.
 func cityFromAddressComponents(components []placeAddressComponent) *string {
-	for _, want := range []string{"locality", "postal_town", "sublocality", "administrative_area_level_2"} {
+	find := func(want string) string {
 		for _, c := range components {
 			for _, t := range c.Types {
 				if t == want && c.LongText != "" {
-					city := c.LongText
-					return &city
+					return c.LongText
 				}
 			}
 		}
+		return ""
+	}
+	region := find("administrative_area_level_1")
+	if region == "Tokyo" {
+		return &region
+	}
+	for _, want := range []string{"locality", "postal_town", "sublocality", "administrative_area_level_2"} {
+		city := find(want)
+		if city == "" {
+			continue
+		}
+		if want == "administrative_area_level_2" && strings.HasPrefix(city, "Kabupaten ") && region != "" {
+			return &region
+		}
+		return &city
 	}
 	return nil
 }

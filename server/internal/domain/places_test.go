@@ -174,3 +174,35 @@ func TestPlacesTopSuggestionCached(t *testing.T) {
 		t.Errorf("google got %d calls, want 1", calls)
 	}
 }
+
+func TestCityFromAddressComponents(t *testing.T) {
+	c := func(text string, types ...string) placeAddressComponent {
+		return placeAddressComponent{LongText: text, Types: types}
+	}
+	for _, tc := range []struct {
+		name       string
+		components []placeAddressComponent
+		want       string
+	}{
+		{"locality", []placeAddressComponent{
+			c("Brooklyn", "sublocality_level_1", "sublocality"), c("New York", "locality"), c("New York", "administrative_area_level_1"),
+		}, "New York"},
+		{"a Tokyo ward is Tokyo", []placeAddressComponent{
+			c("Kuramae", "sublocality_level_2", "sublocality"), c("Taito City", "locality"), c("Tokyo", "administrative_area_level_1"), c("Japan", "country"),
+		}, "Tokyo"},
+		{"a Bali regency is Bali", []placeAddressComponent{
+			c("Kec. Kuta Utara", "administrative_area_level_3"), c("Kabupaten Badung", "administrative_area_level_2"), c("Bali", "administrative_area_level_1"), c("Indonesia", "country"),
+		}, "Bali"},
+		{"any other county stays", []placeAddressComponent{
+			c("Pershing County", "administrative_area_level_2"), c("Nevada", "administrative_area_level_1"),
+		}, "Pershing County"},
+	} {
+		got := cityFromAddressComponents(tc.components)
+		if got == nil || *got != tc.want {
+			t.Errorf("%s: city = %v, want %s", tc.name, got, tc.want)
+		}
+	}
+	if got := cityFromAddressComponents([]placeAddressComponent{c("Japan", "country")}); got != nil {
+		t.Errorf("country only: city = %v, want nil", *got)
+	}
+}
