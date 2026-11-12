@@ -119,7 +119,7 @@ export default function FeedScreen() {
                 {/* Clears the paper clip that pokes up above the first card. */}
                 <View className="h-10" />
               </>
-            ) : null
+            ) : undefined
           }
           ListEmptyComponent={
             isPopularLoading ? (
@@ -151,7 +151,7 @@ export default function FeedScreen() {
                 <View className="mt-10" />
                 <ReviewCardSkeleton count={2} />
               </>
-            ) : null
+            ) : undefined
           }
           ListEmptyComponent={
             isLoading ? (

@@ -1,7 +1,7 @@
 import * as Clipboard from "expo-clipboard";
 import * as Sharing from "expo-sharing";
 import type { RefObject } from "react";
-import { type View } from "react-native";
+import { type View, type ViewInstance } from "react-native";
 import { captureRef } from "react-native-view-shot";
 import { isWeb } from "@/lib/platform";
 
@@ -18,7 +18,7 @@ export type CapturedStory = { platform: "native"; uri: string } | { platform: "w
 // Rasterizes `ref` to a full-resolution story PNG. On web this runs
 // html2canvas-pro, which can take a moment — capture ahead of the tap where
 // possible, since navigator.share() needs the tap's user activation.
-export async function captureStory(ref: RefObject<View | null>, filename: string): Promise<CapturedStory> {
+export async function captureStory(ref: RefObject<ViewInstance | null>, filename: string): Promise<CapturedStory> {
   if (isWeb) {
     // Called directly rather than through view-shot's web shim, which renders
     // at the on-screen size and then upscales (blurry). html2canvas-pro also

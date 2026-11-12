@@ -59,7 +59,7 @@ export default function NotificationsScreen() {
               <View className="mt-2" />
               <NotificationSkeleton count={2} />
             </>
-          ) : null
+          ) : undefined
         }
         ListEmptyComponent={
           isSignedIn && isLoading ? (

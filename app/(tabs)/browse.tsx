@@ -188,7 +188,7 @@ export default function BrowseScreen() {
         <SuggestionsLabel label={BROWSE_TABS_COPY[tab].suggestions} />
         <View className="h-3" />
       </>
-    ) : null;
+    ) : undefined;
 
   return (
     <Page

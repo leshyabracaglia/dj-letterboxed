@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Animated, Pressable, ScrollView, TextInput, View } from "react-native";
+import { Animated, Pressable, View, type ScrollViewInstance, type TextInputInstance } from "react-native";
 
 import {
   artistPickName,
@@ -51,8 +51,8 @@ export default function CreateReviewScreen() {
   const api = useApi();
   const queryClient = useQueryClient();
   const contentStyle = usePageContentStyle();
-  const scrollRef = useRef<ScrollView>(null);
-  const djInputRef = useRef<TextInput>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
+  const djInputRef = useRef<TextInputInstance>(null);
   const [shake] = useState(() => new Animated.Value(0));
 
   const { me } = useCurrentUser();

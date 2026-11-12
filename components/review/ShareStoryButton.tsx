@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { ActivityIndicator, Image, Modal, Pressable, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Image, Modal, Pressable, useWindowDimensions, View, type ViewInstance } from "react-native";
 
 import { Button, CARD_COLORS, Icon, type Paper, Tape, Text, TornEdge, WallBackground } from "@/components/ui";
 import { NightStamp } from "@/components/NightStamp";
@@ -45,7 +45,7 @@ function StoryCard({
   review: ReviewDetail;
   paper: Paper;
   width: number;
-  cardRef: RefObject<View | null>;
+  cardRef: RefObject<ViewInstance | null>;
   onImageSettled: () => void;
 }) {
   const u = (n: number) => (n * width) / 360;
@@ -232,7 +232,7 @@ function ShareStorySheet({ review, paper, onClose }: { review: ReviewDetail; pap
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   // A multiple of 9 keeps the 9:16 height a whole number of pixels.
   const previewWidth = Math.floor(Math.min(297, windowWidth - 64, ((windowHeight - 280) * 9) / 16) / 9) * 9;
-  const cardRef = useRef<View>(null);
+  const cardRef = useRef<ViewInstance>(null);
   const prepared = useRef<CapturedStory | null>(null);
   const set = soloSet(review);
   const [imageSettled, setImageSettled] = useState(!storyPhoto(review));

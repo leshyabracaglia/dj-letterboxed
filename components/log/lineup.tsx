@@ -1,6 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { type ComponentProps, type Ref, useState } from "react";
-import { Modal, Pressable, ScrollView, TextInput, useWindowDimensions, View } from "react-native";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  TextInput,
+  useWindowDimensions,
+  View,
+  type TextInputInstance,
+} from "react-native";
 
 import {
   Avatar,
@@ -118,7 +126,7 @@ export function ArtistSearchInput({
   onSelect: (pick: ArtistPick) => void;
   onCreate: () => void;
   onCancel: () => void;
-  inputRef: Ref<TextInput>;
+  inputRef: Ref<TextInputInstance>;
 }) {
   const api = useApi();
   const query = value.trim();

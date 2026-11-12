@@ -17,9 +17,12 @@ const TAB_LABELS: Record<string, string> = {
   profile: "Profile",
 };
 
+// The feed is the tab the app opens on.
+export const unstable_settings = { anchor: "feed" };
+
 // The phone tab bar from the zine mockups: pixel-type labels with a short
 // glowing bar over the active one, and Log + as a raised white key.
-function ZineTabBar({ state, descriptors, navigation, insets }: BottomTabBarProps) {
+function ZineTabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTabBarProps) {
   return (
     <View
       className="flex-row items-center border-t border-white/5 bg-black/95 px-3 pt-3"
@@ -29,9 +32,9 @@ function ZineTabBar({ state, descriptors, navigation, insets }: BottomTabBarProp
         const isFocused = state.index === index;
         const isLog = route.name === "review";
         const onPress = () => {
-          const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
+          const event = emitter.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
           if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name, route.params);
+            navigateToTab(route.key);
           }
         };
         return (
@@ -109,7 +112,6 @@ export default function TabsLayout() {
   return (
     <>
       <Tabs
-        initialRouteName="feed"
         tabBar={isDesktopWeb ? () => <WebNav /> : (props) => <ZineTabBar {...props} />}
         screenOptions={{
           headerShown: false,

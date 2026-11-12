@@ -1,5 +1,14 @@
 import { type Ref, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { Keyboard, ScrollView, TextInput, View, type KeyboardEvent, type ScrollViewProps } from "react-native";
+import {
+  Keyboard,
+  ScrollView,
+  TextInput,
+  View,
+  type KeyboardEvent,
+  type ScrollViewProps,
+  type ScrollViewInstance,
+  type ViewInstance,
+} from "react-native";
 import { isIos } from "@/lib/platform";
 
 // Keyboard dismissal for any scrollable list: with "handled", a tap on empty
@@ -26,10 +35,10 @@ const HIDE_EVENT = isIos ? "keyboardWillHide" : "keyboardDidHide";
 // KeyboardAvoidingView wrapper — don't nest it in one or the overlap is
 // counted twice. No-op on web, which has no keyboard events. `ref` reaches
 // the ScrollView (for scrollTo).
-export function KeyboardScrollView({ children, ref, ...props }: ScrollViewProps & { ref?: Ref<ScrollView> }) {
-  const scrollRef = useRef<ScrollView>(null);
+export function KeyboardScrollView({ children, ref, ...props }: ScrollViewProps & { ref?: Ref<ScrollViewInstance> }) {
+  const scrollRef = useRef<ScrollViewInstance>(null);
   useImperativeHandle(ref, () => scrollRef.current!, []);
-  const innerRef = useRef<View>(null);
+  const innerRef = useRef<ViewInstance>(null);
   const [overlap, setOverlap] = useState(0);
 
   useEffect(() => {
@@ -70,7 +79,12 @@ export function KeyboardScrollView({ children, ref, ...props }: ScrollViewProps 
   }, []);
 
   return (
-    <ScrollView {...KEYBOARD_DISMISS_PROPS} {...props} ref={scrollRef} innerViewRef={innerRef as React.RefObject<View>}>
+    <ScrollView
+      {...KEYBOARD_DISMISS_PROPS}
+      {...props}
+      ref={scrollRef}
+      innerViewRef={innerRef as React.RefObject<ViewInstance>}
+    >
       {children}
       {!!overlap && <View style={{ height: overlap }} />}
     </ScrollView>

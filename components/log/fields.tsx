@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { Pressable, TextInput, View, type TextInputInstance } from "react-native";
 
 import { Icon, type IconName, Skeleton, Text } from "@/components/ui";
 import { isWeb } from "@/lib/platform";
@@ -34,7 +34,7 @@ export function SearchField({
 }) {
   // On web the modal's focus trap grabs focus as the sheet slides in, after
   // autoFocus has run; take it back once the slide has finished.
-  const ref = useRef<TextInput>(null);
+  const ref = useRef<TextInputInstance>(null);
   useEffect(() => {
     const timer = setTimeout(() => ref.current?.focus(), 350);
     return () => clearTimeout(timer);
