@@ -126,7 +126,9 @@ function ModerationSheet({ user, target, onClose }: { user: User; target: Report
         </Text>
       )}
       {!!error && (
-        <Text className="px-4 pt-2 text-sm text-zine-red">{error.message ?? "Something went wrong. Try again."}</Text>
+        <Text className="px-4 pt-2 text-sm text-danger-dark">
+          {error.message ?? "Something went wrong. Try again."}
+        </Text>
       )}
     </Sheet>
   );

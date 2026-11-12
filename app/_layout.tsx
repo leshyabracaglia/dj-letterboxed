@@ -24,6 +24,7 @@ import { queryKeys } from "@/lib/api/queryKeys";
 import { AuthProvider, useCurrentUser } from "@/lib/auth";
 import { usePushNotifications } from "@/lib/push";
 import { tokenCache } from "@/lib/clerk-token-cache";
+import { DesignProvider } from "@/lib/design";
 import { isIos } from "@/lib/platform";
 import { colors } from "@/lib/colors";
 import { needsOnboarding } from "@/lib/user";
@@ -154,39 +155,41 @@ export default function RootLayout() {
   return (
     <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <PushNotifications />
-            <StatusBar style="light" />
-            <ThemeProvider value={NAV_THEME}>
-              <ForceUpdateGate>
-                <Stack
-                  screenOptions={{
-                    // Desktop web gets the same persistent top nav as the tabs group
-                    // instead of a per-page title bar; phone-width web and native keep
-                    // the standard themed header with a back chevron.
-                    header: isDesktopWeb ? () => <WebNav /> : undefined,
-                    headerStyle: { backgroundColor: colors.chrome },
-                    headerTintColor: colors.paper,
-                    headerTitleStyle: { fontFamily: "Jersey10_400Regular", fontSize: 24 },
-                    // Chevron only: the default back title is the previous route's
-                    // name, which for anything pushed from the tabs reads "(tabs)".
-                    // (A custom headerBackTitleStyle font forces a static title, so
-                    // none is set.)
-                    headerBackButtonDisplayMode: "minimal",
-                    headerShadowVisible: false,
-                    contentStyle: { backgroundColor: colors.ink },
-                  }}
-                >
-                  <Stack.Screen name="index" options={{ headerShown: false }} />
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                </Stack>
-                <WhatsNew />
-              </ForceUpdateGate>
-            </ThemeProvider>
-          </AuthProvider>
-        </QueryClientProvider>
+        <DesignProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <PushNotifications />
+              <StatusBar style="light" />
+              <ThemeProvider value={NAV_THEME}>
+                <ForceUpdateGate>
+                  <Stack
+                    screenOptions={{
+                      // Desktop web gets the same persistent top nav as the tabs group
+                      // instead of a per-page title bar; phone-width web and native keep
+                      // the standard themed header with a back chevron.
+                      header: isDesktopWeb ? () => <WebNav /> : undefined,
+                      headerStyle: { backgroundColor: colors.chrome },
+                      headerTintColor: colors.paper,
+                      headerTitleStyle: { fontFamily: "Jersey10_400Regular", fontSize: 24 },
+                      // Chevron only: the default back title is the previous route's
+                      // name, which for anything pushed from the tabs reads "(tabs)".
+                      // (A custom headerBackTitleStyle font forces a static title, so
+                      // none is set.)
+                      headerBackButtonDisplayMode: "minimal",
+                      headerShadowVisible: false,
+                      contentStyle: { backgroundColor: colors.ink },
+                    }}
+                  >
+                    <Stack.Screen name="index" options={{ headerShown: false }} />
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                    <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                  </Stack>
+                  <WhatsNew />
+                </ForceUpdateGate>
+              </ThemeProvider>
+            </AuthProvider>
+          </QueryClientProvider>
+        </DesignProvider>
       </SafeAreaProvider>
     </ClerkProvider>
   );

@@ -6,6 +6,7 @@ import { Pressable, View } from "react-native";
 import { LoadingFade } from "./Skeleton";
 import { TornEdge } from "./TornEdge";
 import { colors } from "@/lib/colors";
+import { useDesign, useDesignColors } from "@/lib/design";
 
 // Zine panels: square-cornered paper in the card palette, tacked to the
 // wall at a slight angle. `neutral` is the near-black panel (DJ page
@@ -25,11 +26,12 @@ const BLANK_TINTS = {
 
 export type CardTint = keyof typeof TINTS;
 
-export const CARD_COLORS = {
-  primary: TINTS.primary.color,
-  accent: TINTS.accent.color,
-  neutral: TINTS.neutral.color,
-};
+/** Each card tint's paper color for the current design, for what's drawn
+ * to match it (a torn edge, the share image). */
+export function useCardColors(): Record<CardTint, string> {
+  const { zine } = useDesignColors();
+  return { primary: zine.purple, accent: zine.red, neutral: colors.zine.panel };
+}
 
 /** A stable small tilt (in degrees, about ±1) from an id, so a list of cards
  * looks hand-pinned without reshuffling on re-render. */
@@ -97,16 +99,21 @@ export function Card({
   className?: string;
   children: ReactNode;
 }) {
-  const { className: tintClass, color } = (blank ? BLANK_TINTS : TINTS)[tint];
+  const { design } = useDesign();
+  const cardColors = useCardColors();
+  const { className: tintClass } = (blank ? BLANK_TINTS : TINTS)[tint];
+  // The torn edge is drawn in the paper's own color, which follows the design.
+  const edgeColor = blank ? BLANK_TINTS[tint].color : cardColors[tint];
 
   const paper = (
     <View className={`p-4 ${tintClass} ${className}`}>
-      {torn && <TornEdge color={color} />}
+      {torn && <TornEdge color={edgeColor} />}
       {children}
     </View>
   );
 
-  const transform = tilt ? [{ rotate: `${tilt}deg` }] : undefined;
+  // Violet cards sit flat on the wall.
+  const transform = tilt && design === "zine" ? [{ rotate: `${tilt}deg` }] : undefined;
   if (blank) {
     return (
       <LoadingFade>

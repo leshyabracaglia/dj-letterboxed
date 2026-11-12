@@ -199,7 +199,7 @@ export default function CreateReviewScreen() {
   if (state.stage === "search") {
     return (
       <Page title="Log a night" channel="CH 03 · Log">
-        {!!state.error && <Text className="mx-6 text-stamp-red">{state.error}</Text>}
+        {!!state.error && <Text className="mx-3 text-stamp-red">{state.error}</Text>}
         <FindTheNight
           matchingId={matchingId}
           onPickRA={(event) => matchRAEvent.mutate(event)}

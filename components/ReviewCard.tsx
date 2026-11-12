@@ -25,6 +25,7 @@ import { NightStamp } from "./NightStamp";
 import { ReviewTags } from "./ReviewTags";
 import { TrackRow } from "./TrackRow";
 import { colors } from "@/lib/colors";
+import { useDesign } from "@/lib/design";
 
 // How many lineup photos a night card shows before "+N more".
 const LINEUP_SHOWN = 3;
@@ -259,8 +260,23 @@ function PaperClip({ style }: { style?: { top?: number; left?: number; right?: n
 const POLAROID_PHOTO = 104;
 
 // The DJ's photo as a polaroid: white print, square photo, a blank strip
-// underneath, paper-clipped to the card's top edge.
+// underneath, paper-clipped to the card's top edge. In the violet design it's
+// a plain photo in a white border, taped on, sitting straight.
 function Polaroid({ uri, paper, rotate }: { uri?: string | null; paper: Paper; rotate: number }) {
+  const { design } = useDesign();
+  if (design === "violet") {
+    return (
+      <View className="mt-2 border-4 border-paper shadow-lg shadow-black/50">
+        <Photo
+          uri={uri}
+          width={POLAROID_PHOTO}
+          placeholderClassName={paper.photoPlaceholderClassName}
+          silhouetteClassName={paper.photoSilhouetteClassName}
+        />
+        <Tape onPhoto style={{ top: -12, left: 22 }} width={64} rotate={-5} />
+      </View>
+    );
+  }
   return (
     <View
       className="bg-paper p-1.5 pb-5 shadow-lg shadow-black/50"

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { ActivityIndicator, Image, Modal, Pressable, useWindowDimensions, View, type ViewInstance } from "react-native";
 
-import { Button, CARD_COLORS, Icon, type Paper, Tape, Text, TornEdge, WallBackground } from "@/components/ui";
+import { Button, Icon, type Paper, Tape, Text, TornEdge, useCardColors, WallBackground } from "@/components/ui";
 import { NightStamp } from "@/components/NightStamp";
 import { errorMessage } from "@/lib/api/client";
 import type { ReviewDetail } from "@/lib/api/types";
@@ -55,7 +55,8 @@ function StoryCard({
   const subject = reviewSubject(review, set);
   const photo = storyPhoto(review);
   const reviewText = set ? set.reviewText : review.reviewText;
-  const paperColor = CARD_COLORS[paper.tint];
+  const cardColors = useCardColors();
+  const paperColor = cardColors[paper.tint];
   const label = nightDateParts(review, { wholeNight: subject.isNight, withYear: true }).join(" · ");
   const where = review.venue
     ? `${!subject.isNight && review.event ? `${review.event.name} ` : ""}@ ${review.venue}`
@@ -205,7 +206,7 @@ function StoryCard({
             alignItems: "center",
             marginTop: u(28),
             transform: [{ rotate: "1.5deg" }],
-            backgroundColor: CARD_COLORS.neutral,
+            backgroundColor: cardColors.neutral,
             borderWidth: 1,
             borderColor: "rgba(255,255,255,0.1)",
             paddingHorizontal: u(18),

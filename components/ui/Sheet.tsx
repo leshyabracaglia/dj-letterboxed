@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { KeyboardAvoidingView, Modal, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CARD_COLORS } from "./Card";
+import { colors } from "@/lib/colors";
 import { TornEdge } from "./TornEdge";
 import { Text } from "./Text";
 import { isIos } from "@/lib/platform";
@@ -33,7 +33,7 @@ export function Sheet({
           className="max-h-[85%] w-full max-w-[680px] self-center bg-zine-panel pt-3"
           style={{ paddingBottom: 12 + bottom }}
         >
-          <TornEdge color={CARD_COLORS.neutral} side="top" height={12} />
+          <TornEdge color={colors.zine.panel} side="top" height={12} />
           <View className="h-1 w-10 self-center rounded-full bg-paper/25" />
           <View className="mt-3 flex-row items-center justify-between px-4">
             <Text variant="display" className="text-2xl text-paper">

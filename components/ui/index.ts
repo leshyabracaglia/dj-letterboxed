@@ -1,7 +1,7 @@
 // Generic, app-agnostic UI primitives. Domain components that know about
 // reviews/DJs/users (ReviewCard, StatsSummary, …) stay in components/.
 export { Avatar } from "./Avatar";
-export { Card, CARD_COLORS, paperAt, paperFor, tiltFor, type CardTint, type Paper } from "./Card";
+export { Card, useCardColors, paperAt, paperFor, tiltFor, type CardTint, type Paper } from "./Card";
 export { Checkbox } from "./Checkbox";
 export { DashedButton } from "./DashedButton";
 export { EmptyState } from "./EmptyState";

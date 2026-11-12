@@ -1,4 +1,4 @@
-const { colors } = require("./lib/colors");
+const { tailwindColors } = require("./lib/colors");
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -9,7 +9,7 @@ module.exports = {
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
-      colors,
+      colors: tailwindColors,
       fontFamily: {
         sans: ["Roboto_400Regular", "sans-serif"],
         // Primary font (Jersey 10, a pixel display face): branding/headings

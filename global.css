@@ -1,3 +1,18 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* The violet design's colors (the default), before lib/design.tsx sets the
+   picked design's (see designPalettes in lib/colors.js). */
+:root {
+  --color-primary: 91 61 245;
+  --color-primary-dark: 216 209 255;
+  --color-accent: 123 99 255;
+  --color-accent-text: 74 47 217;
+  --color-zine-purple: 91 61 245;
+  --color-zine-purple-ink: 216 209 255;
+  --color-zine-red: 14 11 12;
+  --color-zine-red-ink: 169 155 255;
+  --color-stamp-red: 246 246 249;
+  --color-stamp-purple: 246 246 249;
+}

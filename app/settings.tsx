@@ -10,6 +10,7 @@ import {
   KeyboardScrollView,
   Page,
   SectionTitle,
+  SegmentedTabs,
   Text,
   TextField,
   usePageContentStyle,
@@ -22,7 +23,7 @@ import { pickAndUploadAvatar } from "@/lib/avatarUpload";
 import { clerkErrorMessage } from "@/lib/clerk";
 import { confirmDestructive, showAlert } from "@/lib/dialog";
 import { useSignOut } from "@/lib/push";
-import { colors } from "@/lib/colors";
+import { useDesign, useDesignColors } from "@/lib/design";
 import { ROUTES } from "@/lib/routes";
 
 const USERNAME_RE = /^[a-z0-9_]{3,32}$/;
@@ -124,6 +125,8 @@ function NotificationSettings() {
   const settings = useSettings();
   const update = useUpdateSettings();
 
+  const colors = useDesignColors();
+
   const reengagePush = update.isPending ? !!update.variables.reengagePush : (settings.data?.reengagePush ?? true);
 
   return (
@@ -154,6 +157,26 @@ function NotificationSettings() {
         Follows, likes, comments and tags are on or off in your phone&apos;s notification settings.
       </Text>
       <FormMessage>{error ?? (settings.isError && "Could not load your settings.")}</FormMessage>
+    </View>
+  );
+}
+
+// Which look the app wears on this device: the violet design, or the
+// original zine (lib/design.tsx).
+function DesignSettings() {
+  const { design, setDesign } = useDesign();
+  return (
+    <View className="gap-3 border-t border-primary/15 pt-10">
+      <SectionTitle>Design</SectionTitle>
+      <SegmentedTabs
+        tabs={[
+          { value: "violet", label: "Violet" },
+          { value: "zine", label: "Classic zine" },
+        ]}
+        value={design}
+        onChange={setDesign}
+      />
+      <Text className="text-xs text-muted">Just on this device.</Text>
     </View>
   );
 }
@@ -320,6 +343,7 @@ export default function SettingsScreen() {
         <View className="mt-6 gap-6">
           <EditProfile />
           <NotificationSettings />
+          <DesignSettings />
           <AccountSettings />
         </View>
       </KeyboardScrollView>

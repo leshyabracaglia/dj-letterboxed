@@ -20,7 +20,7 @@ import {
   Stamp,
   Text,
   TornEdge,
-  CARD_COLORS,
+  useCardColors,
   tiltFor,
   useIsDesktopWeb,
   usePageContentStyle,
@@ -126,6 +126,7 @@ function SpotifyLink({ spotifyId }: { spotifyId: string }) {
 
 function NameBand({ data }: { data: DjDetail }) {
   const gutter = usePageGutter();
+  const cardColors = useCardColors();
   return (
     <View className="z-10 bg-zine-red pb-8 pt-4" style={{ paddingHorizontal: gutter }}>
       <FitText fontSize={72} numberOfLines={3} className="text-paper">
@@ -143,7 +144,7 @@ function NameBand({ data }: { data: DjDetail }) {
         </>
       )}
       {!!data.dj.spotifyId && <SpotifyLink spotifyId={data.dj.spotifyId} />}
-      <TornEdge color={CARD_COLORS.accent} height={12} />
+      <TornEdge color={cardColors.accent} height={12} />
       <View className="absolute -bottom-12" style={{ right: gutter - 8 }}>
         <Stamp
           label={String(data.timesSeen)}

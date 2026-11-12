@@ -12,7 +12,7 @@ import { useCurrentUser } from "@/lib/auth";
 import { plural } from "@/lib/format";
 import type { UserStats } from "@/lib/api/types";
 import { ROUTES } from "@/lib/routes";
-import { colors } from "@/lib/colors";
+import { useDesignColors } from "@/lib/design";
 
 const DJ_RANKING_TYPES = {
   RECENT: "recent",
@@ -335,7 +335,7 @@ const ENTRY_STAMP_MAX_WIDTH = 220;
 // the club in the middle, the date of the first visit and how often along
 // the bottom, inside a double ruled border. Fills its slot's width.
 function EntryStamp({ stamp, index, onPress }: { stamp: Visit; index: number; onPress: () => void }) {
-  const ring = colors.stamp[index % 2 ? "purple" : "red"];
+  const ring = useDesignColors().stamp[index % 2 ? "purple" : "red"];
   return (
     <Pressable
       onPress={onPress}
