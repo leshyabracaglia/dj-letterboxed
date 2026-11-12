@@ -327,9 +327,13 @@ function entryDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }).toUpperCase();
 }
 
-// A square passport entry stamp: the city across the top, the club in the
-// middle, the date of the first visit and how often below, inside a double
-// ruled border. Fills its slot's width.
+// The widest an entry stamp gets: half a phone's width, but no more on a
+// wide desktop column.
+const ENTRY_STAMP_MAX_WIDTH = 220;
+
+// A passport entry stamp, wider than it is tall: the city across the top,
+// the club in the middle, the date of the first visit and how often along
+// the bottom, inside a double ruled border. Fills its slot's width.
 function EntryStamp({ stamp, index, onPress }: { stamp: Visit; index: number; onPress: () => void }) {
   const ring = colors.stamp[index % 2 ? "purple" : "red"];
   return (
@@ -338,11 +342,15 @@ function EntryStamp({ stamp, index, onPress }: { stamp: Visit; index: number; on
       accessibilityRole="link"
       accessibilityLabel={visitLabel(stamp)}
       className="flex-1 active:opacity-80"
-      style={{ transform: [{ rotate: `${PASSPORT_TILTS[index % PASSPORT_TILTS.length] / 3}deg` }] }}
+      style={{
+        maxWidth: ENTRY_STAMP_MAX_WIDTH,
+        transform: [{ rotate: `${PASSPORT_TILTS[index % PASSPORT_TILTS.length] / 3}deg` }],
+      }}
     >
       <View
-        className="aspect-square rounded-md border-2 bg-ink p-1"
+        className="rounded-md border-2 bg-ink p-1"
         style={{
+          aspectRatio: 1.6,
           borderColor: ring,
           shadowColor: "#000",
           shadowOpacity: 0.5,
@@ -351,10 +359,10 @@ function EntryStamp({ stamp, index, onPress }: { stamp: Visit; index: number; on
           elevation: 6,
         }}
       >
-        <View className="flex-1 justify-between rounded-sm border px-2 py-2" style={{ borderColor: ring }}>
+        <View className="flex-1 justify-between rounded-sm border px-2 py-1" style={{ borderColor: ring }}>
           <Text
             variant="display"
-            className="text-center text-sm tracking-widest"
+            className="text-center text-xs leading-4 tracking-widest"
             style={{ color: ring }}
             numberOfLines={1}
           >
@@ -362,15 +370,15 @@ function EntryStamp({ stamp, index, onPress }: { stamp: Visit; index: number; on
           </Text>
           <Text
             variant="display"
-            className="text-center text-2xl leading-6 text-white"
-            numberOfLines={3}
+            className="text-center text-xl leading-5 text-white"
+            numberOfLines={2}
             adjustsFontSizeToFit
             minimumFontScale={0.6}
           >
             {stamp.name}
           </Text>
-          <View className="items-center border-t pt-1" style={{ borderColor: ring }}>
-            <Text variant="display" className="text-sm leading-4" style={{ color: ring }} numberOfLines={1}>
+          <View className="flex-row items-center justify-between gap-2 border-t pt-0.5" style={{ borderColor: ring }}>
+            <Text variant="display" className="text-xs leading-4" style={{ color: ring }} numberOfLines={1}>
               {entryDate(stamp.firstVisitAt)}
             </Text>
             <Text variant="display" className="text-xs leading-4 text-paper/70" numberOfLines={1}>
