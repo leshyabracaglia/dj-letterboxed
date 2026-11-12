@@ -12,6 +12,7 @@ import { useCurrentUser } from "@/lib/auth";
 import { plural } from "@/lib/format";
 import type { UserStats } from "@/lib/api/types";
 import { ROUTES } from "@/lib/routes";
+import { colors } from "@/lib/colors";
 
 const DJ_RANKING_TYPES = {
   RECENT: "recent",
@@ -83,9 +84,6 @@ function SeenDjs({ stats }: { stats: UserStats }) {
   );
 }
 
-// How many passport stamps show before "+N".
-const PASSPORT_SHOWN = 8;
-const PASSPORT_STAMP_SIZE = 76;
 // Stamps land a little crooked, each its own way.
 const PASSPORT_TILTS = [-8, 5, -3, 9, -6, 3];
 
@@ -320,54 +318,125 @@ function Lists({ username, isSelf }: { username: string; isSelf: boolean }) {
   );
 }
 
+// How many of the newest passport stamps the profile shows; the rest open
+// in a sheet.
+const PASSPORT_SHOWN = 2;
+
+// "11 NOV 2026", the date inked on a passport entry.
+function entryDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }).toUpperCase();
+}
+
+// A square passport entry stamp: the city across the top, the club in the
+// middle, the date of the first visit and how often below, inside a double
+// ruled border. Fills its slot's width.
+function EntryStamp({ stamp, index, onPress }: { stamp: Visit; index: number; onPress: () => void }) {
+  const ring = colors.stamp[index % 2 ? "purple" : "red"];
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="link"
+      accessibilityLabel={visitLabel(stamp)}
+      className="flex-1 active:opacity-80"
+      style={{ transform: [{ rotate: `${PASSPORT_TILTS[index % PASSPORT_TILTS.length] / 3}deg` }] }}
+    >
+      <View
+        className="aspect-square rounded-md border-2 bg-ink p-1"
+        style={{
+          borderColor: ring,
+          shadowColor: "#000",
+          shadowOpacity: 0.5,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: 6,
+        }}
+      >
+        <View className="flex-1 justify-between rounded-sm border px-2 py-2" style={{ borderColor: ring }}>
+          <Text
+            variant="display"
+            className="text-center text-sm tracking-widest"
+            style={{ color: ring }}
+            numberOfLines={1}
+          >
+            {stampCity(stamp)}
+          </Text>
+          <Text
+            variant="display"
+            className="text-center text-2xl leading-6 text-white"
+            numberOfLines={3}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+          >
+            {stamp.name}
+          </Text>
+          <View className="items-center border-t pt-1" style={{ borderColor: ring }}>
+            <Text variant="display" className="text-sm leading-4" style={{ color: ring }} numberOfLines={1}>
+              {entryDate(stamp.firstVisitAt)}
+            </Text>
+            <Text variant="display" className="text-xs leading-4 text-paper/70" numberOfLines={1}>
+              {stamp.nights ? plural(stamp.nights, "night") : "Checked in"}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+// Stamps two to a row, the last row padded so a lone stamp keeps its size.
+function StampGrid({ stamps, onPress }: { stamps: Visit[]; onPress: (stamp: Visit) => void }) {
+  const rows: Visit[][] = [];
+  for (let i = 0; i < stamps.length; i += 2) rows.push(stamps.slice(i, i + 2));
+  return (
+    <View className="gap-4">
+      {rows.map((row, r) => (
+        <View key={r} className="flex-row gap-4">
+          {row.map((stamp, i) => (
+            <EntryStamp key={stamp.venueId} stamp={stamp} index={r * 2 + i} onPress={() => onPress(stamp)} />
+          ))}
+          {row.length === 1 && <View className="flex-1" />}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 // Every club they've been to (logged a night at or checked in at), as
-// stamps in a passport, first visit first.
+// passport entry stamps, newest first: the two newest on the profile, all of
+// them in a sheet.
 function Passport({ stamps }: { stamps: UserStats["passport"] }) {
-  const [expanded, setExpanded] = useState(false);
-  const shown = expanded ? stamps : stamps.slice(0, PASSPORT_SHOWN);
-  const hidden = stamps.length - shown.length;
+  const [open, setOpen] = useState(false);
+  const newestFirst = [...stamps].reverse();
   const cities = new Set(stamps.map((stamp) => stamp.city?.split(",")[0].trim().toLowerCase()).filter(Boolean));
+  const visit = (stamp: Visit) => {
+    setOpen(false);
+    router.push(ROUTES.VENUE(stamp.venueId));
+  };
   return (
     <View>
-      <Text variant="display" className="text-xl text-paper/85">
-        Passport · {plural(stamps.length, "club")}
-        {!!cities.size && ` · ${plural(cities.size, "city", "cities")}`}
-      </Text>
-      <View className="mt-2 flex-row flex-wrap gap-2">
-        {shown.map((stamp, i) => (
-          <Pressable
-            key={stamp.venueId}
-            onPress={() => router.push(ROUTES.VENUE(stamp.venueId))}
-            accessibilityRole="link"
-            className="active:opacity-80"
-          >
-            <Stamp
-              label={stampLines(stamp.name)}
-              rim={`${stampCity(stamp)} · `}
-              size={PASSPORT_STAMP_SIZE}
-              color={i % 2 ? "purple" : "red"}
-              rotate={PASSPORT_TILTS[i % PASSPORT_TILTS.length]}
-              accessibilityLabel={visitLabel(stamp)}
-            />
-          </Pressable>
-        ))}
-        {!!hidden && (
-          <Pressable
-            onPress={() => setExpanded(true)}
-            accessibilityRole="button"
-            accessibilityLabel={`Show ${plural(hidden, "more club")}`}
-            className="active:opacity-80"
-          >
-            <Stamp
-              label={`+${hidden}`}
-              size={PASSPORT_STAMP_SIZE}
-              color="purple"
-              rotate={0}
-              accessibilityLabel={`${hidden} more`}
-            />
+      <View className="flex-row items-center justify-between">
+        <Text variant="display" className="text-xl text-paper/85">
+          Passport · {plural(stamps.length, "club")}
+          {!!cities.size && ` · ${plural(cities.size, "city", "cities")}`}
+        </Text>
+        {stamps.length > PASSPORT_SHOWN && (
+          <Pressable onPress={() => setOpen(true)} hitSlop={8} accessibilityRole="button">
+            <Text variant="display" className="text-base text-paper/70 underline">
+              See all
+            </Text>
           </Pressable>
         )}
       </View>
+      <View className="mt-3">
+        <StampGrid stamps={newestFirst.slice(0, PASSPORT_SHOWN)} onPress={visit} />
+      </View>
+      {open && (
+        <Sheet title="Passport" tag={plural(stamps.length, "club")} onClose={() => setOpen(false)}>
+          <ScrollView className="mt-3 shrink" contentContainerClassName="px-4 pb-4 pt-2">
+            <StampGrid stamps={newestFirst} onPress={visit} />
+          </ScrollView>
+        </Sheet>
+      )}
     </View>
   );
 }
