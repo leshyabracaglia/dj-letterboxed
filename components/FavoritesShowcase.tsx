@@ -39,7 +39,7 @@ export function FavoritesShowcase({
         <View className="mt-2 flex-row gap-2">
           {Array.from({ length: MAX_FAVORITES }).map((_, i) => (
             <View key={i} className="w-[72px] items-center">
-              <Skeleton className="h-12 w-12 rounded-full" />
+              <Skeleton className="h-12 w-12 rounded-[11px]" />
               <Skeleton className="mt-1.5 h-3 w-14" />
             </View>
           ))}

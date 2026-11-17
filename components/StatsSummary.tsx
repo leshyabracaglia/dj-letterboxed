@@ -12,7 +12,7 @@ import { useCurrentUser } from "@/lib/auth";
 import { plural } from "@/lib/format";
 import type { UserStats } from "@/lib/api/types";
 import { ROUTES } from "@/lib/routes";
-import { useDesignColors } from "@/lib/design";
+import { colors } from "@/lib/colors";
 
 const DJ_RANKING_TYPES = {
   RECENT: "recent",
@@ -335,7 +335,7 @@ const ENTRY_STAMP_MAX_WIDTH = 220;
 // the club in the middle, the date of the first visit and how often along
 // the bottom, inside a double ruled border. Fills its slot's width.
 function EntryStamp({ stamp, index, onPress }: { stamp: Visit; index: number; onPress: () => void }) {
-  const ring = useDesignColors().stamp[index % 2 ? "purple" : "red"];
+  const ring = colors.stamp[index % 2 ? "purple" : "red"];
   return (
     <Pressable
       onPress={onPress}
@@ -460,12 +460,26 @@ export function StatsSummary({ username, favorites }: { username: string; favori
 
   if (!stats) {
     return (
-      <View className="border-t border-white/10 pt-3">
-        <Skeleton className="h-4 w-20" />
-        <View className="mt-2 flex-row gap-3">
-          <Skeleton className="h-14 w-14 rounded-full" />
-          <Skeleton className="h-14 w-14 rounded-full" />
-          <Skeleton className="h-14 w-14 rounded-full" />
+      <View className="gap-6 border-t border-white/10 pt-3">
+        {/* Favorite clubs: big round stamps. */}
+        <View className="gap-2">
+          <Skeleton className="h-5 w-32" />
+          <View className="flex-row gap-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-24 rounded-full" />
+            ))}
+          </View>
+        </View>
+        {/* The passport: wide entry stamps, two to a row. */}
+        <View className="gap-3">
+          <Skeleton className="h-5 w-48" />
+          <View className="flex-row gap-4">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <View key={i} className="flex-1" style={{ maxWidth: ENTRY_STAMP_MAX_WIDTH }}>
+                <Skeleton className="aspect-[1.6] w-full" />
+              </View>
+            ))}
+          </View>
         </View>
       </View>
     );

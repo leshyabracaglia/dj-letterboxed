@@ -2,7 +2,6 @@ import { View } from "react-native";
 
 import { Text } from "./Text";
 import { colors } from "@/lib/colors";
-import { useDesignColors } from "@/lib/design";
 
 // About how many glyphs fit evenly around the rim at the rim's type size.
 const RIM_GLYPHS = 40;
@@ -33,8 +32,7 @@ export function Stamp({
   labelScale?: number;
   accessibilityLabel: string;
 }) {
-  // Red or purple in the zine design; the violet design's stamps are white.
-  const ring = useDesignColors().stamp[color];
+  const ring = colors.stamp[color];
   const chars = rimText(rim.toUpperCase()).split("");
   const charSize = Math.max(6, size * 0.1);
   const inset = size * 0.2;

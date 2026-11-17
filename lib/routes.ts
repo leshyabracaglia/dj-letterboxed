@@ -20,6 +20,10 @@ export const ROUTES = {
   // The log tab, filled in from the night out a review belongs to (when
   // you were tagged in someone else's): its event, venue, date and lineup.
   REVIEW_FROM: (reviewId: string): Href => `/(tabs)/review?fromReview=${reviewId}` as Href,
+  // The log tab, filled in from a check-in you haven't logged: its club and
+  // the night's date.
+  REVIEW_FROM_CHECK_IN: (venueId: string, checkedInAt: string): Href =>
+    `/(tabs)/review?fromCheckInVenue=${venueId}&fromCheckInAt=${encodeURIComponent(checkedInAt)}` as Href,
   PROFILE: "/(tabs)/profile" as Href,
   SETTINGS: "/settings" as Href,
   PRIVACY: "/privacy" as Href,

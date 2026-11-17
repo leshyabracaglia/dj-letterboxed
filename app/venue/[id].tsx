@@ -2,10 +2,11 @@ import { Link, useLocalSearchParams } from "expo-router";
 import { FlatList, Pressable, View } from "react-native";
 
 import {
+  Avatar,
+  Card,
   EmptyState,
   FadeInView,
   FitText,
-  LoadingFade,
   SectionTitle,
   Skeleton,
   Text,
@@ -13,11 +14,43 @@ import {
   usePageContentStyle,
 } from "@/components/ui";
 import { DetailPage } from "@/components/DetailPage";
-import { ReviewCard } from "@/components/ReviewCard";
+import { ReviewCard, ReviewCardSkeleton } from "@/components/ReviewCard";
 import { useVenueDetail } from "@/lib/api/hooks";
 import type { VenueDetail } from "@/lib/api/types";
 import { plural } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
+
+// Who's been here by checking in: everyone counted, your friends by face
+// and name (only friends are named; see GET /api/venues/{id}).
+function WhosBeenHere({ checkIns }: { checkIns: VenueDetail["checkIns"] }) {
+  if (!checkIns.people) return null;
+  const { friends } = checkIns;
+  return (
+    <View className="mt-6 gap-2">
+      <SectionTitle>Who&apos;s been here</SectionTitle>
+      <Card className="gap-3">
+        <Text variant="display" className="text-lg text-paper/80">
+          {plural(checkIns.people, "person", "people")} checked in
+          {!!friends.length && ` · ${plural(friends.length, "friend")}`}
+        </Text>
+        {!!friends.length && (
+          <View className="flex-row flex-wrap gap-3">
+            {friends.map((friend) => (
+              <Link key={friend.id} href={ROUTES.USER(friend.username)} asChild>
+                <Pressable className="items-center gap-1 active:opacity-80" accessibilityLabel={`@${friend.username}`}>
+                  <Avatar uri={friend.avatarUrl} name={friend.username} size={44} />
+                  <Text className="max-w-16 text-xs text-paper/70" numberOfLines={1}>
+                    @{friend.username}
+                  </Text>
+                </Pressable>
+              </Link>
+            ))}
+          </View>
+        )}
+      </Card>
+    </View>
+  );
+}
 
 // A named event people have logged at this venue, linking to its page.
 function VenueEventRow({ item }: { item: VenueDetail["events"][number] }) {
@@ -40,16 +73,11 @@ function VenueSkeleton() {
 
   return (
     <View style={contentStyle}>
-      <Skeleton className="h-7 w-48" />
-      <Skeleton className="mt-2 h-4 w-36" />
-      <View className="mt-4 gap-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <LoadingFade key={i} className="border border-white/5 bg-zine-panel/40 p-4">
-            <Skeleton className="h-7 w-44" />
-            <Skeleton className="mt-2 h-5 w-28" />
-          </LoadingFade>
-        ))}
-      </View>
+      <Skeleton className="h-4 w-14" />
+      <Skeleton className="mt-2 h-14 w-60" />
+      <Skeleton className="mt-2 h-4 w-40" />
+      <View className="mt-8" />
+      <ReviewCardSkeleton count={2} />
     </View>
   );
 }
@@ -101,6 +129,7 @@ function VenueDetailList({ data }: { data: VenueDetail }) {
               {plural(venue.reviewCount, "night")} logged
             </Text>
           </FadeInView>
+          <WhosBeenHere checkIns={data.checkIns} />
           {!!data.events.length && (
             <View className="mt-6 gap-2">
               <SectionTitle>Events here</SectionTitle>

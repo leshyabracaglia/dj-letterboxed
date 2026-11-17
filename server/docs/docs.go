@@ -512,6 +512,47 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/feed/check-ins": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "check-ins"
+                ],
+                "summary": "Check-ins with no night logged for them, by the caller and their friends (mutual follows), newest first, for the Following feed to show between nights",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "only check-ins at or after this time (RFC3339): the oldest night the feed has loaded",
+                        "name": "since",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/CheckInPost"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/api/feed/popular": {
             "get": {
                 "produces": [
@@ -2497,6 +2538,45 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/users/username-check": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Whether a username is free for the caller to take (onboarding's live check); the caller's own counts as free",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "the username to check, lowercase",
+                        "name": "username",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usernameCheck"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/api/users/{userId}/block": {
             "post": {
                 "security": [
@@ -2682,6 +2762,49 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/UserProfileResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/{username}/check-ins": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "check-ins"
+                ],
+                "summary": "A user's check-ins with no night logged for them, newest first, for their profile; empty unless the caller is them or their friend (mutual follows)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "username",
+                        "name": "username",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "only check-ins at or after this time (RFC3339): the oldest night the profile has loaded",
+                        "name": "since",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/CheckInPost"
+                            }
                         }
                     },
                     "404": {
@@ -2949,7 +3072,7 @@ const docTemplate = `{
                 "tags": [
                     "venues"
                 ],
-                "summary": "Get a venue by id, with the events logged there and recent reviews",
+                "summary": "Get a venue by id, with the events logged there, recent reviews, and who's checked in (friends named when signed in)",
                 "parameters": [
                     {
                         "type": "string",
@@ -2992,6 +3115,29 @@ const docTemplate = `{
                 }
             }
         },
+        "CheckInPost": {
+            "type": "object",
+            "required": [
+                "createdAt",
+                "id",
+                "user",
+                "venue"
+            ],
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/User"
+                },
+                "venue": {
+                    "$ref": "#/definitions/CheckInVenue"
+                }
+            }
+        },
         "CheckInResponse": {
             "type": "object",
             "required": [
@@ -3013,6 +3159,26 @@ const docTemplate = `{
                 },
                 "venue": {
                     "$ref": "#/definitions/NearbyVenue"
+                }
+            }
+        },
+        "CheckInVenue": {
+            "type": "object",
+            "required": [
+                "city",
+                "id",
+                "name"
+            ],
+            "properties": {
+                "city": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
                 }
             }
         },
@@ -4459,6 +4625,7 @@ const docTemplate = `{
             "required": [
                 "avatarUrl",
                 "bio",
+                "city",
                 "createdAt",
                 "displayName",
                 "id",
@@ -4471,6 +4638,11 @@ const docTemplate = `{
                     "x-nullable": true
                 },
                 "bio": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "city": {
+                    "description": "Where they're based (\"Brooklyn\"), as they typed it.",
                     "type": "string",
                     "x-nullable": true
                 },
@@ -4579,14 +4751,41 @@ const docTemplate = `{
                 }
             }
         },
+        "VenueCheckIns": {
+            "type": "object",
+            "required": [
+                "friends",
+                "people"
+            ],
+            "properties": {
+                "friends": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/User"
+                    }
+                },
+                "people": {
+                    "type": "integer"
+                }
+            }
+        },
         "VenueDetailResponse": {
             "type": "object",
             "required": [
+                "checkIns",
                 "events",
                 "recentReviews",
                 "venue"
             ],
             "properties": {
+                "checkIns": {
+                    "description": "Who's been here by checking in: everyone counted, the caller's\nfriends named.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/VenueCheckIns"
+                        }
+                    ]
+                },
                 "events": {
                     "type": "array",
                     "items": {
@@ -4999,6 +5198,10 @@ const docTemplate = `{
                 "bio": {
                     "type": "string"
                 },
+                "city": {
+                    "description": "Where they're based (\"Brooklyn\"); \"\" clears it.",
+                    "type": "string"
+                },
                 "displayName": {
                     "type": "string"
                 },
@@ -5032,6 +5235,25 @@ const docTemplate = `{
                 "whatsNewSeen": {
                     "description": "The \"What's new\" sheet version just closed. It only ever moves\nforward, so an older build can't make a newer sheet show again.",
                     "type": "integer"
+                }
+            }
+        },
+        "usernameCheck": {
+            "type": "object",
+            "required": [
+                "available",
+                "username",
+                "valid"
+            ],
+            "properties": {
+                "available": {
+                    "type": "boolean"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "valid": {
+                    "type": "boolean"
                 }
             }
         }

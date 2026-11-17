@@ -20,8 +20,7 @@ import {
   Stamp,
   Text,
   TornEdge,
-  useCardColors,
-  tiltFor,
+  CARD_COLORS,
   useIsDesktopWeb,
   usePageContentStyle,
   usePageGutter,
@@ -126,7 +125,6 @@ function SpotifyLink({ spotifyId }: { spotifyId: string }) {
 
 function NameBand({ data }: { data: DjDetail }) {
   const gutter = usePageGutter();
-  const cardColors = useCardColors();
   return (
     <View className="z-10 bg-zine-red pb-8 pt-4" style={{ paddingHorizontal: gutter }}>
       <FitText fontSize={72} numberOfLines={3} className="text-paper">
@@ -144,7 +142,7 @@ function NameBand({ data }: { data: DjDetail }) {
         </>
       )}
       {!!data.dj.spotifyId && <SpotifyLink spotifyId={data.dj.spotifyId} />}
-      <TornEdge color={cardColors.accent} height={12} />
+      <TornEdge color={CARD_COLORS.accent} height={12} />
       <View className="absolute -bottom-12" style={{ right: gutter - 8 }}>
         <Stamp
           label={String(data.timesSeen)}
@@ -166,7 +164,7 @@ function Portrait({ portrait }: { portrait: DjDetail["portrait"] }) {
   const { pullQuote, venues, descriptors } = portrait;
   if (!pullQuote && !venues.length && !descriptors.length) return null;
   return (
-    <Card tint="accent" tilt={-0.6} className="gap-4">
+    <Card tint="accent" className="gap-4">
       {!!pullQuote && (
         <Pressable onPress={() => router.push(ROUTES.REVIEW_DETAIL(pullQuote.reviewId))} className="active:opacity-80">
           <Text className="text-xl italic leading-7 text-paper">“{pullQuote.text}”</Text>
@@ -204,30 +202,43 @@ function Portrait({ portrait }: { portrait: DjDetail["portrait"] }) {
   );
 }
 
-// The tracks people highlighted from the DJ's sets, most picked first.
-function TopTracks({ tracks }: { tracks: DjDetail["topTracks"] }) {
+// The tracks people highlighted from the DJ's sets, most picked first and
+// numbered; until anyone has, a nudge to be the first.
+function TopTracks({ tracks, name }: { tracks: DjDetail["topTracks"]; name: string }) {
   return (
-    <Card tilt={0.6} className="gap-4 bg-zine-panel">
+    <Card className="gap-4 bg-zine-panel">
       <Text variant="display" className="text-xl text-paper/70">
         Tracks people loved
       </Text>
-      {tracks.map(({ track, picks }) => (
-        <TrackRow
-          key={track.id}
-          track={track}
-          noteLines={2}
-          trailing={
-            picks > 1 && (
-              <Text
-                variant="display"
-                className="text-lg text-paper/70"
-                accessibilityLabel={`Picked on ${picks} nights`}
-              >
-                ×{picks}
-              </Text>
-            )
-          }
-        />
+      {!tracks.length && (
+        <Text className="text-sm text-paper/60">
+          Nobody&apos;s picked a track from {name}&apos;s sets yet. Add the ones that stuck with you when you log a
+          night.
+        </Text>
+      )}
+      {tracks.map(({ track, picks }, i) => (
+        <View key={track.id} className="flex-row items-center gap-3">
+          <Text variant="display" className="w-6 text-[28px] leading-8 text-zine-red-ink">
+            {i + 1}
+          </Text>
+          <View className="flex-1">
+            <TrackRow
+              track={track}
+              noteLines={2}
+              trailing={
+                picks > 1 && (
+                  <Text
+                    variant="display"
+                    className="text-lg text-paper/70"
+                    accessibilityLabel={`Picked on ${picks} nights`}
+                  >
+                    ×{picks}
+                  </Text>
+                )
+              }
+            />
+          </View>
+        </View>
       ))}
     </Card>
   );
@@ -243,7 +254,7 @@ function DjNightRow({ review, djId, index }: { review: Review; djId: string; ind
   const meta = [...(review.user ? [`@${review.user.username}`] : []), ...nightDateParts(review, { wholeNight: !set })];
   const paper = paperAt(index);
   return (
-    <Card href={ROUTES.REVIEW_DETAIL(review.id, { tint: paper.tint })} tint={paper.tint} tilt={tiltFor(review.id, 0.8)}>
+    <Card href={ROUTES.REVIEW_DETAIL(review.id, { tint: paper.tint })} tint={paper.tint}>
       <View className="flex-row items-center gap-3">
         <View className="flex-1">
           <Text variant="display" className="text-3xl leading-8 text-paper" numberOfLines={1}>
@@ -276,13 +287,37 @@ function DjProfileSkeleton() {
   return (
     <>
       <Hero imageUrl={null} showBack={!isDesktopWeb} />
-      <LoadingFade className="bg-zine-red/30 pb-8 pt-4" style={{ paddingHorizontal: gutter }}>
-        <Skeleton tone="paper" className="h-16 w-56" />
-        <Skeleton tone="paper" className="mt-3 h-5 w-40" />
-        <Skeleton tone="paper" className="mt-3 h-4 w-3/4" />
+      {/* The name band, already its own near-black, with the seen stamp. */}
+      <LoadingFade className="z-10 bg-zine-red pb-8 pt-4" style={{ paddingHorizontal: gutter }}>
+        <Skeleton className="h-16 w-56" />
+        <Skeleton className="mt-3 h-5 w-40" />
+        <Skeleton className="mt-3 h-4 w-3/4" />
+        <Skeleton className="mt-2 h-4 w-1/2" />
+        <View className="absolute -bottom-12" style={{ right: gutter - 8 }}>
+          <Skeleton className="h-[112px] w-[112px] rounded-full" />
+        </View>
       </LoadingFade>
-      <View style={contentStyle}>
-        <Skeleton className="mt-10 h-40 w-full rounded-none" />
+      <View style={[contentStyle, { paddingTop: 72 }]} className="gap-4">
+        {/* How people describe them. */}
+        <Card blank tint="accent" className="gap-3">
+          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-6 w-2/3" />
+          <Skeleton className="mt-1 h-4 w-28" />
+        </Card>
+        {/* Tracks people loved. */}
+        <Card blank className="gap-4">
+          <Skeleton className="h-5 w-40" />
+          {Array.from({ length: 3 }).map((_, i) => (
+            <View key={i} className="flex-row items-center gap-3">
+              <Skeleton className="h-7 w-5" />
+              <Skeleton className="h-12 w-12" />
+              <View className="flex-1 gap-1.5">
+                <Skeleton className="h-4 w-3/5" />
+                <Skeleton className="h-3 w-2/5" />
+              </View>
+            </View>
+          ))}
+        </Card>
       </View>
     </>
   );
@@ -327,7 +362,7 @@ function DjProfileList({ data }: { data: DjDetail }) {
           </FadeInView>
           <View style={[contentStyle, { paddingTop: 72, paddingBottom: 0 }]} className="gap-4">
             <Portrait portrait={data.portrait} />
-            {!!data.topTracks.length && <TopTracks tracks={data.topTracks} />}
+            <TopTracks tracks={data.topTracks} name={data.dj.name} />
             <SectionTitle>Recent logs</SectionTitle>
           </View>
           <View className="h-2" />

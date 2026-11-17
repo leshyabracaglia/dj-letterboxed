@@ -12,9 +12,9 @@ import {
   type Paper,
   Photo,
   Skeleton,
+  skeletonTone,
   Tape,
   Text,
-  tiltFor,
 } from "./ui";
 
 import type { LineupEntry, Review, ReviewTrack, User } from "@/lib/api/types";
@@ -25,7 +25,6 @@ import { NightStamp } from "./NightStamp";
 import { ReviewTags } from "./ReviewTags";
 import { TrackRow } from "./TrackRow";
 import { colors } from "@/lib/colors";
-import { useDesign } from "@/lib/design";
 
 // How many lineup photos a night card shows before "+N more".
 const LINEUP_SHOWN = 3;
@@ -242,71 +241,31 @@ type CardProps = {
   trackExtra?: (track: ReviewTrack) => ReactNode;
 };
 
-// A wire paper clip, drawn as two nested loops. Absolutely positioned with
-// `style`; it sits over everything so it reads as gripping what's under it.
-function PaperClip({ style }: { style?: { top?: number; left?: number; right?: number } }) {
-  return (
-    <View
-      pointerEvents="none"
-      className="shadow-sm shadow-black/60"
-      style={{ position: "absolute", width: 15, height: 48, zIndex: 3, transform: [{ rotate: "-6deg" }], ...style }}
-    >
-      <View className="absolute inset-0 rounded-full border-[2.5px] border-[#C9CDD3]" />
-      <View className="absolute left-[3.5px] top-[9px] h-[33px] w-2 rounded-full border-[2.5px] border-[#AEB3BA]" />
-    </View>
-  );
-}
-
 const POLAROID_PHOTO = 104;
 
-// The DJ's photo as a polaroid: white print, square photo, a blank strip
-// underneath, paper-clipped to the card's top edge. In the violet design it's
-// a plain photo in a white border, taped on, sitting straight.
-function Polaroid({ uri, paper, rotate }: { uri?: string | null; paper: Paper; rotate: number }) {
-  const { design } = useDesign();
-  if (design === "violet") {
-    return (
-      <View className="mt-2 border-4 border-paper shadow-lg shadow-black/50">
-        <Photo
-          uri={uri}
-          width={POLAROID_PHOTO}
-          placeholderClassName={paper.photoPlaceholderClassName}
-          silhouetteClassName={paper.photoSilhouetteClassName}
-        />
-        <Tape onPhoto style={{ top: -12, left: 22 }} width={64} rotate={-5} />
-      </View>
-    );
-  }
+// The DJ's photo, in a white border, taped onto the card's top edge.
+function Polaroid({ uri, paper }: { uri?: string | null; paper: Paper }) {
   return (
-    <View
-      className="bg-paper p-1.5 pb-5 shadow-lg shadow-black/50"
-      style={{ width: POLAROID_PHOTO + 12, transform: [{ rotate: `${rotate}deg` }] }}
-    >
+    <View className="mt-2 border-4 border-paper shadow-lg shadow-black/50">
       <Photo
         uri={uri}
         width={POLAROID_PHOTO}
         placeholderClassName={paper.photoPlaceholderClassName}
         silhouetteClassName={paper.photoSilhouetteClassName}
       />
-      <PaperClip style={{ top: -26, left: 22 }} />
+      <Tape style={{ top: -12, left: 22 }} width={64} rotate={-5} />
     </View>
   );
 }
 
-// One DJ's set (purple or red paper, see paperAt), for a post that's just
-// that DJ's review (see soloSet): big name, and their photo as a polaroid
-// clipped to the card's top edge on the right, the night's passport stamp
+// One DJ's set (violet or near-black paper, see paperAt), for a post that's
+// just that DJ's review (see soloSet): big name, and their photo taped to the
+// card's top edge on the right, the night's passport stamp
 // over the bottom corner.
 function DjReviewCard({ review, set, paper, expanded, actions, trackExtra }: CardProps & { set: LineupEntry }) {
   const subject = reviewSubject(review, set);
   return (
-    <Card
-      href={expanded ? undefined : ROUTES.REVIEW_DETAIL(review.id, { tint: paper.tint })}
-      tint={paper.tint}
-      torn
-      tilt={tiltFor(review.id)}
-    >
-      <Tape style={{ top: -10, left: 24 }} rotate={-4} />
+    <Card href={expanded ? undefined : ROUTES.REVIEW_DETAIL(review.id, { tint: paper.tint })} tint={paper.tint} torn>
       <View className="flex-row gap-3">
         <View className="flex-1">
           <View className="flex-row flex-wrap items-center gap-2">
@@ -335,7 +294,7 @@ function DjReviewCard({ review, set, paper, expanded, actions, trackExtra }: Car
               if (subject.href) router.push(subject.href);
             }}
           >
-            <Polaroid uri={subject.imageUrl} paper={paper} rotate={3} />
+            <Polaroid uri={subject.imageUrl} paper={paper} />
           </Pressable>
         </View>
       </View>
@@ -356,7 +315,6 @@ function DjReviewCard({ review, set, paper, expanded, actions, trackExtra }: Car
       </View>
       <View className="absolute -bottom-5 right-1">
         <NightStamp review={review} size={76} />
-        <Tape style={{ bottom: 2, right: -12 }} width={56} rotate={-14} />
       </View>
     </Card>
   );
@@ -451,7 +409,7 @@ function NightReviewCard({ review, paper, expanded, actions, trackExtra }: CardP
       href={expanded ? undefined : ROUTES.REVIEW_DETAIL(review.id, { tint: paper.tint })}
       tint={paper.tint}
       torn
-      tilt={tiltFor(review.id)}
+
       className="pb-5"
     >
       <View className="pr-20">
@@ -586,26 +544,33 @@ export function ReviewCardSkeleton({ count = 1, paper }: { count?: number; paper
     <View className="gap-10">
       {Array.from({ length: count }).map((_, i) => {
         const w = SKELETON_WIDTHS[i % SKELETON_WIDTHS.length];
+        const tint = (paper ?? paperAt(i)).tint;
+        const tone = skeletonTone(tint);
         return (
-          <Card key={i} blank tint={(paper ?? paperAt(i)).tint} torn tilt={tiltFor(`skeleton-${i}`)} className="pb-6">
+          <Card key={i} blank tint={tint} torn className="pb-6">
             <View className="flex-row gap-3">
               <View className="flex-1">
-                <Skeleton tone="paper" className={`h-4 ${w.label}`} />
-                <Skeleton tone="paper" className={`mt-7 h-12 ${w.name}`} />
-                <Skeleton tone="paper" className={`mt-2 h-5 ${w.where}`} />
+                <Skeleton tone={tone} className={`h-4 ${w.label}`} />
+                <Skeleton tone={tone} className={`mt-7 h-12 ${w.name}`} />
+                <Skeleton tone={tone} className={`mt-2 h-5 ${w.where}`} />
               </View>
-              <Skeleton tone="paper" className="-mt-2 h-[160px] w-[116px] rounded-none" />
+              {/* The DJ's photo in its white border. */}
+              <Skeleton tone={tone} className="mt-2 h-[116px] w-[116px]" />
             </View>
             <View className="pr-16">
-              <Skeleton tone="paper" className="mt-4 h-3.5 w-full" />
-              <Skeleton tone="paper" className={`mt-2.5 h-3.5 ${w.line}`} />
+              <Skeleton tone={tone} className="mt-4 h-3.5 w-full" />
+              <Skeleton tone={tone} className={`mt-2.5 h-3.5 ${w.line}`} />
             </View>
             <View className="mt-4 flex-row gap-1.5">
-              <Skeleton tone="paper" className="h-6 w-16 rounded-none" />
-              <Skeleton tone="paper" className="h-6 w-14 rounded-none" />
+              <Skeleton tone={tone} className="h-6 w-16" />
+              <Skeleton tone={tone} className="h-6 w-14" />
+            </View>
+            <View className="mt-3 flex-row items-center gap-2">
+              <Skeleton tone={tone} className="h-[38px] w-[38px] rounded-full" />
+              <Skeleton tone={tone} className="h-[30px] w-28" />
             </View>
             <View className="absolute -bottom-5 right-1">
-              <Skeleton tone="paper" className="h-[76px] w-[76px] rounded-full" />
+              <Skeleton tone={tone} className="h-[76px] w-[76px] rounded-full" />
             </View>
           </Card>
         );

@@ -104,7 +104,7 @@ export function CommentSection({ reviewId }: { reviewId: string }) {
         {!comments ? (
           Array.from({ length: 2 }).map((_, i) => (
             <View key={i} className="flex-row items-start gap-2">
-              <Skeleton className="h-6 w-6 rounded-full" />
+              <Skeleton className="h-6 w-6 rounded-[5px]" />
               <View className="flex-1">
                 <Skeleton className="h-3.5 w-24" />
                 <Skeleton className="mt-1.5 h-3.5 w-3/4" />

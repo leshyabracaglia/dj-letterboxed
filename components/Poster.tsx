@@ -43,7 +43,7 @@ function PosterRings() {
             height: r * 2,
             borderRadius: r,
             borderWidth: 1,
-            borderColor: i % 2 ? "rgba(185,160,240,0.4)" : "rgba(229,72,77,0.45)",
+            borderColor: i % 2 ? "rgba(216,209,255,0.4)" : "rgba(91,61,245,0.55)",
           }}
         />
       ))}

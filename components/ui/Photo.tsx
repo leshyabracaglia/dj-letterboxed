@@ -11,8 +11,8 @@ export function Photo({
   height = width,
   framed = false,
   rotate = 0,
-  placeholderClassName = "bg-[#3B0E14]",
-  silhouetteClassName = "text-zine-red",
+  placeholderClassName = "bg-[#1B1530]",
+  silhouetteClassName = "text-[#5B4A99]",
 }: {
   uri?: string | null;
   // Omit both to fill the parent (size the parent instead).

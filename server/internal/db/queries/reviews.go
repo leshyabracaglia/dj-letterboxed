@@ -281,7 +281,7 @@ func ListComments(ctx context.Context, q DBTX, reviewID string) ([]db.ReviewComm
 		var c db.ReviewComment
 		var u db.User
 		err := row.Scan(&c.ID, &c.ReviewID, &c.UserID, &c.Body, &c.CreatedAt,
-			&u.ID, &u.ClerkID, &u.Username, &u.DisplayName, &u.Bio, &u.AvatarURL, &u.CreatedAt, &u.UpdatedAt)
+			&u.ID, &u.ClerkID, &u.Username, &u.DisplayName, &u.Bio, &u.AvatarURL, &u.CreatedAt, &u.UpdatedAt, &u.City)
 		c.User = &u
 		return c, err
 	})
@@ -347,7 +347,7 @@ func GetTaggedUsersByReviewIDs(ctx context.Context, q DBTX, reviewIDs []string) 
 	return collectGrouped(rows, err, func(row pgx.CollectableRow) (keyed[db.User], error) {
 		var k keyed[db.User]
 		u := &k.Value
-		err := row.Scan(&k.Key, &u.ID, &u.ClerkID, &u.Username, &u.DisplayName, &u.Bio, &u.AvatarURL, &u.CreatedAt, &u.UpdatedAt)
+		err := row.Scan(&k.Key, &u.ID, &u.ClerkID, &u.Username, &u.DisplayName, &u.Bio, &u.AvatarURL, &u.CreatedAt, &u.UpdatedAt, &u.City)
 		return k, err
 	})
 }

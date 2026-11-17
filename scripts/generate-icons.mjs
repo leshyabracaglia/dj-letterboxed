@@ -1,4 +1,4 @@
-// Renders the app's logo - the red star stamp (components/ui/Stamp.tsx's
+// Renders the app's logo - the violet star stamp (components/ui/Stamp.tsx's
 // look, drawn here as SVG at icon resolution) - into every icon asset
 // app.json points at, plus the favicon and the logo mark. Uses the Playwright
 // Chromium the e2e suite already installs, so the stamp's ring text is set in
@@ -16,7 +16,8 @@ const font = readFileSync(
   `${root}node_modules/@expo-google-fonts/jersey-10/400Regular/Jersey10_400Regular.ttf`,
 ).toString("base64");
 
-const RED = "#E5484D";
+// The app's electric violet for the ring and rim text; the star is white.
+const RING = "#5B3DF5";
 const RING_TEXT = "BEATBOXD · LOGGED · BEATBOXD · LOGGED · ";
 
 /** The points of a five-pointed star centered on (cx, cy), `r` to its tips,
@@ -30,8 +31,8 @@ function starPoints(cx, cy, r) {
   }).join(" ");
 }
 
-/** The stamp as an SVG `size` px square: black disc, red rim, the ring text
- * around it, an inner ring and a white star. Proportions match Stamp. With
+/** The stamp as an SVG `size` px square: black disc, violet rim, the ring text
+ * around it, an inner ring and a white star: violet and white on black. Proportions match Stamp. With
  * `mono`, everything is drawn in one flat white (Android's themed icon). */
 function stampSvg(size, { mono = false, rotate = -8 } = {}) {
   const c = size / 2;
@@ -41,7 +42,7 @@ function stampSvg(size, { mono = false, rotate = -8 } = {}) {
   // Baseline radius: glyphs hang from just inside the rim, as in the app.
   const textR = c - size * 0.03 - textSize * 0.82;
   const innerR = size * 0.3;
-  const fg = mono ? "#FFFFFF" : RED;
+  const fg = mono ? "#FFFFFF" : RING;
   const disc = mono ? "none" : "#050405";
   return `
 <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">

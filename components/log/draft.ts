@@ -11,7 +11,7 @@ import type {
   VenueSummary,
 } from "@/lib/api/types";
 import type { LocalClip } from "@/components/TrackClip";
-import { parseDateInputValue, plural, toDateInputValue } from "@/lib/format";
+import { nightOfCheckIn, parseDateInputValue, plural, toDateInputValue } from "@/lib/format";
 
 // The log screen's form model: what's picked and typed so far, and the
 // helpers that name and fill it in.
@@ -308,4 +308,16 @@ export function draftProblem(draft: ReviewDraft): { field?: "venue"; message?: s
   if (draft.seenAt > toDateInputValue(new Date())) return { message: "You can't log a set that hasn't happened yet" };
   if (!draft.isDay && !draft.isNight) return { message: "Pick day, night, or both" };
   return undefined;
+}
+
+// The poster's starting point for a night you checked in at but haven't
+// logged: the club, and the night's date (the evening before, for a check-in
+// in the small hours).
+export function draftFromCheckIn(venue: VenueSummary, checkedInAt: Date): ReviewDraft {
+  return {
+    ...emptyDraft(),
+    eventPick: { type: "none" },
+    venuePick: { type: "existing", venue },
+    seenAt: toDateInputValue(nightOfCheckIn(checkedInAt)),
+  };
 }

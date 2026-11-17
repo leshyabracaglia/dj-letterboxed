@@ -8,7 +8,9 @@ import { ModerationButton } from "@/components/ModerationSheet";
 import { ProfileHeader } from "@/components/ProfileHeader";
 import { ReviewCard, ReviewCardSkeleton } from "@/components/ReviewCard";
 import { useCurrentUser } from "@/lib/auth";
-import { useBlockedUsers, useSetBlocked, useUserProfile, useUserReviews } from "@/lib/api/hooks";
+import { CheckInCard } from "@/components/CheckInCard";
+import { checkInsSince, nightListKey, withCheckIns } from "@/lib/checkIns";
+import { useBlockedUsers, useSetBlocked, useUserCheckIns, useUserProfile, useUserReviews } from "@/lib/api/hooks";
 import type { UserProfile } from "@/lib/api/types";
 
 function UserProfileSkeleton() {
@@ -42,6 +44,8 @@ function UserProfileList({ profile }: { profile: UserProfile }) {
   const contentStyle = usePageContentStyle("roomy");
   const { me } = useCurrentUser();
   const { data: reviews } = useUserReviews(profile.user.username);
+  // Their check-ins they haven't logged: only there if you're friends.
+  const { data: checkIns } = useUserCheckIns(profile.user.username, checkInsSince(reviews));
   const { data: blocked } = useBlockedUsers();
   const setBlocked = useSetBlocked(profile.user.id);
 
@@ -68,9 +72,15 @@ function UserProfileList({ profile }: { profile: UserProfile }) {
           <View className="h-4" />
         </>
       }
-      data={isBlocked ? [] : (reviews?.items ?? [])}
-      keyExtractor={(item) => item.id}
-      renderItem={({ item, index }) => <ReviewCard review={{ ...item, user: profile.user }} index={index} />}
+      data={isBlocked ? [] : withCheckIns(reviews?.items ?? [], checkIns ?? [], (review) => review.seenAt)}
+      keyExtractor={nightListKey}
+      renderItem={({ item }) =>
+        item.kind === "review" ? (
+          <ReviewCard review={{ ...item.review, user: profile.user }} index={item.index} />
+        ) : (
+          <CheckInCard checkIn={item.checkIn} />
+        )
+      }
       ItemSeparatorComponent={TornCardSeparator}
       ListEmptyComponent={
         isBlocked ? (

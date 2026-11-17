@@ -113,11 +113,13 @@ test("a log is verified only when its reviewer checked in at the venue", async (
 test("a profile's passport stamps every club they've logged a night at", async ({ page }) => {
   await page.goto("/user/carla");
 
-  await expect(shown(page.getByRole("img", { name: "Good Room: 1 night" }))).toBeVisible();
   // fabric she only checked in at, and pinned as her #2 club.
-  await expect(shown(page.getByRole("img", { name: "fabric: checked in" }))).toBeVisible();
   await expect(shown(page.getByRole("img", { name: "Favorite #2, fabric: checked in" }))).toBeVisible();
-  await expect(shown(page.getByRole("img", { name: "Nowadays: 1 night" }))).toBeVisible();
+  // The passport shows her newest two clubs; See all has the rest.
+  await expect(shown(page.getByRole("link", { name: "Good Room: 1 night" }))).toBeVisible();
+  await shown(page.getByRole("button", { name: "See all" })).click();
+  await expect(shown(page.getByRole("link", { name: "Nowadays: 1 night" }))).toBeVisible();
+  await expect(shown(page.getByRole("link", { name: "fabric: checked in" }))).toBeVisible();
 });
 
 test("a DJ page collects the tracks people loved from their sets", async ({ page }) => {

@@ -74,7 +74,7 @@ export function UserListScreen({ userListMode }: { userListMode: UserListType })
                   key={i}
                   className="flex-row items-center gap-3 border border-white/10 bg-zine-panel/90 p-4 shadow-sm"
                 >
-                  <Skeleton className="h-9 w-9 rounded-full" />
+                  <Skeleton className="h-9 w-9 rounded-[8px]" />
                   <View>
                     <Skeleton className="h-4 w-32" />
                     <Skeleton className="mt-1.5 h-3.5 w-20" />

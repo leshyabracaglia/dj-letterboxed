@@ -5,7 +5,7 @@ import { SectionTitle, Text } from "@/components/ui";
 import { ContactEmailLink, InfoPage, type InfoSection } from "@/components/InfoPage";
 import { ROUTES } from "@/lib/routes";
 
-const EFFECTIVE_DATE = "October 15, 2026";
+const EFFECTIVE_DATE = "November 13, 2026";
 
 // The App Store privacy policy (linked from App Store Connect as
 // https://beatboxd.com/privacy). Keep it in step with what the app actually
@@ -24,7 +24,7 @@ const SECTIONS: InfoSection[] = [
       "What you post: the nights you log (event, venue, date, DJs), your reviews, tags, comments and likes, the friends you tag, who you follow, and the reviews you showcase as favorites.",
       "Audio clips: if you record a clip of a track you couldn't name, we keep that recording (at most 15 seconds, which may pick up voices and sound around you) so others can listen and help identify it. We only use the microphone while you're recording. A clip is streamed in the app, never offered as a download, and deleted once its track is identified, or when you remove it or the night.",
       "Approximate location: when you open the log tab, the app uses your device’s location, at low accuracy, to find nights near you. On iPhone and Android your device turns it into a city name and only the city is sent to us; on the web, coordinates rounded to about 1km are sent and turned into a city. We use it for that search and don’t store it. You can decline location access and pick a city by hand instead.",
-      "Check-ins: when you tap Check in on the log tab, the app takes one precise reading of your device’s location and sends it to us to find the venue you’re at. We compare it with the venue’s location and then discard it. We keep only that you checked in at that venue, when, and roughly how far from it you were, so your log of that night can show as verified. Nothing is read in the background.",
+      "Your city: when you set up your profile you can type the city you’re based in, or tap to fill it in from your location. That works out the city on your device and only the city is kept, as part of your profile; you can change or clear it in Settings. Check-ins: when you tap Check in on the log tab, the app takes one precise reading of your device’s location and sends it to us to find the venue you’re at. We compare it with the venue’s location and then discard it. We keep only that you checked in at that venue, when, and roughly how far from it you were, so your log of that night can show as verified. Nothing is read in the background. Your friends (people you follow who follow you back) can see where you checked in and when: on your profile and in their feed until you log that night, and on that venue’s page. A friend who checks in at the same venue within a few hours is told you’re there too, and you’re told about them. Anyone else sees only how many people have checked in at a venue, never who.",
       "Device push token: if you allow notifications, we store your device’s push token so we can tell you about new followers, likes and comments, and when someone tags you at a night. If you haven’t opened Beatboxd in a couple of days, we may also send an occasional reminder that people you follow have logged nights (at most once every two days); you can turn that off in Settings.",
       "Activity and server logs: we record when you last used the app (to decide when that reminder is due, if you have it on). Our servers log each request, including its IP address, device type and time, and count requests per account and IP address to stop spam and abuse. We use these logs only to keep Beatboxd running and secure.",
       "Safety reports and blocks: if you report a review, comment or user, we keep the report, including a copy of the reported text, and who you block.",
@@ -41,7 +41,7 @@ const SECTIONS: InfoSection[] = [
   {
     title: "What’s public",
     body: [
-      "Beatboxd is a social app. Your username, display name, bio, profile photo, followers and following, and everything you post (logs, reviews, comments, tags and favorites) can be seen by anyone, including people who aren’t signed in. Friends you tag on a night are shown on it; people you’ve blocked, or who’ve blocked you, can’t tag you. Your email address is never shown.",
+      "Beatboxd is a social app. Your username, display name, bio, the city you say you’re based in, when you joined, your profile photo, followers and following, and everything you post (logs, reviews, comments, tags and favorites) can be seen by anyone, including people who aren’t signed in. Friends you tag on a night are shown on it; people you’ve blocked, or who’ve blocked you, can’t tag you. Your email address is never shown.",
     ],
   },
   {

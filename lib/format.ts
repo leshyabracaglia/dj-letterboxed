@@ -17,6 +17,17 @@ export function formatStampDate(iso: string): [string, string] {
   return [date.toLocaleDateString(undefined, { month: "short" }), String(date.getDate())];
 }
 
+// The hour before which a check-in still belongs to the night before.
+const NIGHT_ENDS_HOUR = 8;
+
+/** The night a check-in at `at` belongs to: the evening before for one in
+ * the small hours (2am Sunday is Saturday night), else that day. */
+export function nightOfCheckIn(at: Date): Date {
+  const night = new Date(at);
+  if (night.getHours() < NIGHT_ENDS_HOUR) night.setDate(night.getDate() - 1);
+  return night;
+}
+
 // Date-only: for when something was reviewed/seen, where the exact time isn't meaningful.
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString();

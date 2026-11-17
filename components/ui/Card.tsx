@@ -6,11 +6,10 @@ import { Pressable, View } from "react-native";
 import { LoadingFade } from "./Skeleton";
 import { TornEdge } from "./TornEdge";
 import { colors } from "@/lib/colors";
-import { useDesign, useDesignColors } from "@/lib/design";
 
-// Zine panels: square-cornered paper in the card palette, tacked to the
-// wall at a slight angle. `neutral` is the near-black panel (DJ page
-// panels, people, form sections); `primary`/`accent` are the purple and red paper.
+// Paper panels: square-cornered, flat on the wall. `neutral` is the
+// near-black panel (DJ page panels, people, form sections); `primary` is the
+// electric violet paper and `accent` the near-black one it alternates with.
 const TINTS = {
   neutral: { className: "bg-zine-panel/90 border border-white/10", color: colors.zine.panel },
   primary: { className: "bg-zine-purple", color: colors.zine.purple },
@@ -20,58 +19,53 @@ const TINTS = {
 // Loading placeholders: the same papers, faded to unprinted stock.
 const BLANK_TINTS = {
   neutral: { className: "bg-zine-panel/40 border border-white/5", color: "rgba(14,11,12,0.4)" },
-  primary: { className: "bg-zine-purple/30", color: "rgba(126,79,198,0.3)" },
-  accent: { className: "bg-zine-red/30", color: "rgba(165,54,62,0.3)" },
+  primary: { className: "bg-zine-purple/30", color: "rgba(91,61,245,0.3)" },
+  accent: { className: "bg-zine-red/50 border border-white/5", color: "rgba(14,11,12,0.5)" },
 } as const;
 
 export type CardTint = keyof typeof TINTS;
 
-/** Each card tint's paper color for the current design, for what's drawn
- * to match it (a torn edge, the share image). */
-export function useCardColors(): Record<CardTint, string> {
-  const { zine } = useDesignColors();
-  return { primary: zine.purple, accent: zine.red, neutral: colors.zine.panel };
-}
-
-/** A stable small tilt (in degrees, about ±1) from an id, so a list of cards
- * looks hand-pinned without reshuffling on re-render. */
-export function tiltFor(id: string, max = 1): number {
-  return ((hash(id) % 21) / 10 - 1) * max;
-}
+/** Each card tint's paper color, for what's drawn to match it (a torn edge,
+ * the share image). */
+export const CARD_COLORS: Record<CardTint, string> = {
+  primary: TINTS.primary.color,
+  accent: TINTS.accent.color,
+  neutral: TINTS.neutral.color,
+};
 
 // What goes on each paper color: the light ink for small printed labels,
-// and a contrasting placeholder for missing photos (maroon on purple, navy
-// on red).
+// and a contrasting placeholder for missing photos (deep violet on violet,
+// dusk on the near-black).
 const PAPERS = {
   primary: {
     tint: "primary",
     inkClassName: "text-zine-purple-ink",
-    photoPlaceholderClassName: "bg-[#3B0E14]",
-    photoSilhouetteClassName: "text-zine-red",
+    photoPlaceholderClassName: "bg-[#2A1C8F]",
+    photoSilhouetteClassName: "text-[#8E7BFF]",
   },
   accent: {
     tint: "accent",
     inkClassName: "text-zine-red-ink",
-    photoPlaceholderClassName: "bg-[#2A1D47]",
+    photoPlaceholderClassName: "bg-[#1B1530]",
     photoSilhouetteClassName: "text-[#5B4A99]",
   },
 } as const;
 
 export type Paper = (typeof PAPERS)[keyof typeof PAPERS];
 
-function hash(id: string): number {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-  return Math.abs(h);
+/** The Skeleton tone for blocks on a blank card of `tint`: dark ink on the
+ * violet, light blocks on the near-black ones. */
+export function skeletonTone(tint: CardTint): "paper" | "wall" {
+  return tint === "primary" ? "paper" : "wall";
 }
 
-/** Purple and red paper taking turns down a list, by the item's index. */
+/** Violet and near-black paper taking turns down a list, by the item's index. */
 export function paperAt(index: number): Paper {
   return index % 2 ? PAPERS.accent : PAPERS.primary;
 }
 
 /** The paper for a tint handed along from elsewhere (a route param), so a
- * card opened from a list keeps its color; anything else is purple. */
+ * card opened from a list keeps its color; anything else is violet. */
 export function paperFor(tint: string | undefined): Paper {
   return tint === PAPERS.accent.tint ? PAPERS.accent : PAPERS.primary;
 }
@@ -79,7 +73,6 @@ export function paperFor(tint: string | undefined): Paper {
 export function Card({
   href,
   tint = "neutral",
-  tilt = 0,
   torn = false,
   blank = false,
   className = "",
@@ -88,8 +81,6 @@ export function Card({
   // Omit for a non-interactive card (e.g. a loading skeleton in the same frame).
   href?: Href;
   tint?: CardTint;
-  // Rotation in degrees; see tiltFor.
-  tilt?: number;
   // Ragged bottom edge, as if torn out of a magazine.
   torn?: boolean;
   // Faded, unprinted paper for a loading skeleton: no shadow, held back and
@@ -99,42 +90,22 @@ export function Card({
   className?: string;
   children: ReactNode;
 }) {
-  const { design } = useDesign();
-  const cardColors = useCardColors();
-  const { className: tintClass } = (blank ? BLANK_TINTS : TINTS)[tint];
-  // The torn edge is drawn in the paper's own color, which follows the design.
-  const edgeColor = blank ? BLANK_TINTS[tint].color : cardColors[tint];
+  const { className: tintClass, color } = (blank ? BLANK_TINTS : TINTS)[tint];
 
   const paper = (
     <View className={`p-4 ${tintClass} ${className}`}>
-      {torn && <TornEdge color={edgeColor} />}
+      {torn && <TornEdge color={color} />}
       {children}
     </View>
   );
 
-  // Violet cards sit flat on the wall.
-  const transform = tilt && design === "zine" ? [{ rotate: `${tilt}deg` }] : undefined;
-  if (blank) {
-    return (
-      <LoadingFade>
-        <View style={{ transform }}>{paper}</View>
-      </LoadingFade>
-    );
-  }
+  if (blank) return <LoadingFade>{paper}</LoadingFade>;
 
-  if (!href) {
-    return (
-      <View className="shadow-lg shadow-black/60" style={{ transform }}>
-        {paper}
-      </View>
-    );
-  }
+  if (!href) return <View className="shadow-lg shadow-black/60">{paper}</View>;
 
   return (
     <Link href={href} asChild>
-      <Pressable className="shadow-lg shadow-black/60 active:opacity-90" style={{ transform }}>
-        {paper}
-      </Pressable>
+      <Pressable className="shadow-lg shadow-black/60 active:opacity-90">{paper}</Pressable>
     </Link>
   );
 }

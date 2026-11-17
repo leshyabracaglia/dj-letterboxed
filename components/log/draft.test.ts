@@ -2,6 +2,7 @@ import type { TrackMatch } from "@/lib/api/types";
 import { aDj } from "@/test/fixtures";
 
 import {
+  draftFromCheckIn,
   draftProblem,
   type DraftLineupEntry,
   type DraftTrack,
@@ -93,5 +94,26 @@ describe("trackInputs", () => {
       artist: undefined,
       note: "Strings at 4am",
     });
+  });
+});
+
+describe("draftFromCheckIn", () => {
+  const venue = {
+    id: "v1",
+    name: "Good Room",
+    city: "Brooklyn, NY",
+    address: null,
+    googlePlaceId: null,
+    reviewCount: 0,
+  };
+
+  it("is the same night for an evening check-in", () => {
+    const draft = draftFromCheckIn(venue, new Date(2026, 9, 3, 23, 30));
+    expect(draft.seenAt).toBe("2026-10-03");
+    expect(draft.venuePick).toEqual({ type: "existing", venue });
+  });
+
+  it("is the night before for a check-in in the small hours", () => {
+    expect(draftFromCheckIn(venue, new Date(2026, 9, 4, 2, 30)).seenAt).toBe("2026-10-03");
   });
 });

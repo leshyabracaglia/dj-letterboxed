@@ -10,6 +10,22 @@ definitions:
     - iosUpdateUrl
     - minIosBuild
     type: object
+  CheckInPost:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      user:
+        $ref: '#/definitions/User'
+      venue:
+        $ref: '#/definitions/CheckInVenue'
+    required:
+    - createdAt
+    - id
+    - user
+    - venue
+    type: object
   CheckInResponse:
     properties:
       checkedInAt:
@@ -31,6 +47,20 @@ definitions:
     - checkedInAt
     - friendsHere
     - venue
+    type: object
+  CheckInVenue:
+    properties:
+      city:
+        type: string
+        x-nullable: true
+      id:
+        type: string
+      name:
+        type: string
+    required:
+    - city
+    - id
+    - name
     type: object
   Dj:
     properties:
@@ -1078,6 +1108,10 @@ definitions:
       bio:
         type: string
         x-nullable: true
+      city:
+        description: Where they're based ("Brooklyn"), as they typed it.
+        type: string
+        x-nullable: true
       createdAt:
         type: string
       displayName:
@@ -1092,6 +1126,7 @@ definitions:
     required:
     - avatarUrl
     - bio
+    - city
     - createdAt
     - displayName
     - id
@@ -1164,8 +1199,26 @@ definitions:
     - totalReviews
     - uniqueDjs
     type: object
+  VenueCheckIns:
+    properties:
+      friends:
+        items:
+          $ref: '#/definitions/User'
+        type: array
+      people:
+        type: integer
+    required:
+    - friends
+    - people
+    type: object
   VenueDetailResponse:
     properties:
+      checkIns:
+        allOf:
+        - $ref: '#/definitions/VenueCheckIns'
+        description: |-
+          Who's been here by checking in: everyone counted, the caller's
+          friends named.
       events:
         items:
           $ref: '#/definitions/VenueEvent'
@@ -1177,6 +1230,7 @@ definitions:
       venue:
         $ref: '#/definitions/VenueSummary'
     required:
+    - checkIns
     - events
     - recentReviews
     - venue
@@ -1450,6 +1504,9 @@ definitions:
         type: string
       bio:
         type: string
+      city:
+        description: Where they're based ("Brooklyn"); "" clears it.
+        type: string
       displayName:
         type: string
       username:
@@ -1477,6 +1534,19 @@ definitions:
           The "What's new" sheet version just closed. It only ever moves
           forward, so an older build can't make a newer sheet show again.
         type: integer
+    type: object
+  usernameCheck:
+    properties:
+      available:
+        type: boolean
+      username:
+        type: string
+      valid:
+        type: boolean
+    required:
+    - available
+    - username
+    - valid
     type: object
 info:
   contact: {}
@@ -1816,6 +1886,33 @@ paths:
         first'
       tags:
       - feed
+  /api/feed/check-ins:
+    get:
+      parameters:
+      - description: 'only check-ins at or after this time (RFC3339): the oldest night
+          the feed has loaded'
+        in: query
+        name: since
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/CheckInPost'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Check-ins with no night logged for them, by the caller and their friends
+        (mutual follows), newest first, for the Following feed to show between nights
+      tags:
+      - check-ins
   /api/feed/popular:
     get:
       parameters:
@@ -2945,6 +3042,36 @@ paths:
       summary: Get a user's profile by username, with follow/review counts
       tags:
       - users
+  /api/users/{username}/check-ins:
+    get:
+      parameters:
+      - description: username
+        in: path
+        name: username
+        required: true
+        type: string
+      - description: 'only check-ins at or after this time (RFC3339): the oldest night
+          the profile has loaded'
+        in: query
+        name: since
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/CheckInPost'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      summary: A user's check-ins with no night logged for them, newest first, for
+        their profile; empty unless the caller is them or their friend (mutual follows)
+      tags:
+      - check-ins
   /api/users/{username}/favorites:
     get:
       parameters:
@@ -3322,6 +3449,31 @@ paths:
       summary: Search users by username or display name, most-followed first
       tags:
       - users
+  /api/users/username-check:
+    get:
+      parameters:
+      - description: the username to check, lowercase
+        in: query
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usernameCheck'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Whether a username is free for the caller to take (onboarding's live
+        check); the caller's own counts as free
+      tags:
+      - users
   /api/venues/{id}:
     get:
       parameters:
@@ -3341,7 +3493,8 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/errorEnvelope'
-      summary: Get a venue by id, with the events logged there and recent reviews
+      summary: Get a venue by id, with the events logged there, recent reviews, and
+        who's checked in (friends named when signed in)
       tags:
       - venues
   /api/venues/places-search:

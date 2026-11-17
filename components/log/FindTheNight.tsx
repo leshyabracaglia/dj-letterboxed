@@ -106,6 +106,21 @@ function FilterChip({ icon, label, onPress }: { icon: IconName; label: string; o
   );
 }
 
+// Stands in for an RA night's row while they load: flyer, title, lineup.
+function EventRowSkeleton() {
+  return (
+    <View className="flex-row gap-3 border border-white/10 bg-zine-panel/60 p-2">
+      <Skeleton className="h-[72px] w-14" />
+      <View className="flex-1 gap-1.5 pt-0.5">
+        <Skeleton className="h-5 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
+        <Skeleton className="h-3 w-2/3" />
+        <Skeleton className="mt-1 h-4 w-8" />
+      </View>
+    </View>
+  );
+}
+
 // A night from RA as a row: its flyer (or a little ringed poster), name,
 // venue, lineup, and how many people said they were going.
 function RAEventRow({
@@ -492,7 +507,7 @@ export function FindTheNight({
         {(isLoading || (locating && !area)) && (
           <View className="mt-4 gap-3">
             {[0, 1, 2].map((i) => (
-              <Skeleton key={i} className="h-20 w-full" />
+              <EventRowSkeleton key={i} />
             ))}
           </View>
         )}

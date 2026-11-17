@@ -5,7 +5,6 @@ import { cssInterop } from "nativewind";
 import { Image, StyleSheet, View } from "react-native";
 
 import { PageHeader } from "./PageHeader";
-import { useDesign } from "@/lib/design";
 
 // NativeWind only maps className -> style for components it knows about, and
 // safe-area-context's SafeAreaView isn't one: without this, its flex-1 and
@@ -18,12 +17,10 @@ cssInterop(SafeAreaView, { className: "style" });
 const WALL = require("@/assets/concrete-wall.jpg");
 
 /** The concrete wall every screen sits on: the (white) wall photo under a
- * heavy black wash, so its cracks and pitting read as faint texture. In the
- * zine design the wash is warm, with a dim red glow from the top like a club
- * light; the violet design's is neutral, with no glow. Also used by screens
- * that don't render inside a Page (e.g. full-bleed detail headers). */
+ * heavy neutral black wash, so its cracks and pitting read as faint texture,
+ * darkening toward the bottom. Also used by screens that don't render inside
+ * a Page (e.g. full-bleed detail headers). */
 export function WallBackground() {
-  const zine = useDesign().design === "zine";
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {/* Explicit 100% size: react-native-web's ImageBackground sized the
@@ -39,16 +36,7 @@ export function WallBackground() {
           height: "100%",
         }}
       />
-      <View
-        style={[StyleSheet.absoluteFill, { backgroundColor: zine ? "rgba(22,14,15,0.7)" : "rgba(14,13,15,0.72)" }]}
-      />
-      {zine && (
-        <LinearGradient
-          colors={["rgba(150,48,56,0.38)", "rgba(150,48,56,0)"]}
-          locations={[0, 0.55]}
-          style={StyleSheet.absoluteFill}
-        />
-      )}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(14,13,15,0.72)" }]} />
       <LinearGradient
         colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.45)"]}
         locations={[0.6, 1]}

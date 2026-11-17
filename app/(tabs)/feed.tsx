@@ -1,3 +1,4 @@
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { FlatList, RefreshControl, View } from "react-native";
 
@@ -14,7 +15,11 @@ import {
 } from "@/components/ui";
 import { BrandWordmark } from "@/components/BrandWordmark";
 import { NotificationsBell } from "@/components/NotificationsBell";
+import { CheckInCard } from "@/components/CheckInCard";
+import { nightListKey, withCheckIns } from "@/lib/checkIns";
 import { ReviewCard, ReviewCardSkeleton } from "@/components/ReviewCard";
+import { unwrap, useApi } from "@/lib/api/client";
+import { queryKeys } from "@/lib/api/queryKeys";
 import { useFeed, usePopularFeed } from "@/lib/api/hooks";
 import { useCurrentUser } from "@/lib/auth";
 import { colors } from "@/lib/colors";
@@ -57,7 +62,19 @@ export default function FeedScreen() {
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = useFeed(!!isSignedIn);
 
   const pages = data?.pages ?? [];
-  const items = pages.flatMap((page) => page.items);
+  const reviews = pages.flatMap((page) => page.items);
+  // Check-ins you and your friends haven't logged, slotted in by date: those
+  // since the oldest night loaded while more nights are to come, else all.
+  const api = useApi();
+  const checkInsSince = hasNextPage ? (reviews.at(-1)?.createdAt ?? null) : null;
+  const { data: checkIns, refetch: refetchCheckIns } = useQuery({
+    queryKey: queryKeys.feed.checkIns(checkInsSince),
+    queryFn: () =>
+      unwrap(api.GET("/api/feed/check-ins", { params: { query: checkInsSince ? { since: checkInsSince } : {} } })),
+    enabled: !!isSignedIn && !!data,
+    placeholderData: keepPreviousData,
+  });
+  const items = withCheckIns(reviews, checkIns ?? [], (review) => review.createdAt);
   const followingCount = pages[0]?.followingCount ?? 0;
   const noFollowing = !isSignedIn || (!isLoading && followingCount === 0);
   const effectiveTab: FeedTab = !isSignedIn
@@ -72,7 +89,7 @@ export default function FeedScreen() {
     refetch: refetchPopular,
   } = usePopularFeed(effectiveTab === FEED_TABS.POPULAR);
 
-  const followingRefresh = usePullToRefresh(refetch);
+  const followingRefresh = usePullToRefresh(() => Promise.all([refetch(), refetchCheckIns()]));
   // Popular is also what shows while you follow nobody, so a pull there
   // rechecks the Following feed too: once you've followed someone, it (and the
   // tab switcher) appears.
@@ -135,9 +152,15 @@ export default function FeedScreen() {
         <FlatList
           contentContainerStyle={listStyle}
           data={items}
-          keyExtractor={(item) => item.id}
+          keyExtractor={nightListKey}
           refreshControl={followingRefresh}
-          renderItem={({ item, index }) => <ReviewCard review={item} index={index} />}
+          renderItem={({ item }) =>
+            item.kind === "review" ? (
+              <ReviewCard review={item.review} index={item.index} />
+            ) : (
+              <CheckInCard checkIn={item.checkIn} />
+            )
+          }
           ItemSeparatorComponent={TornCardSeparator}
           onEndReachedThreshold={0.5}
           onEndReached={() => {

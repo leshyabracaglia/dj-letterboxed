@@ -627,6 +627,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/feed/check-ins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check-ins with no night logged for them, by the caller and their friends (mutual follows), newest first, for the Following feed to show between nights */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description only check-ins at or after this time (RFC3339): the oldest night the feed has loaded */
+                    since?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CheckInPost"][];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/feed/popular": {
         parameters: {
             query?: never;
@@ -2894,6 +2942,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users/username-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether a username is free for the caller to take (onboarding's live check); the caller's own counts as free */
+        get: {
+            parameters: {
+                query: {
+                    /** @description the username to check, lowercase */
+                    username: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["usernameCheck"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/{userId}/block": {
         parameters: {
             query?: never;
@@ -3115,6 +3211,57 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["UserProfileResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["errorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{username}/check-ins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A user's check-ins with no night logged for them, newest first, for their profile; empty unless the caller is them or their friend (mutual follows) */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description only check-ins at or after this time (RFC3339): the oldest night the profile has loaded */
+                    since?: string;
+                };
+                header?: never;
+                path: {
+                    /** @description username */
+                    username: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CheckInPost"][];
                     };
                 };
                 /** @description Not Found */
@@ -3446,7 +3593,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a venue by id, with the events logged there and recent reviews */
+        /** Get a venue by id, with the events logged there, recent reviews, and who's checked in (friends named when signed in) */
         get: {
             parameters: {
                 query?: never;
@@ -3495,6 +3642,12 @@ export interface components {
             iosUpdateUrl: string;
             minIosBuild: number;
         };
+        CheckInPost: {
+            createdAt: string;
+            id: string;
+            user: components["schemas"]["User"];
+            venue: components["schemas"]["CheckInVenue"];
+        };
         CheckInResponse: {
             /**
              * @description When the caller checked in there (an earlier check-in the same night
@@ -3508,6 +3661,11 @@ export interface components {
              */
             friendsHere: components["schemas"]["User"][];
             venue: components["schemas"]["NearbyVenue"];
+        };
+        CheckInVenue: {
+            city: string | null;
+            id: string;
+            name: string;
         };
         Dj: {
             bio: string | null;
@@ -3899,6 +4057,8 @@ export interface components {
         User: {
             avatarUrl: string | null;
             bio: string | null;
+            /** @description Where they're based ("Brooklyn"), as they typed it. */
+            city: string | null;
             createdAt: string;
             displayName: string | null;
             id: string;
@@ -3935,7 +4095,16 @@ export interface components {
             totalReviews: number;
             uniqueDjs: number;
         };
+        VenueCheckIns: {
+            friends: components["schemas"]["User"][];
+            people: number;
+        };
         VenueDetailResponse: {
+            /**
+             * @description Who's been here by checking in: everyone counted, the caller's
+             *     friends named.
+             */
+            checkIns: components["schemas"]["VenueCheckIns"];
             events: components["schemas"]["VenueEvent"][];
             recentReviews: components["schemas"]["ReviewDTO"][];
             venue: components["schemas"]["VenueSummary"];
@@ -4059,6 +4228,8 @@ export interface components {
         updateProfileRequest: {
             avatarUrl?: string;
             bio?: string;
+            /** @description Where they're based ("Brooklyn"); "" clears it. */
+            city?: string;
             displayName?: string;
             username?: string;
         };
@@ -4077,6 +4248,11 @@ export interface components {
              *     forward, so an older build can't make a newer sheet show again.
              */
             whatsNewSeen?: number;
+        };
+        usernameCheck: {
+            available: boolean;
+            username: string;
+            valid: boolean;
         };
     };
     responses: never;

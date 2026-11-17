@@ -55,6 +55,7 @@ export type VenueSummary = Schemas["VenueSummary"];
 export type VenueDetail = Schemas["VenueDetailResponse"];
 export type UserProfile = Schemas["UserProfileResponse"];
 export type UserStats = Schemas["UserStatsResponse"];
+export type UsernameCheck = Schemas["usernameCheck"];
 export type FavoriteReviewsResponse = Schemas["FavoriteReviewsResponse"];
 /** A Resident Advisor area (a city or region), whose listings the log
  * screen searches. */
@@ -75,6 +76,8 @@ export type Notification = Schemas["Notification"];
 export type UnreadNotificationsResponse = Schemas["UnreadNotificationsResponse"];
 /** A venue the caller is at (GET /check-ins/nearby), or just checked in at. */
 export type NearbyVenue = Schemas["NearbyVenue"];
+// Someone was at a club and hasn't logged the night (shown to friends).
+export type CheckInPost = Schemas["CheckInPost"];
 
 // Request bodies, from the spec too. A few are narrowed by hand where the
 // spec can't say "exactly one of": the narrowing still has to fit the spec's

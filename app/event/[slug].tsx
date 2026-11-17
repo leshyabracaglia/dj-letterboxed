@@ -27,8 +27,21 @@ const POSTER_LINEUP = 6;
 function EventSkeleton() {
   const contentStyle = usePageContentStyle("roomy");
   return (
-    <View style={contentStyle} className="gap-4">
-      <Skeleton className="h-80 w-full rounded-none" />
+    <View style={contentStyle}>
+      <Skeleton className="h-80 w-full" />
+      {/* Who people saw: a row of DJ photos with captions. */}
+      <View className="mt-6 gap-2">
+        <Skeleton className="h-5 w-36" />
+        <View className="flex-row gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <View key={i} className="gap-1.5">
+              <Skeleton className="h-16 w-16" />
+              <Skeleton className="h-3 w-12" />
+            </View>
+          ))}
+        </View>
+      </View>
+      <View className="mt-8" />
       <ReviewCardSkeleton count={3} />
     </View>
   );

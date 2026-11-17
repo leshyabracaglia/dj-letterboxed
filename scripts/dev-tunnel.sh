@@ -42,5 +42,18 @@ fi
 # A new quick tunnel's DNS can take a minute to resolve (and the Mac may cache
 # the miss for a bit longer); the phone resolves it fresh, so don't block on it.
 echo "API tunnel: $API_URL (can take a minute to start answering)"
-# --clear so the new EXPO_PUBLIC_API_URL is inlined rather than a cached one.
-EXPO_PUBLIC_API_URL="$API_URL" npx expo start --tunnel --clear
+
+# Expo's tunnel can drop (a reconnect the tunnel server refuses with a 409
+# kills the CLI), so restart it rather than leave the phone stranded; the API
+# tunnel stays up, so its URL doesn't change. The Expo URL may: look for the new
+# "Waiting on https://…" line. Ctrl-C stops everything.
+trap 'exit 130' INT TERM
+# --clear on the first start so the new EXPO_PUBLIC_API_URL is inlined rather
+# than a cached one; restarts keep the cache.
+CLEAR="--clear"
+while true; do
+  EXPO_PUBLIC_API_URL="$API_URL" npx expo start --tunnel $CLEAR || true
+  CLEAR=""
+  echo "Expo exited; restarting in 5s (API tunnel still $API_URL)..."
+  sleep 5
+done

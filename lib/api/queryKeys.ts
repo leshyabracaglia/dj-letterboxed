@@ -49,6 +49,8 @@ export const queryKeys = {
     followers: (userId: string) => ["users", userId, "followers"] as const,
     following: (userId: string) => ["users", userId, "following"] as const,
     favorites: (username: string) => ["users", username, "favorites"] as const,
+    checkIns: (username: string, since: string | null) => ["users", username, "check-ins", since] as const,
+    usernameCheck: (username: string) => ["users", "username-check", username] as const,
   },
   follows: {
     isFollowing: (userId: string) => ["follows", "is-following", userId] as const,
@@ -61,6 +63,7 @@ export const queryKeys = {
   feed: {
     activity: () => ["feed"] as const,
     popular: () => ["feed", "popular"] as const,
+    checkIns: (since: string | null) => ["feed", "check-ins", since] as const,
   },
   notifications: {
     all: () => ["notifications"] as const,

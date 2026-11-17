@@ -256,7 +256,7 @@ func GetSuggestionsByTrackIDs(ctx context.Context, q DBTX, trackIDs, excludeUser
 	return collectGrouped(rows, err, func(row pgx.CollectableRow) (keyed[db.TrackSuggestion], error) {
 		var k keyed[db.TrackSuggestion]
 		s := &k.Value
-		err := row.Scan(append([]any{&s.ID, &s.TrackID, &s.Source, &s.ExternalID, &s.URL, &s.Title, &s.Artist, &s.ArtworkURL, &s.CreatedAt}, &s.User.ID, &s.User.ClerkID, &s.User.Username, &s.User.DisplayName, &s.User.Bio, &s.User.AvatarURL, &s.User.CreatedAt, &s.User.UpdatedAt)...)
+		err := row.Scan(append([]any{&s.ID, &s.TrackID, &s.Source, &s.ExternalID, &s.URL, &s.Title, &s.Artist, &s.ArtworkURL, &s.CreatedAt}, &s.User.ID, &s.User.ClerkID, &s.User.Username, &s.User.DisplayName, &s.User.Bio, &s.User.AvatarURL, &s.User.CreatedAt, &s.User.UpdatedAt, &s.User.City)...)
 		k.Key = s.TrackID
 		return k, err
 	})

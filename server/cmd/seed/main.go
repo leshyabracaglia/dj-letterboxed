@@ -233,6 +233,11 @@ func run() error {
 		user: bob, venue: publicRecords, seenAt: "2026-05-01T22:00:00Z", isNight: true,
 		tags:   []string{"chill", "older crowd"},
 		lineup: []set{wrote(dj2, "Solid deep house groove, warmed up the room well.")},
+		// Adam Ten's page gets tracks people loved too.
+		tracks: []track{
+			onSpotify(dj2, "6adamTenFeelingsTrack01", "Feelings", "Adam Ten", "The one everyone was waiting for."),
+			shazamed(dj2, "1700000001", "Stellar", "Adam Ten & Mita Gami", ""),
+		},
 	}); err != nil {
 		return err
 	}
@@ -654,8 +659,23 @@ func seedVariations(ctx context.Context, pool queries.DBTX, alice, bob *db.User,
 	must(pool.Exec(ctx, `
 		INSERT INTO check_ins (user_id, venue_id, distance_m, accuracy_m, created_at)
 		VALUES ($1, $2, 25, 10, '2026-06-06T00:30:00Z')`, carla.ID, fabric.ID))
+	// alice checked in at Le Bain and hasn't logged it: carla (her friend)
+	// sees it on alice's profile and in her feed; bob, who alice doesn't
+	// follow back, doesn't.
+	must(pool.Exec(ctx, `
+		INSERT INTO check_ins (user_id, venue_id, distance_m, accuracy_m, created_at)
+		VALUES ($1, $2, 20, 8, '2026-10-25T03:00:00Z')`, alice.ID, leBain.ID))
 	must(0, queries.SetFavoriteVenues(ctx, pool, carla.ID, []string{goodRoom.ID, fabric.ID}))
 	must(0, queries.SetFavoriteVenues(ctx, pool, bob.ID, []string{mirage.ID}))
+
+	// Where people are based, under their name on their profile (newbie and
+	// rowdy, below, haven't said).
+	for _, c := range []struct {
+		user *db.User
+		city string
+	}{{alice, "Brooklyn"}, {bob, "Queens"}, {carla, "Brooklyn"}, {dev, "London"}} {
+		must(pool.Exec(ctx, "UPDATE users SET city = $1 WHERE id = $2", c.city, c.user.ID))
+	}
 
 	// newbie just signed up: no nights, avatar, bio, lists or followers,
 	// for every empty state on a profile. They follow carla.
@@ -738,7 +758,7 @@ func seedYou(ctx context.Context, pool queries.DBTX, clerkID string, logNight lo
 	}
 	you := must(queries.CreateUser(ctx, pool, clerkID, username, strPtr("You"),
 		strPtr("Logging every night out so I remember what they played."), strPtr("https://i.pravatar.cc/300?img=12")))
-	must(pool.Exec(ctx, "UPDATE users SET whats_new_seen = 0 WHERE id = $1", you.ID))
+	must(pool.Exec(ctx, "UPDATE users SET whats_new_seen = 0, city = 'Brooklyn' WHERE id = $1", you.ID))
 	log := func(n night) *db.Review { n.user = you; return must(logNight(n)) }
 
 	// Rush at Good Room with carla, checked in (verified) - she and you
@@ -882,6 +902,13 @@ func seedYou(ctx context.Context, pool queries.DBTX, clerkID string, logNight lo
 	must(0, queries.SetFavoriteReviews(ctx, pool, you.ID, []string{misterSatNight.ID, rushNight.ID, quietNight.ID}))
 	must(0, queries.SetFavoriteVenues(ctx, pool, you.ID, []string{f.goodRoom.ID, f.nowadays.ID, f.leBain.ID}))
 	must(0, queries.Block(ctx, pool, you.ID, f.rowdy.ID))
+
+	// Check-ins nobody's logged yet: yours at Nowadays (with "Log this
+	// night" on it) and bob's, your friend, at Good Room.
+	must(pool.Exec(ctx, `
+		INSERT INTO check_ins (user_id, venue_id, distance_m, accuracy_m, created_at)
+		VALUES ($1, $2, 35, 10, '2026-11-08T02:10:00Z'), ($3, $4, 25, 12, '2026-11-01T01:30:00Z')`,
+		you.ID, f.nowadays.ID, f.bob.ID, f.goodRoom.ID))
 }
 
 // idClip is a six-second stand-in recording for a seeded ID (a kick and a

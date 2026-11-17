@@ -2,8 +2,8 @@ import { useSignIn } from "@clerk/expo";
 import { Link, router } from "expo-router";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
-import { AuthScreen } from "@/components/AuthScreen";
-import { Button, FormMessage, Text, TextField } from "@/components/ui";
+import { AuthBrand, AuthButton, AuthField, AuthTitle, WallPanelScreen } from "@/components/auth/parts";
+import { FormMessage, Text } from "@/components/ui";
 
 import { clerkErrorMessage } from "@/lib/clerk";
 import { ROUTES } from "@/lib/routes";
@@ -92,32 +92,30 @@ export default function SignInScreen() {
   if (codeStep) {
     const isSignInCode = codeStep === "sign_in";
     return (
-      <AuthScreen
-        title={isSignInCode ? "Check your email" : "Verify it's you"}
-        subtitle={
-          isSignInCode ? (
-            <>We sent a sign-in code to {email.trim()}.</>
-          ) : (
-            <>We sent a code to {email.trim()} to confirm this new device.</>
-          )
-        }
-      >
-        <TextField
-          placeholder={isSignInCode ? "Sign-in code" : "Verification code"}
+      <WallPanelScreen>
+        <AuthBrand />
+        <AuthTitle className="text-[52px] leading-[48px]">
+          {isSignInCode ? "Check your email" : "Verify it's you"}
+        </AuthTitle>
+        <Text className="text-zine-purple-ink">
+          {isSignInCode
+            ? `We sent a sign-in code to ${email.trim()}.`
+            : `We sent a code to ${email.trim()} to confirm this new device.`}
+        </Text>
+        <AuthField
+          label={isSignInCode ? "Sign-in code" : "Verification code"}
+          labelClassName="text-zine-purple-ink"
           keyboardType="number-pad"
           autoComplete="one-time-code"
           value={code}
           onChangeText={setCode}
-          className="w-full"
         />
         <FormMessage>{error}</FormMessage>
-        <Button onPress={onVerify} disabled={busy} className="w-full py-3">
-          <Text className="text-center font-semibold text-paper">{isSignInCode ? "Sign in" : "Verify"}</Text>
-        </Button>
+        <AuthButton label={isSignInCode ? "Sign in" : "Verify"} onPress={onVerify} disabled={busy} />
         {isSignInCode && (
-          <View className="mt-3 items-center gap-4">
+          <View className="items-center gap-4 pt-2">
             <Pressable onPress={sendSignInCode} disabled={busy}>
-              <Text className="text-primary-dark">Resend code</Text>
+              <Text className="text-paper">Resend code</Text>
             </Pressable>
             <Pressable
               onPress={() => {
@@ -125,53 +123,61 @@ export default function SignInScreen() {
                 setCodeStep(null);
               }}
             >
-              <Text className="text-muted">Use your password instead</Text>
+              <Text className="text-zine-purple-ink">Use your password instead</Text>
             </Pressable>
           </View>
         )}
-      </AuthScreen>
+      </WallPanelScreen>
     );
   }
 
   return (
-    <AuthScreen title="Welcome back" wordmark>
-      <TextField
+    <WallPanelScreen>
+      <AuthBrand />
+      <AuthTitle className="text-[52px] leading-[48px]">Welcome back</AuthTitle>
+      <AuthField
+        label="Email"
+        labelClassName="text-zine-purple-ink"
         autoCapitalize="none"
         keyboardType="email-address"
-        placeholder="Email"
+        autoComplete="email"
+        placeholder="you@example.com"
         value={email}
         onChangeText={setEmail}
-        className="w-full"
       />
-      <TextField
+      <AuthField
+        label="Password"
+        labelClassName="text-zine-purple-ink"
+        aside={
+          <Link href={ROUTES.FORGOT_PASSWORD(email.trim() ? { email: email.trim() } : undefined)}>
+            <Text className="text-sm text-paper">Forgot?</Text>
+          </Link>
+        }
         secureTextEntry
-        placeholder="Password"
+        autoComplete="password"
+        placeholder="••••••••"
         value={password}
         onChangeText={setPassword}
-        className="w-full"
       />
-      <View className="w-full items-end">
-        <Link href={ROUTES.FORGOT_PASSWORD(email.trim() ? { email: email.trim() } : undefined)}>
-          <Text className="text-sm text-primary-dark">Forgot password?</Text>
-        </Link>
-      </View>
       <FormMessage>{errors.fields.identifier?.message}</FormMessage>
       <FormMessage>{errors.fields.password?.message}</FormMessage>
       <FormMessage>{error}</FormMessage>
-      <Button onPress={onSubmit} disabled={busy} className="w-full py-3">
-        <Text className="text-center font-semibold text-paper">Sign in</Text>
-      </Button>
-      <Pressable onPress={sendSignInCode} disabled={busy} className="mt-3">
-        <Text className="text-primary-dark">Email me a sign-in code instead</Text>
+      <View className="pt-1">
+        <AuthButton label="Sign in" onPress={onSubmit} disabled={busy} />
+      </View>
+      <Pressable onPress={sendSignInCode} disabled={busy} className="items-center py-1">
+        <Text className="text-sm text-paper">Email me a sign-in code instead</Text>
       </Pressable>
-      <View className="mt-7 items-center gap-4">
+      <View className="mt-4 flex-row justify-between border-t border-white/25 pt-3">
         <Link href={ROUTES.SIGN_UP}>
-          <Text className="text-primary-dark">Don&apos;t have an account? Sign up</Text>
+          <Text className="text-sm text-paper">
+            New here? <Text className="font-bold text-sm text-paper">Sign up</Text>
+          </Text>
         </Link>
         <Link href={ROUTES.FEED} replace>
-          <Text className="text-muted">Continue without an account</Text>
+          <Text className="text-sm text-zine-purple-ink">Just browse</Text>
         </Link>
       </View>
-    </AuthScreen>
+    </WallPanelScreen>
   );
 }

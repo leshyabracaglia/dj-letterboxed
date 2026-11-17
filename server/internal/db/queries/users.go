@@ -20,7 +20,7 @@ const (
 
 func scanUser(row pgx.Row) (*db.User, error) {
 	var u db.User
-	err := row.Scan(&u.ID, &u.ClerkID, &u.Username, &u.DisplayName, &u.Bio, &u.AvatarURL, &u.CreatedAt, &u.UpdatedAt)
+	err := row.Scan(&u.ID, &u.ClerkID, &u.Username, &u.DisplayName, &u.Bio, &u.AvatarURL, &u.CreatedAt, &u.UpdatedAt, &u.City)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
@@ -30,7 +30,7 @@ func scanUser(row pgx.Row) (*db.User, error) {
 	return &u, nil
 }
 
-const userCols = "id, clerk_id, username, display_name, bio, avatar_url, created_at, updated_at"
+const userCols = "id, clerk_id, username, display_name, bio, avatar_url, created_at, updated_at, city"
 
 func GetUserByClerkID(ctx context.Context, q DBTX, clerkID string) (*db.User, error) {
 	row := q.QueryRow(ctx, "SELECT "+userCols+" FROM users WHERE clerk_id = $1", clerkID)
@@ -120,16 +120,18 @@ func GetUsersByIDs(ctx context.Context, q DBTX, ids []string) (map[string]db.Use
 	return collectMap(rows, err, rowsOf(scanUser), func(u db.User) string { return u.ID })
 }
 
-func UpdateUserProfile(ctx context.Context, q DBTX, id string, username, displayName, bio, avatarURL *string) (*db.User, error) {
+// A nil field is left as it is; city "" clears it.
+func UpdateUserProfile(ctx context.Context, q DBTX, id string, username, displayName, bio, avatarURL, city *string) (*db.User, error) {
 	row := q.QueryRow(ctx, `
 		UPDATE users SET
 			username = COALESCE($2, username),
 			display_name = COALESCE($3, display_name),
 			bio = COALESCE($4, bio),
 			avatar_url = COALESCE($5, avatar_url),
+			city = CASE WHEN $6::text IS NULL THEN city ELSE NULLIF($6, '') END,
 			updated_at = now()
 		WHERE id = $1
-		RETURNING `+userCols, id, username, displayName, bio, avatarURL)
+		RETURNING `+userCols, id, username, displayName, bio, avatarURL, city)
 	u, err := scanUser(row)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -174,4 +176,11 @@ func UpdateUserSettings(ctx context.Context, q DBTX, userID string, reengagePush
 		return nil, err
 	}
 	return &s, nil
+}
+
+// UsernameTaken reports whether someone other than userID has username.
+func UsernameTaken(ctx context.Context, q DBTX, username, userID string) (bool, error) {
+	var taken bool
+	err := q.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM users WHERE username = $1 AND id <> $2)", username, userID).Scan(&taken)
+	return taken, err
 }

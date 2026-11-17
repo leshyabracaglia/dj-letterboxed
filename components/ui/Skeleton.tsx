@@ -78,17 +78,16 @@ export function LoadingFade({
 // Placeholder block shaped like the content it stands in for — adapted from
 // React Native Reusables' Skeleton (reanimated opacity pulse). Size and shape
 // come from className (e.g. "h-4 w-32", "h-10 w-10 rounded-full"); corners
-// default to rounded-md unless className sets its own rounded-*. `tone="paper"`
-// is dark ink for blocks sitting on a blank paper Card; the default suits the
-// wall and the near-black panels.
+// are square like everything else unless className rounds them. `tone="paper"`
+// is dark ink for blocks on blank violet paper (see skeletonTone); the default
+// suits the wall and everything near-black.
 export function Skeleton({ className = "", tone = "wall" }: { className?: string; tone?: "wall" | "paper" }) {
   const reduceMotion = useReducedMotion();
   usePulse(!reduceMotion);
   const appear = useAppear();
 
   const animatedStyle = useAnimatedStyle(() => ({ opacity: appear.value * pulse.value }));
-  const rounded = className.includes("rounded") ? "" : "rounded-md";
-  const fill = tone === "paper" ? "bg-black/20" : "bg-white/10";
+  const fill = tone === "paper" ? "bg-black/25" : "bg-white/10";
 
-  return <Animated.View style={animatedStyle} className={`${fill} ${rounded} ${className}`} />;
+  return <Animated.View style={animatedStyle} className={`${fill} ${className}`} />;
 }

@@ -1,7 +1,5 @@
 import { View } from "react-native";
 
-import { useDesign } from "@/lib/design";
-
 // Deterministic "random" tooth sizes, so an edge doesn't reshuffle on every
 // render. Enough teeth to span the widest content column (see layout.ts).
 const TEETH = Array.from({ length: 70 }, (_, i) => {
@@ -56,23 +54,17 @@ export function TornEdge({
   );
 }
 
-/** A strip of translucent masking tape stuck over a card's edge. Position it
- * with `style` (top/left/right…); it's absolutely positioned. The violet
- * design only tapes on photos: other tape (`onPhoto` unset) isn't drawn. */
+/** A strip of translucent masking tape holding a photo onto a card. Position
+ * it with `style` (top/left/right…); it's absolutely positioned. */
 export function Tape({
   rotate = -6,
   width = 80,
-  onPhoto = false,
   style,
 }: {
   rotate?: number;
   width?: number;
-  // Holding a photo onto the card, which tape still does in the violet design.
-  onPhoto?: boolean;
   style?: { top?: number; left?: number; right?: number; bottom?: number };
 }) {
-  const { design } = useDesign();
-  if (design === "violet" && !onPhoto) return null;
   return (
     <View
       pointerEvents="none"
@@ -80,7 +72,7 @@ export function Tape({
         position: "absolute",
         width,
         height: 22,
-        backgroundColor: design === "violet" ? "rgba(235,232,226,0.38)" : "rgba(235,232,226,0.18)",
+        backgroundColor: "rgba(235,232,226,0.38)",
         transform: [{ rotate: `${rotate}deg` }],
         zIndex: 2,
         ...style,

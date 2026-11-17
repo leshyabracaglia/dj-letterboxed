@@ -6,6 +6,7 @@ import { Animated, Pressable, View, type ScrollViewInstance, type TextInputInsta
 import {
   artistPickName,
   draftFromRA,
+  draftFromCheckIn,
   draftFromReview,
   draftProblem,
   emptyDraft,
@@ -32,7 +33,6 @@ import {
   Icon,
   KeyboardScrollView,
   Page,
-  Tape,
   Text,
   TORN_CARD_GAP,
   usePageContentStyle,
@@ -59,7 +59,11 @@ export default function CreateReviewScreen() {
   const { logNight, pending } = useLogNight();
   const { state, dispatch, caught, listedLineup, editingEntry, editingTrack } = useLogForm();
   const { draft, lineup } = state;
-  const { fromReview } = useLocalSearchParams<{ fromReview?: string }>();
+  const { fromReview, fromCheckInVenue, fromCheckInAt } = useLocalSearchParams<{
+    fromReview?: string;
+    fromCheckInVenue?: string;
+    fromCheckInAt?: string;
+  }>();
 
   const updateDraft = (changes: Partial<ReviewDraft>) => dispatch({ type: "updateDraft", changes });
   const updateEntry = (key: string, changes: Partial<DraftLineupEntry>) =>
@@ -150,6 +154,26 @@ export default function CreateReviewScreen() {
     router.setParams({ fromReview: undefined });
     prefillFrom({ reviewId: fromReview, userId: me.id });
   }, [fromReview, me, prefillFrom]);
+
+  // The same from one of your check-ins: its club and night.
+  const prefillCheckIn = useMutation({
+    mutationFn: async ({ venueId, at }: { venueId: string; at: string }) => {
+      const venue = await queryClient.fetchQuery({
+        queryKey: queryKeys.venues.byId(venueId),
+        queryFn: () => unwrap(api.GET("/api/venues/{id}", { params: { path: { id: venueId } } })),
+      });
+      return draftFromCheckIn(venue.venue, new Date(at));
+    },
+    onSuccess: (draft) => dispatch({ type: "openForm", draft, filledFrom: "your check-in" }),
+    onError: (err) =>
+      dispatch({ type: "setError", error: `Couldn't fill in that night (${errorMessage(err, "try again")}).` }),
+  });
+  const { mutate: prefillFromCheckIn } = prefillCheckIn;
+  useEffect(() => {
+    if (!fromCheckInVenue || !fromCheckInAt) return;
+    router.setParams({ fromCheckInVenue: undefined, fromCheckInAt: undefined });
+    prefillFromCheckIn({ venueId: fromCheckInVenue, at: fromCheckInAt });
+  }, [fromCheckInVenue, fromCheckInAt, prefillFromCheckIn]);
 
   const startBlank = (seed?: BlankSeed, eventPick?: EventPick) => {
     dispatch({
@@ -312,7 +336,6 @@ export default function CreateReviewScreen() {
             aside={trackCount ? `${trackCount} of ${MAX_TRACKS}` : undefined}
           />
           <Card tint="accent" torn className="gap-3 pb-5">
-            <Tape style={{ top: -10, left: 40 }} rotate={-3} />
             <Text className="text-zine-red-ink">
               The ones that stuck with you, Shazamed or still an ID. Say who played them, or leave them as the
               night&apos;s.
@@ -328,7 +351,6 @@ export default function CreateReviewScreen() {
             numberClassName="text-stamp-red"
           />
           <Card tint="neutral" className="gap-5 pb-5">
-            <Tape style={{ top: -10, right: 32 }} rotate={5} />
             <View className="gap-2">
               <FieldLabel>What was it like</FieldLabel>
               <TagPicker

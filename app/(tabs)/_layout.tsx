@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 
 import { SignInPromptModal } from "@/components/SignInPromptModal";
-import { GlowBar, Text, useIsDesktopWeb } from "@/components/ui";
+import { GlowBar, Icon, Text, useIsDesktopWeb } from "@/components/ui";
 import { WebNav } from "@/components/WebNav";
 import { useCurrentUser } from "@/lib/auth";
 import { ROUTES } from "@/lib/routes";
@@ -13,7 +13,7 @@ import { needsOnboarding } from "@/lib/user";
 const TAB_LABELS: Record<string, string> = {
   feed: "Feed",
   browse: "Browse",
-  review: "Log +",
+  review: "Log a night",
   profile: "Profile",
 };
 
@@ -21,7 +21,8 @@ const TAB_LABELS: Record<string, string> = {
 export const unstable_settings = { anchor: "feed" };
 
 // The phone tab bar from the zine mockups: pixel-type labels with a short
-// glowing bar over the active one, and Log + as a raised white key.
+// glowing bar over the active one, and logging a night as a raised white +
+// key.
 function ZineTabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTabBarProps) {
   return (
     <View
@@ -48,12 +49,10 @@ function ZineTabBar({ state, descriptors, emitter, navigateToTab, insets }: Bott
           >
             {isLog ? (
               <View
-                className="rounded-xl bg-paper px-5 py-3"
+                className="rounded-xl bg-paper px-5 py-2.5"
                 style={{ boxShadow: "0 0 14px 1px rgba(246,246,249,0.3)" }}
               >
-                <Text variant="display" className="text-xl leading-6 text-ink">
-                  {TAB_LABELS[route.name]}
-                </Text>
+                <Icon name="add" size={28} className="text-ink" />
               </View>
             ) : (
               <>

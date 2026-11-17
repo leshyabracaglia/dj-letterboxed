@@ -15,9 +15,9 @@ import {
   Stamp,
   SegmentedTabs,
   Skeleton,
+  skeletonTone,
   Text,
   TextField,
-  tiltFor,
   usePageContentStyle,
 } from "@/components/ui";
 import { FollowButton } from "@/components/FollowButton";
@@ -30,7 +30,7 @@ import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
 function DjCard({ dj }: { dj: Dj }) {
   return (
-    <Card href={ROUTES.DJ(dj.slug)} tint="primary" tilt={tiltFor(dj.id, 0.8)}>
+    <Card href={ROUTES.DJ(dj.slug)} tint="primary">
       <View className="flex-row items-center gap-4">
         <Photo uri={dj.imageUrl} width={64} height={72} framed rotate={-2} />
         <View className="flex-1">
@@ -50,7 +50,7 @@ function DjCard({ dj }: { dj: Dj }) {
 
 function VenueCard({ venue }: { venue: VenueSummary }) {
   return (
-    <Card href={ROUTES.VENUE(venue.id)} tilt={tiltFor(venue.id, 0.6)}>
+    <Card href={ROUTES.VENUE(venue.id)}>
       <Text variant="display" className="text-3xl leading-8 text-paper">
         {venue.name}
       </Text>
@@ -65,7 +65,7 @@ function VenueCard({ venue }: { venue: VenueSummary }) {
 // An event ("Innervisions NY") with its totals across every night of it.
 function EventCard({ event }: { event: EventSummary }) {
   return (
-    <Card href={ROUTES.EVENT(event.slug)} tint="accent" tilt={tiltFor(event.id, 0.8)}>
+    <Card href={ROUTES.EVENT(event.slug)} tint="accent">
       <View className="flex-row items-center gap-3">
         <View className="flex-1">
           <Text variant="display" className="text-3xl leading-8 text-paper">
@@ -109,14 +109,13 @@ function UserCard({ user, isSelf }: { user: User; isSelf: boolean }) {
 }
 
 function BrowseCardSkeleton({ tint }: { tint: CardTint }) {
-  // Dark ink on the purple/red stock; the near-black panel keeps the light block.
-  const tone = tint === "neutral" ? "wall" : "paper";
+  const tone = skeletonTone(tint);
   return (
     <View className="gap-4">
       {Array.from({ length: 4 }).map((_, i) => (
         <Card key={i} blank tint={tint}>
           <View className="flex-row items-center gap-4">
-            {tint !== "accent" && <Skeleton tone={tone} className="h-[72px] w-16 rounded-none" />}
+            {tint !== "accent" && <Skeleton tone={tone} className="h-[72px] w-16" />}
             <View className="flex-1">
               <Skeleton tone={tone} className="h-7 w-40" />
               <Skeleton tone={tone} className="mt-2 h-4 w-28" />

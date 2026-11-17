@@ -149,7 +149,7 @@ function NotificationSkeleton({ count }: { count: number }) {
     <View className="gap-2">
       {Array.from({ length: count }).map((_, i) => (
         <View key={i} className="flex-row items-center gap-3 border border-white/10 bg-zine-panel/90 p-4 shadow-sm">
-          <Skeleton className="h-10 w-10 rounded-lg" />
+          <Skeleton className="h-10 w-10 rounded-[9px]" />
           <View className="flex-1">
             <Skeleton className="h-4 w-56" />
             <Skeleton className="mt-1.5 h-3 w-12" />

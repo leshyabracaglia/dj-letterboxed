@@ -11,6 +11,7 @@ export function aUser(overrides: Partial<User> = {}): User {
     displayName: null,
     avatarUrl: null,
     bio: null,
+    city: null,
     createdAt: AT,
     updatedAt: AT,
     ...overrides,

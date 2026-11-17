@@ -11,6 +11,8 @@ type User struct {
 	AvatarURL   *string   `json:"avatarUrl" extensions:"x-nullable"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
+	// Where they're based ("Brooklyn"), as they typed it.
+	City *string `json:"city" extensions:"x-nullable"`
 }
 
 type Dj struct {

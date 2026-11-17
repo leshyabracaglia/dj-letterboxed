@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { ActivityIndicator, Image, Modal, Pressable, useWindowDimensions, View, type ViewInstance } from "react-native";
 
-import { Button, Icon, type Paper, Tape, Text, TornEdge, useCardColors, WallBackground } from "@/components/ui";
+import { Button, Icon, type Paper, Text, TornEdge, CARD_COLORS, WallBackground } from "@/components/ui";
 import { NightStamp } from "@/components/NightStamp";
 import { errorMessage } from "@/lib/api/client";
 import type { ReviewDetail } from "@/lib/api/types";
@@ -55,8 +55,7 @@ function StoryCard({
   const subject = reviewSubject(review, set);
   const photo = storyPhoto(review);
   const reviewText = set ? set.reviewText : review.reviewText;
-  const cardColors = useCardColors();
-  const paperColor = cardColors[paper.tint];
+  const paperColor = CARD_COLORS[paper.tint];
   const label = nightDateParts(review, { wholeNight: subject.isNight, withYear: true }).join(" · ");
   const where = review.venue
     ? `${!subject.isNight && review.event ? `${review.event.name} ` : ""}@ ${review.venue}`
@@ -113,7 +112,6 @@ function StoryCard({
         >
           <View style={{ backgroundColor: paperColor, padding: u(16), paddingBottom: u(20) }}>
             <TornEdge color={paperColor} height={u(10)} />
-            <Tape style={{ top: -u(11), left: u(24) }} width={u(84)} rotate={-5} />
 
             <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
               <View
@@ -206,7 +204,7 @@ function StoryCard({
             alignItems: "center",
             marginTop: u(28),
             transform: [{ rotate: "1.5deg" }],
-            backgroundColor: cardColors.neutral,
+            backgroundColor: CARD_COLORS.neutral,
             borderWidth: 1,
             borderColor: "rgba(255,255,255,0.1)",
             paddingHorizontal: u(18),

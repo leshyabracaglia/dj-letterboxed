@@ -62,7 +62,6 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.With(limitByIP(60, time.Minute)).Get("/djs/spotify-search", h.SearchSpotify)
 			r.Get("/events", h.ListEvents)
 			r.Get("/venues/search", h.SearchVenues)
-			r.Get("/venues/{id}", h.GetVenueByID)
 			r.Get("/tags", h.ListTags)
 			r.Get("/users/search", h.SearchUsers)
 			r.Get("/users/{username}", h.GetUserByUsername)
@@ -81,6 +80,8 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/reviews/{id}", h.GetReviewByID)
 			r.Get("/reviews/{id}/comments", h.ListComments)
 			r.Get("/users/{username}/reviews", h.ListReviewsByUser)
+			r.Get("/users/{username}/check-ins", h.ListUserCheckIns)
+			r.Get("/venues/{id}", h.GetVenueByID)
 			r.Get("/users/{username}/favorites", h.GetFavoriteReviews)
 			r.Get("/users/{username}/lists", h.ListUserLists)
 			r.Get("/lists/{id}", h.GetList)
@@ -135,6 +136,11 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Delete("/comments/{id}", h.DeleteComment)
 
 			r.Get("/users/me", h.Me)
+			r.Get("/feed/check-ins", h.ListFeedCheckIns)
+			// Typed into onboarding's username field (debounced), so a
+			// roomier cap than writes; enumerating usernames gets nothing
+			// that /users/{username} doesn't already give away.
+			r.With(limitByUser(120, time.Minute)).Get("/users/username-check", h.CheckUsername)
 			r.Get("/users/me/blocks", h.ListBlockedUsers)
 			r.Post("/users/{userId}/block", h.BlockUser)
 			r.Delete("/users/{userId}/block", h.UnblockUser)

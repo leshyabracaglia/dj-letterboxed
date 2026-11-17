@@ -46,7 +46,7 @@ func GetFollowingIDs(ctx context.Context, q DBTX, userID string) ([]string, erro
 	return collect(rows, err, pgx.RowTo[string])
 }
 
-const qualifiedUserCols = "u.id, u.clerk_id, u.username, u.display_name, u.bio, u.avatar_url, u.created_at, u.updated_at"
+const qualifiedUserCols = "u.id, u.clerk_id, u.username, u.display_name, u.bio, u.avatar_url, u.created_at, u.updated_at, u.city"
 
 // GetFollowers returns the users who follow userID.
 func GetFollowers(ctx context.Context, q DBTX, userID string) ([]db.User, error) {

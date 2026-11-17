@@ -26,6 +26,25 @@ export function useUserReviews(username: string | undefined) {
   });
 }
 
+// A user's check-ins with no night logged for them (empty unless you're
+// them or their friend), from `since` (the oldest night loaded) when the
+// profile has more nights than it loaded.
+export function useUserCheckIns(username: string | undefined, since: string | null) {
+  const api = useApi();
+  return useQuery({
+    queryKey: queryKeys.users.checkIns(username ?? "", since),
+    queryFn: username
+      ? () =>
+          unwrap(
+            api.GET("/api/users/{username}/check-ins", {
+              params: { path: { username }, query: since ? { since } : {} },
+            }),
+          )
+      : skipToken,
+    placeholderData: keepPreviousData,
+  });
+}
+
 // Who the signed-in user has blocked (for the block/unblock toggles).
 export function useBlockedUsers() {
   const { isSignedIn } = useCurrentUser();

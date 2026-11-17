@@ -15,6 +15,9 @@ import (
 
 var usernameRe = regexp.MustCompile(`^[a-z0-9_]{3,32}$`)
 
+// The longest a profile's city can be.
+const maxCityLen = 60
+
 // Referenced only by swag doc comments below (@Success/@Param types) -
 // keeps the import resolvable for OpenAPI generation without an unused
 // import error.
@@ -142,6 +145,8 @@ type updateProfileRequest struct {
 	DisplayName *string `json:"displayName,omitempty"`
 	Bio         *string `json:"bio,omitempty"`
 	AvatarURL   *string `json:"avatarUrl,omitempty"`
+	// Where they're based ("Brooklyn"); "" clears it.
+	City *string `json:"city,omitempty"`
 }
 
 // UpdateProfile godoc
@@ -172,12 +177,20 @@ func (h *Handlers) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		BadRequest(w, "username must be 3-32 characters: lowercase letters, numbers, underscores")
 		return
 	}
-	if domain.IsObjectionable(deref(req.Username), deref(req.DisplayName), deref(req.Bio)) {
+	if req.City != nil {
+		city := strings.TrimSpace(*req.City)
+		if len([]rune(city)) > maxCityLen {
+			BadRequest(w, "city must be at most 60 characters")
+			return
+		}
+		req.City = &city
+	}
+	if domain.IsObjectionable(deref(req.Username), deref(req.DisplayName), deref(req.Bio), deref(req.City)) {
 		BadRequest(w, domain.ErrObjectionable.Error())
 		return
 	}
 
-	updated, err := queries.UpdateUserProfile(r.Context(), h.Pool, user.ID, req.Username, req.DisplayName, req.Bio, req.AvatarURL)
+	updated, err := queries.UpdateUserProfile(r.Context(), h.Pool, user.ID, req.Username, req.DisplayName, req.Bio, req.AvatarURL, req.City)
 	if err != nil {
 		if errors.Is(err, queries.ErrUsernameTaken) {
 			WriteError(w, http.StatusConflict, "USERNAME_TAKEN", "that username is already taken")
@@ -187,6 +200,44 @@ func (h *Handlers) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, updated)
+}
+
+// usernameCheck says whether a username can be taken: `valid` is the format
+// (3-32 lowercase letters, numbers, underscores, nothing objectionable),
+// `available` that it's valid and nobody else has it.
+type usernameCheck struct {
+	Username  string `json:"username"`
+	Valid     bool   `json:"valid"`
+	Available bool   `json:"available"`
+}
+
+// CheckUsername godoc
+//
+//	@Summary	Whether a username is free for the caller to take (onboarding's live check); the caller's own counts as free
+//	@Tags		users
+//	@Produce	json
+//	@Param		username	query		string	true	"the username to check, lowercase"
+//	@Success	200			{object}	usernameCheck
+//	@Failure	401			{object}	errorEnvelope
+//	@Security	BearerAuth
+//	@Router		/api/users/username-check [get]
+func (h *Handlers) CheckUsername(w http.ResponseWriter, r *http.Request) {
+	user, ok := mustUser(w, r)
+	if !ok {
+		return
+	}
+	username := r.URL.Query().Get("username")
+	check := usernameCheck{Username: username}
+	check.Valid = usernameRe.MatchString(username) && !domain.IsObjectionable(username)
+	if check.Valid {
+		taken, err := queries.UsernameTaken(r.Context(), h.Pool, username, user.ID)
+		if err != nil {
+			InternalError(w, err)
+			return
+		}
+		check.Available = !taken
+	}
+	WriteJSON(w, http.StatusOK, check)
 }
 
 // GetSettings godoc

@@ -120,7 +120,7 @@ func ListNotifications(ctx context.Context, q DBTX, userID string, before *time.
 		u := &n.Actor
 		if err := rows.Scan(
 			&n.ID, &n.Type, &n.CreatedAt, &n.IsUnread,
-			&u.ID, &u.ClerkID, &u.Username, &u.DisplayName, &u.Bio, &u.AvatarURL, &u.CreatedAt, &u.UpdatedAt,
+			&u.ID, &u.ClerkID, &u.Username, &u.DisplayName, &u.Bio, &u.AvatarURL, &u.CreatedAt, &u.UpdatedAt, &u.City,
 			&n.ReviewID, &n.Subject, &n.CommentBody, &n.NightLogged,
 		); err != nil {
 			return nil, err

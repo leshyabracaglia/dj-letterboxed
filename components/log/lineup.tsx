@@ -22,9 +22,7 @@ import {
   Photo,
   Sheet,
   Skeleton,
-  Tape,
   Text,
-  tiltFor,
 } from "@/components/ui";
 import { useApi, unwrap } from "@/lib/api/client";
 import { useDjSearch } from "@/lib/api/hooks";
@@ -280,8 +278,7 @@ export function LineupCard({
   const [photoOpen, setPhotoOpen] = useState(false);
 
   return (
-    <Card tint={paper.tint} torn tilt={tiltFor(entry.key, 0.8)} className="pb-5">
-      <Tape style={{ top: -10, left: 24 }} rotate={-4} />
+    <Card tint={paper.tint} torn className="pb-5">
       <View className="flex-row gap-3">
         <View className="flex-1">
           <View className="flex-row items-center gap-3">

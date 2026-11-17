@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"errors"
+	"github.com/go-chi/chi/v5"
 	"log/slog"
 	"math"
 	"net/http"
@@ -262,4 +263,81 @@ func (h *Handlers) placeVenuePoint(ctx context.Context, placeID string) (*querie
 		return nil, queries.ErrNotFound
 	}
 	return &queries.VenuePoint{Name: place.Name, City: place.City, Latitude: *place.Latitude, Longitude: *place.Longitude, GooglePlaceID: &place.PlaceID}, nil
+}
+
+// How many check-ins a list of them returns at most.
+const checkInPostsLimit = 50
+
+// ListFeedCheckIns godoc
+//
+//	@Summary	Check-ins with no night logged for them, by the caller and their friends (mutual follows), newest first, for the Following feed to show between nights
+//	@Tags		check-ins
+//	@Produce	json
+//	@Param		since	query		string	false	"only check-ins at or after this time (RFC3339): the oldest night the feed has loaded"
+//	@Success	200		{array}		queries.CheckInPost
+//	@Failure	401		{object}	errorEnvelope
+//	@Security	BearerAuth
+//	@Router		/api/feed/check-ins [get]
+func (h *Handlers) ListFeedCheckIns(w http.ResponseWriter, r *http.Request) {
+	user, ok := mustUser(w, r)
+	if !ok {
+		return
+	}
+	// Where someone is goes only to their friends, the same circle that
+	// hears "here too" from them.
+	friendIDs, err := queries.FriendIDs(r.Context(), h.Pool, user.ID)
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	posts, err := queries.ListUnloggedCheckIns(r.Context(), h.Pool, append([]string{user.ID}, friendIDs...),
+		queryTimeCursor(r, "since"), checkInPostsLimit)
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, orEmpty(posts))
+}
+
+// ListUserCheckIns godoc
+//
+//	@Summary	A user's check-ins with no night logged for them, newest first, for their profile; empty unless the caller is them or their friend (mutual follows)
+//	@Tags		check-ins
+//	@Produce	json
+//	@Param		username	path		string	true	"username"
+//	@Param		since		query		string	false	"only check-ins at or after this time (RFC3339): the oldest night the profile has loaded"
+//	@Success	200			{array}		queries.CheckInPost
+//	@Failure	404			{object}	errorEnvelope
+//	@Router		/api/users/{username}/check-ins [get]
+func (h *Handlers) ListUserCheckIns(w http.ResponseWriter, r *http.Request) {
+	u, err := queries.GetUserByUsername(r.Context(), h.Pool, chi.URLParam(r, "username"))
+	target, ok := fetchOr404(w, u, err)
+	if !ok {
+		return
+	}
+	viewer, signedIn := UserFromContext(r.Context())
+	if !signedIn {
+		WriteJSON(w, http.StatusOK, []queries.CheckInPost{})
+		return
+	}
+	if viewer.ID != target.ID {
+		// Blocking drops the follows between two people, so a blocked pair
+		// is never friends.
+		friends, err := queries.AreFriends(r.Context(), h.Pool, viewer.ID, target.ID)
+		if err != nil {
+			InternalError(w, err)
+			return
+		}
+		if !friends {
+			WriteJSON(w, http.StatusOK, []queries.CheckInPost{})
+			return
+		}
+	}
+	posts, err := queries.ListUnloggedCheckIns(r.Context(), h.Pool, []string{target.ID},
+		queryTimeCursor(r, "since"), checkInPostsLimit)
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, orEmpty(posts))
 }

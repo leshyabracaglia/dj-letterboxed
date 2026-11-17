@@ -64,7 +64,7 @@ func (h *Handlers) SearchPlaces(w http.ResponseWriter, r *http.Request) {
 
 // GetVenueByID godoc
 //
-//	@Summary	Get a venue by id, with the events logged there and recent reviews
+//	@Summary	Get a venue by id, with the events logged there, recent reviews, and who's checked in (friends named when signed in)
 //	@Tags		venues
 //	@Produce	json
 //	@Param		id	path		string	true	"venue id"
@@ -98,10 +98,17 @@ func (h *Handlers) GetVenueByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	checkIns, err := queries.GetVenueCheckIns(r.Context(), h.Pool, id, optionalUserID(r))
+	if err != nil {
+		InternalError(w, err)
+		return
+	}
+
 	WriteJSON(w, http.StatusOK, VenueDetailResponse{
 		Venue:         *summary,
 		Events:        orEmpty(events),
 		RecentReviews: dtos,
+		CheckIns:      *checkIns,
 	})
 }
 

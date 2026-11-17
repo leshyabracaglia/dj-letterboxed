@@ -157,7 +157,7 @@ func GetDjPortrait(ctx context.Context, q DBTX, djID string, excludeUserIDs []st
 		ORDER BY (SELECT COUNT(*) FROM review_likes k WHERE k.review_id = r.id) DESC,
 			(length(rl.review_text) BETWEEN 40 AND 280) DESC, r.created_at DESC
 		LIMIT 1`, djID, excludeUserIDs).
-		Scan(&quote.ReviewID, &quote.Text, &u.ID, &u.ClerkID, &u.Username, &u.DisplayName, &u.Bio, &u.AvatarURL, &u.CreatedAt, &u.UpdatedAt)
+		Scan(&quote.ReviewID, &quote.Text, &u.ID, &u.ClerkID, &u.Username, &u.DisplayName, &u.Bio, &u.AvatarURL, &u.CreatedAt, &u.UpdatedAt, &u.City)
 	switch {
 	case err == nil:
 		p.PullQuote = &quote

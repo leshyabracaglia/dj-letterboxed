@@ -29,7 +29,7 @@ function ListSkeleton() {
     <View style={contentStyle}>
       <Skeleton className="h-12 w-64" />
       <Skeleton className="mt-2 h-4 w-40" />
-      <Skeleton className="mt-6 h-48 w-full rounded-none" />
+      <Skeleton className="mt-6 h-48 w-full" />
     </View>
   );
 }

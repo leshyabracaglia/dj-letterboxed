@@ -73,6 +73,9 @@ type VenueDetailResponse struct {
 	Venue         queries.VenueSummary `json:"venue"`
 	Events        []queries.VenueEvent `json:"events"`
 	RecentReviews []ReviewDTO          `json:"recentReviews"`
+	// Who's been here by checking in: everyone counted, the caller's
+	// friends named.
+	CheckIns queries.VenueCheckIns `json:"checkIns"`
 }
 
 type UserProfileResponse struct {
