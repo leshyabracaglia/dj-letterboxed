@@ -28,6 +28,8 @@ module.exports = defineConfig([
       ".expo/*",
       ".agents/*",
       "server/*",
+      // The marketing site: its own Next.js project with its own config.
+      "site/*",
       "infra/*",
       "lib/api/generated.ts",
       "playwright-report/*",

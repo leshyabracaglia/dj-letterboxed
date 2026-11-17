@@ -7,3 +7,5 @@ lib/api/generated.ts
 package-lock.json
 playwright-report/
 test-results/
+site/.next/
+site/next-env.d.ts
