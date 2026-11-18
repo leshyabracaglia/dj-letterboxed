@@ -668,24 +668,158 @@ p {
   display: none;
 }
 
-/* ---- FAQ + footer ----------------------------------------------------- */
+/* ---- Check in, profile, free ----------------------------------------- */
 
-.faq {
+.split {
   display: grid;
-  gap: 28px;
+  gap: 40px;
+  align-items: center;
+}
+
+.split-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fine {
+  font-size: 13px;
+  color: rgba(246, 246, 249, 0.55);
+}
+
+.checkin-demo,
+.profile-demo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 440px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.checkin-card {
+  position: relative;
+  padding: 18px 110px 22px 18px;
+}
+
+.checkin-who {
+  margin-top: 6px;
+  font-family: var(--font-display), sans-serif;
+  font-size: 18px;
+  color: var(--muted);
+}
+
+.checkin-venue {
+  font-family: var(--font-display), sans-serif;
+  font-size: 40px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.checkin-city {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.checkin-stamp {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  align-self: flex-end;
+  max-width: 300px;
+  padding: 12px 14px;
+  background: var(--violet);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5);
+  transform: rotate(-1.5deg);
+}
+
+.toast img {
+  border: 2px solid var(--paper);
+}
+
+.toast p {
+  font-size: 15px;
+}
+
+.profile-stats {
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-top: 1px solid rgba(246, 246, 249, 0.15);
+}
+
+.profile-stats span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  flex: 1;
+}
+
+.profile-stats b {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 400;
+  font-size: 44px;
+  line-height: 1;
+  color: var(--paper);
+}
+
+.profile-row {
+  padding: 14px 16px;
+}
+
+.profile-big {
+  font-family: var(--font-display), sans-serif;
+  font-size: 26px;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.profile-list {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.profile-list img {
+  flex-shrink: 0;
+  border: 3px solid var(--paper);
+}
+
+.free {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 32px 0;
+  border-top: 1px solid rgba(246, 246, 249, 0.15);
+  border-bottom: 1px solid rgba(246, 246, 249, 0.15);
+}
+
+.free h2 {
+  font-size: clamp(56px, 11vw, 104px);
+}
+
+.free mark {
+  background: var(--violet);
+  color: var(--paper);
+  padding: 0 0.12em;
+}
+
+.section-last {
   padding-bottom: 72px;
 }
 
-.faq h3 {
-  font-size: 24px;
-  text-transform: none;
-}
-
-.faq p {
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: 15px;
-}
+/* ---- Footer ---------------------------------------------------------- */
 
 .site-footer {
   background: rgba(0, 0, 0, 0.85);
@@ -755,9 +889,18 @@ p {
     gap: 20px;
   }
 
-  .tracks {
+  .tracks,
+  .split {
     grid-template-columns: 1fr 1fr;
     gap: 64px;
+  }
+
+  .split-flip .split-copy {
+    order: 2;
+  }
+
+  .section-last {
+    padding-bottom: 96px;
   }
 
   .passport {
@@ -770,11 +913,5 @@ p {
 
   .cta-stamp {
     display: block;
-  }
-
-  .faq {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 40px;
-    padding-bottom: 96px;
   }
 }

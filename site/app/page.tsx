@@ -32,25 +32,17 @@ const PASSPORT = [
   { city: "London", club: "Room 9", date: "30 Aug 2026", nights: "2 nights" },
 ];
 
-const FAQ = [
-  {
-    q: "Is it free?",
-    a: "Yes. Logging nights, collecting stamps and following friends cost nothing.",
-  },
-  {
-    q: "Do I need to rate the sets?",
-    a: "No. It's a diary, not a scoreboard: the club, the DJ, the tracks and how the night felt.",
-  },
-  {
-    q: "Who sees my passport?",
-    a: "Your profile and passport are public, like the nights you log. Where you've checked in without logging a night only shows to your friends.",
-  },
-];
+// Asked of every free app: kept as the one FAQ (and its structured data,
+// for search results).
+const FREE = {
+  q: "Is BeatBox'd free?",
+  a: "Yes, completely, and there are no ads. Logging nights, collecting stamps, checking in, lists, stats and following friends all cost nothing.",
+};
 
 const FAQ_DATA = {
   "@context": "https://schema.org",
   "@type": "FAQPage",
-  mainEntity: FAQ.map(({ q, a }) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })),
+  mainEntity: [{ "@type": "Question", name: FREE.q, acceptedAnswer: { "@type": "Answer", text: FREE.a } }],
 };
 
 const COLLAGE = [
@@ -71,7 +63,7 @@ export default function Home() {
         <nav aria-label="Sections" className="nav">
           <a href="#features">Features</a>
           <a href="#passport">Passport</a>
-          <a href="#faq">FAQ</a>
+          <a href="#check-in">Check in</a>
         </nav>
         <a className="button-white button-small" href={APP_STORE_URL} rel="noopener">
           Get the app
@@ -112,6 +104,42 @@ export default function Home() {
           </div>
         </section>
 
+        <section id="check-in" className="wrap section split" aria-labelledby="check-in-title">
+          <div className="split-copy">
+            <p className="kicker">Check in · Friends</p>
+            <h2 id="check-in-title">Check in. See who&apos;s here.</h2>
+            <p className="lede">
+              Tap Check in when you get to the club. The club goes in your passport, the night you log gets a verified
+              mark, and if a friend checked in at the same place, you&apos;ll both get a heads-up that the other&apos;s
+              here too. Didn&apos;t log it? Your friends still see you were out.
+            </p>
+            <p className="fine">Where you check in only shows to friends: people you follow who follow you back.</p>
+          </div>
+          <div className="checkin-demo" aria-hidden="true">
+            <div className="panel checkin-card">
+              <p className="mini-label lilac">Sat 08 Nov · Checked in</p>
+              <p className="checkin-who">You were at</p>
+              <p className="checkin-venue">Good Room</p>
+              <p className="checkin-city">Brooklyn</p>
+              <Stamp
+                lines={["NOV", "08"]}
+                rim="CHECKED IN · CHECKED IN · "
+                label=""
+                size={84}
+                rotate={8}
+                className="checkin-stamp"
+              />
+              <TornEdge color="rgba(14, 11, 12, 0.92)" />
+            </div>
+            <div className="toast">
+              <Image src="/photos/night-3.jpg" alt="" width={40} height={40} />
+              <p>
+                <b>@carla</b> is at Good Room too
+              </p>
+            </div>
+          </div>
+        </section>
+
         <section className="wrap section tracks" aria-labelledby="tracks-title">
           <div className="tracks-copy">
             <p className="kicker">Songs · Sets · DJs</p>
@@ -138,6 +166,44 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="wrap section split split-flip" aria-labelledby="profile-title">
+          <div className="split-copy">
+            <p className="kicker">Profile · Lists · Stats</p>
+            <h2 id="profile-title">Your nights, in numbers.</h2>
+            <p className="lede">
+              Your profile keeps count for you: nights out, DJs you&apos;ve caught (and who you&apos;ve seen most),
+              clubs and cities. Make lists of the nights and sets that belong together, like best closers or sunrise
+              sets, and pin the three clubs you love.
+            </p>
+          </div>
+          <div className="profile-demo" aria-hidden="true">
+            <div className="profile-stats">
+              {[
+                ["48", "nights"],
+                ["31", "DJs"],
+                ["17", "clubs"],
+                ["6", "cities"],
+              ].map(([n, label]) => (
+                <span key={label}>
+                  <b>{n}</b>
+                  {label}
+                </span>
+              ))}
+            </div>
+            <div className="panel profile-row">
+              <p className="mini-label lilac">Seen most</p>
+              <p className="profile-big">Dixon ×7</p>
+            </div>
+            <div className="panel profile-row profile-list">
+              <Image src="/photos/night-1.jpg" alt="" width={48} height={48} />
+              <div>
+                <p className="profile-big">Best closing sets of 2026</p>
+                <p className="mini-label">8 entries</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section id="passport" className="wrap section" aria-labelledby="passport-title">
           <div className="section-head">
             <h2 id="passport-title">A passport that fills up.</h2>
@@ -159,7 +225,17 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="wrap section" aria-labelledby="cta-title">
+        <section id="free" className="wrap section" aria-labelledby="free-title">
+          <div className="free">
+            <h2 id="free-title">
+              Free. <mark>No ads.</mark>
+            </h2>
+            <p className="lede">{FREE.a}</p>
+          </div>
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_DATA) }} />
+        </section>
+
+        <section className="wrap section section-last" aria-labelledby="cta-title">
           <div className="cta">
             <div>
               <h2 id="cta-title">Where were you last night?</h2>
@@ -169,19 +245,6 @@ export default function Home() {
             <Stamp star ring="var(--violet)" size={180} rotate={10} label="" className="cta-stamp" />
             <TornEdge color="var(--violet)" />
           </div>
-        </section>
-
-        <section id="faq" className="wrap section faq" aria-labelledby="faq-title">
-          <h2 id="faq-title" className="visually-hidden">
-            Questions
-          </h2>
-          {FAQ.map(({ q, a }) => (
-            <div key={q}>
-              <h3>{q}</h3>
-              <p>{a}</p>
-            </div>
-          ))}
-          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_DATA) }} />
         </section>
       </main>
 
