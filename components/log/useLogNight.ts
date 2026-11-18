@@ -4,6 +4,7 @@ import { useApi, unwrap } from "@/lib/api/client";
 import { useUploadTrackClip } from "@/lib/api/hooks";
 import { queryKeys } from "@/lib/api/queryKeys";
 import type { CreateDjInput, CreateReviewInput, Dj, Paginated, Review } from "@/lib/api/types";
+import { track } from "@/lib/analytics";
 import { useCurrentUser } from "@/lib/auth";
 import { showAlert } from "@/lib/dialog";
 import { parseDateInputValue } from "@/lib/format";
@@ -115,6 +116,12 @@ export function useLogNight() {
         clipFailed = true;
       }
     }
+    track("night_logged", {
+      djs: post.lineup.length,
+      tracks: post.tracks.length,
+      fromTag: !!sourceReviewId,
+      verified: !!post.verified,
+    });
     if (clipFailed) {
       showAlert("A clip didn't upload", "Your night's logged. You can record the clip again from its page.");
     }

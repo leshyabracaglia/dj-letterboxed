@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ScrollView, View } from "react-native";
 
 import { Button, KEYBOARD_DISMISS_PROPS, Sheet, Text, TextField } from "./ui";
+import { track } from "@/lib/analytics";
 import { errorMessage, unwrap, useApi } from "@/lib/api/client";
 import type { ListSummary } from "@/lib/api/types";
 
@@ -33,6 +34,7 @@ export function ListFormSheet({
         : unwrap(api.POST("/api/lists", { body }));
     },
     onSuccess: (saved) => {
+      if (!list) track("list_created");
       void queryClient.invalidateQueries({ queryKey: ["lists"] });
       onSaved(saved);
     },

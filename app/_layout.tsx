@@ -19,6 +19,7 @@ import { Button, Page, Text, useIsDesktopWeb } from "@/components/ui";
 import { WebNav } from "@/components/WebNav";
 import { WHATS_NEW_VERSION, WhatsNewSheet } from "@/components/WhatsNewSheet";
 import { ApiError, useApi, unwrap } from "@/lib/api/client";
+import { Analytics } from "@/lib/analytics";
 import { useSettings, useUpdateSettings } from "@/lib/api/hooks";
 import { queryKeys } from "@/lib/api/queryKeys";
 import { AuthProvider, useCurrentUser } from "@/lib/auth";
@@ -172,6 +173,7 @@ export default function RootLayout() {
           <AuthProvider>
             <HideSplashWhenReady />
             <PushNotifications />
+            <Analytics />
             <StatusBar style="light" />
             <ThemeProvider value={NAV_THEME}>
               <ForceUpdateGate>

@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { Pressable } from "react-native";
 
 import { Text } from "./ui";
+import { track } from "@/lib/analytics";
 import { useCurrentUser } from "@/lib/auth";
 import { useApi, unwrap } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/queryKeys";
@@ -68,6 +69,7 @@ export function FollowButton({ userId, username }: { userId: string; username?: 
   const follow = useMutation({
     mutationFn: () => unwrap(api.POST("/api/follows/{userId}", { params: { path: { userId } } })),
     onMutate: () => applyOptimistic(true),
+    onSuccess: () => track("user_followed"),
     onError: (_err, _vars, ctx) => rollback(ctx),
     onSettled: invalidate,
   });

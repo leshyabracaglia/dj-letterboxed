@@ -15,6 +15,7 @@ import {
   Text,
   usePageContentStyle,
 } from "@/components/ui";
+import { track } from "@/lib/analytics";
 import { ApiError, useApi, unwrap } from "@/lib/api/client";
 import { useEventSearch } from "@/lib/api/hooks";
 import { invalidateReviewLists } from "@/lib/api/cache";
@@ -279,7 +280,8 @@ function CheckInStrip() {
 
   const checkIn = useMutation({
     mutationFn: (input: CheckInInput) => unwrap(api.POST("/api/check-ins", { body: input })),
-    onSuccess: () => {
+    onSuccess: ({ friendsHere }) => {
+      track("checked_in", { friendsHere: friendsHere.length });
       setChoices(undefined);
       setMessage(undefined);
       // A review of tonight already posted there now shows as verified.

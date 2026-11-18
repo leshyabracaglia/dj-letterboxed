@@ -5,7 +5,7 @@ import { SectionTitle, Text } from "@/components/ui";
 import { ContactEmailLink, InfoPage, type InfoSection } from "@/components/InfoPage";
 import { ROUTES } from "@/lib/routes";
 
-const EFFECTIVE_DATE = "November 13, 2026";
+const EFFECTIVE_DATE = "November 19, 2026";
 
 // The App Store privacy policy (linked from App Store Connect as
 // https://beatboxd.com/privacy). Keep it in step with what the app actually
@@ -28,7 +28,8 @@ const SECTIONS: InfoSection[] = [
       "Device push token: if you allow notifications, we store your device’s push token so we can tell you about new followers, likes and comments, and when someone tags you at a night. If you haven’t opened Beatboxd in a couple of days, we may also send an occasional reminder that people you follow have logged nights (at most once every two days); you can turn that off in Settings.",
       "Activity and server logs: we record when you last used the app (to decide when that reminder is due, if you have it on). Our servers log each request, including its IP address, device type and time, and count requests per account and IP address to stop spam and abuse. We use these logs only to keep Beatboxd running and secure.",
       "Safety reports and blocks: if you report a review, comment or user, we keep the report, including a copy of the reported text, and who you block.",
-      "We don’t use advertising, analytics or crash-reporting SDKs, and we don’t track you across other apps or websites.",
+      "Usage analytics: we use PostHog to understand how Beatboxd is used, such as how many people open it each day and which features they use. It records which screens you open and actions like logging a night, checking in, following, liking or commenting, linked to your account id and username, along with your device type, operating system, app version, language and time zone. It never receives what you write, your location or your email address.",
+      "We don’t use advertising or crash-reporting SDKs, and we don’t track you across other companies’ apps or websites.",
     ],
   },
   {
@@ -48,7 +49,7 @@ const SECTIONS: InfoSection[] = [
     title: "Services we use",
     body: [
       "We share data only with the service providers that run Beatboxd for us, and only what each needs:",
-      "Clerk (sign-in and accounts). Amazon Web Services (our servers and database, in the United States). Vercel (hosting the website). Expo (delivering push notifications). Resend (emailing safety reports to us; a report email contains the reported content and the usernames involved). Google Maps Platform (venue search, and turning web coordinates into a city). Spotify and Resident Advisor (we search their catalogs for DJs and nights from our servers; we don’t send them anything about you).",
+      "Clerk (sign-in and accounts). Amazon Web Services (our servers and database, in the United States). Vercel (hosting the website). Expo (delivering push notifications). Resend (emailing safety reports to us; a report email contains the reported content and the usernames involved). Google Maps Platform (venue search, and turning web coordinates into a city). PostHog (usage analytics, in the United States). Spotify and Resident Advisor (we search their catalogs for DJs and nights from our servers; we don’t send them anything about you).",
       "We may also disclose information if the law requires it, or to protect the safety of our users or others.",
     ],
   },

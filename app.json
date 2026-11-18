@@ -77,7 +77,8 @@
         {
           "microphonePermission": "Beatboxd uses the microphone only when you record a short clip of a track you couldn't name, so others can help identify it."
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true

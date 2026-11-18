@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthButton, AuthTitle, FieldLabel, LOGO } from "@/components/auth/parts";
 import { FormMessage, Icon, KeyboardScrollView, Stamp, Tape, Text, WallView } from "@/components/ui";
 
+import { track } from "@/lib/analytics";
 import { unwrap, useApi } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/queryKeys";
 import type { UsernameCheck } from "@/lib/api/types";
@@ -78,7 +79,10 @@ export default function OnboardingScreen() {
   };
 
   const submit = useUpdateProfile({
-    onSuccess: () => router.dismissTo(ROUTES.FEED),
+    onSuccess: () => {
+      track("onboarding_completed");
+      router.dismissTo(ROUTES.FEED);
+    },
     onError: setError,
   });
 

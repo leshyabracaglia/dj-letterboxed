@@ -5,6 +5,7 @@ import { Pressable, View } from "react-native";
 
 import { Avatar, Button, Icon, SectionTitle, Skeleton, Text, TextField } from "@/components/ui";
 import { ModerationButton } from "@/components/ModerationSheet";
+import { track } from "@/lib/analytics";
 import { patchCachedReview } from "@/lib/api/cache";
 import { useApi, unwrap } from "@/lib/api/client";
 import { useReviewComments } from "@/lib/api/hooks";
@@ -51,6 +52,7 @@ export function CommentSection({ reviewId }: { reviewId: string }) {
       bumpCommentCount(1);
       return { previous, submittedBody: input.body };
     },
+    onSuccess: () => track("comment_posted"),
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) queryClient.setQueryData(commentsKey, ctx.previous);
       if (ctx?.submittedBody) setBody(ctx.submittedBody);

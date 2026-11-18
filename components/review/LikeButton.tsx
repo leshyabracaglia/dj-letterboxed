@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { Pressable } from "react-native";
 
 import { Icon, Text } from "@/components/ui";
+import { track } from "@/lib/analytics";
 import { patchCachedReview } from "@/lib/api/cache";
 import { useApi, unwrap } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/queryKeys";
@@ -51,6 +52,7 @@ export function LikeButton({
   const like = useMutation({
     mutationFn: () => unwrap(api.POST("/api/reviews/{id}/like", { params: { path: { id: reviewId } } })),
     onMutate: () => applyOptimistic(true),
+    onSuccess: () => track("review_liked"),
     onError: (_err, _vars, ctx) => rollback(ctx),
     onSettled: invalidate,
   });

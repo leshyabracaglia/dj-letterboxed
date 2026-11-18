@@ -7,6 +7,7 @@ import { ModerationButton } from "@/components/ModerationSheet";
 import { ClipPlayer, ClipRecorder, type LocalClip } from "@/components/TrackClip";
 import { TrackRow } from "@/components/TrackRow";
 import { DashedButton, Sheet, Text } from "@/components/ui";
+import { track as trackEvent } from "@/lib/analytics";
 import { apiUrl, errorMessage, unwrap, useApi } from "@/lib/api/client";
 import { patchCachedReview } from "@/lib/api/cache";
 import { useUploadTrackClip } from "@/lib/api/hooks";
@@ -42,6 +43,7 @@ export function TrackIdRequest({ review, track }: { review: ReviewDetail; track:
       artworkUrl?: string;
     }) => unwrap(api.POST("/api/tracks/{id}/suggestions", { params: { path: { id: track.id } }, body })),
     onSuccess: (updated) => {
+      trackEvent("id_suggested");
       setNaming(false);
       applied(updated);
     },
@@ -49,7 +51,10 @@ export function TrackIdRequest({ review, track }: { review: ReviewDetail; track:
   });
   const accept = useMutation({
     mutationFn: (id: string) => unwrap(api.POST("/api/track-suggestions/{id}/accept", { params: { path: { id } } })),
-    onSuccess: applied,
+    onSuccess: (updated) => {
+      trackEvent("id_accepted");
+      applied(updated);
+    },
     onError,
   });
   const remove = useMutation({

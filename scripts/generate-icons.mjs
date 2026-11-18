@@ -33,8 +33,10 @@ function starPoints(cx, cy, r) {
 
 /** The stamp as an SVG `size` px square: black disc, violet rim, the ring text
  * around it, an inner ring and a white star: violet and white on black. Proportions match Stamp. With
- * `mono`, everything is drawn in one flat white (Android's themed icon). */
-function stampSvg(size, { mono = false, rotate = -8 } = {}) {
+ * `mono`, everything is drawn in one flat white (Android's themed icon). With
+ * `simple`, just the disc, a thick rim and a big star: the ring text is noise
+ * at favicon size (16-48px). */
+function stampSvg(size, { mono = false, simple = false, rotate = -8 } = {}) {
   const c = size / 2;
   const rim = size * 0.025;
   const r = c - rim / 2;
@@ -44,6 +46,14 @@ function stampSvg(size, { mono = false, rotate = -8 } = {}) {
   const innerR = size * 0.3;
   const fg = mono ? "#FFFFFF" : RING;
   const disc = mono ? "none" : "#050405";
+  if (simple) {
+    const thick = size * 0.1;
+    return `
+<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <circle cx="${c}" cy="${c}" r="${c - thick / 2}" fill="${disc}" stroke="${fg}" stroke-width="${thick}" />
+  <polygon points="${starPoints(c, c + size * 0.03, size * 0.31)}" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="${size * 0.03}" stroke-linejoin="round" />
+</svg>`;
+  }
   return `
 <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <defs>
@@ -62,14 +72,14 @@ function stampSvg(size, { mono = false, rotate = -8 } = {}) {
 
 /** A square `size` canvas with the stamp `scale` of its width, centered, on
  * `background` (null = transparent). */
-function iconHtml(size, { scale = 1, background = null, mono = false } = {}) {
+function iconHtml(size, { scale = 1, background = null, mono = false, simple = false } = {}) {
   const stamp = Math.round(size * scale);
   return `<!doctype html><html><head><style>
     @font-face { font-family: Jersey10; src: url(data:font/ttf;base64,${font}); }
     html, body { margin: 0; background: transparent; }
     #icon { width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center;
             background: ${background ?? "transparent"}; }
-  </style></head><body><div id="icon">${stampSvg(stamp, { mono })}</div></body></html>`;
+  </style></head><body><div id="icon">${stampSvg(stamp, { mono, simple })}</div></body></html>`;
 }
 
 // iOS/app-store icon must be opaque; Android's adaptive foreground keeps the
@@ -80,7 +90,7 @@ const ICONS = [
   { file: "android-icon-foreground.png", size: 512, scale: 0.6 },
   { file: "android-icon-background.png", size: 512, scale: 0, background: "#000000" },
   { file: "android-icon-monochrome.png", size: 432, scale: 0.6, mono: true },
-  { file: "favicon.png", size: 48, scale: 1 },
+  { file: "favicon.png", size: 48, scale: 1, simple: true },
   { file: "logo-mark.png", size: 256, scale: 1 },
 ];
 
@@ -95,5 +105,13 @@ for (const icon of ICONS) {
   await page.evaluate(() => document.fonts.ready);
   await page.locator("#icon").screenshot({ path: `${root}assets/${icon.file}`, omitBackground: !icon.background });
   console.log(`wrote assets/${icon.file}`);
+  // The marketing site's tab icon is the same favicon, at a larger size for
+  // Next to downscale.
+  if (icon.file === "favicon.png") {
+    await page.setViewportSize({ width: 256, height: 256 });
+    await page.setContent(iconHtml(256, icon));
+    await page.locator("#icon").screenshot({ path: `${root}site/app/icon.png`, omitBackground: true });
+    console.log("wrote site/app/icon.png");
+  }
 }
 await browser.close();
