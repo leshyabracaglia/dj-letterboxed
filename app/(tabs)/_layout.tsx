@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 
 import { SignInPromptModal } from "@/components/SignInPromptModal";
-import { GlowBar, Icon, Text, useIsDesktopWeb } from "@/components/ui";
+import { GlowBar, Icon, Text, useIsDesktopWeb, WallView } from "@/components/ui";
 import { WebNav } from "@/components/WebNav";
 import { useCurrentUser } from "@/lib/auth";
 import { ROUTES } from "@/lib/routes";
@@ -96,8 +96,10 @@ export default function TabsLayout() {
         },
       };
 
+  // Still finding out who's signed in (behind the splash screen on the
+  // phone apps): the bare wall, so nothing flashes black.
   if (!isLoaded) {
-    return null;
+    return <WallView />;
   }
 
   if (!isSignedIn && !isPublicTab) {

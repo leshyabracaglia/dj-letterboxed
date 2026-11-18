@@ -87,13 +87,6 @@ function SeenDjs({ stats }: { stats: UserStats }) {
 // Stamps land a little crooked, each its own way.
 const PASSPORT_TILTS = [-8, 5, -3, 9, -6, 3];
 
-/** A venue's name for the middle of its stamp, a word to a line (three at
- * most). */
-function stampLines(name: string): string[] {
-  const words = name.split(/\s+/).filter(Boolean);
-  return words.length <= 3 ? words : [...words.slice(0, 2), words.slice(2).join(" ")];
-}
-
 type Visit = UserStats["passport"][number];
 
 /** A passport stamp's accessible description: the venue and how they've been. */
@@ -137,14 +130,19 @@ function FavoriteVenues({ stats, username, isSelf }: { stats: UserStats; usernam
               accessibilityRole="link"
               className="active:opacity-80"
             >
-              <Stamp
-                label={stampLines(stamp.name)}
-                rim={`#${i + 1} · ${stampCity(stamp)} · `}
-                size={96}
-                color={i % 2 ? "purple" : "red"}
-                rotate={PASSPORT_TILTS[i]}
-                accessibilityLabel={`Favorite #${i + 1}, ${visitLabel(stamp)}`}
-              />
+              <View className="w-[104px] items-center gap-2">
+                <Stamp
+                  star
+                  rim={`${stamp.name} · ${stampCity(stamp)} · `}
+                  size={100}
+                  color={i % 2 ? "purple" : "red"}
+                  rotate={PASSPORT_TILTS[i]}
+                  accessibilityLabel={`Favorite #${i + 1}, ${visitLabel(stamp)}`}
+                />
+                <Text variant="display" className="text-center text-base leading-5 text-paper" numberOfLines={2}>
+                  {stamp.name}
+                </Text>
+              </View>
             </Pressable>
           ))}
         </View>
@@ -259,7 +257,9 @@ function FavoriteVenuesSheet({
 function Lists({ username, isSelf }: { username: string; isSelf: boolean }) {
   const { data: lists } = useUserLists(username);
   const [creating, setCreating] = useState(false);
-  if (!lists?.length && !isSelf) return null;
+  // Nothing at all until there's a list (one's started from "+ List" on any
+  // night); then the header, and New list on your own.
+  if (!lists?.length) return null;
   return (
     <View>
       <View className="flex-row items-center justify-between">
@@ -274,37 +274,31 @@ function Lists({ username, isSelf }: { username: string; isSelf: boolean }) {
           </Pressable>
         )}
       </View>
-      {lists?.length ? (
-        <View className="mt-2 gap-2">
-          {lists.map((list) => (
-            <Pressable
-              key={list.id}
-              onPress={() => router.push(ROUTES.LIST(list.id))}
-              accessibilityRole="link"
-              className="flex-row items-center gap-3 border border-white/10 bg-zine-panel/90 p-3 active:opacity-80"
-            >
-              <View className="flex-row">
-                {list.coverImages.slice(0, 3).map((uri, i) => (
-                  <View key={uri} style={{ marginLeft: i ? -14 : 0 }}>
-                    <Avatar uri={uri} name={list.title} size={36} />
-                  </View>
-                ))}
-                {!list.coverImages.length && <Icon name="list" size={28} className="text-paper/60" />}
-              </View>
-              <View className="flex-1">
-                <Text variant="display" className="text-xl leading-6 text-paper" numberOfLines={1}>
-                  {list.title}
-                </Text>
-                <Text className="text-xs text-paper/60">{plural(list.itemCount, "entry", "entries")}</Text>
-              </View>
-            </Pressable>
-          ))}
-        </View>
-      ) : (
-        <Text className="mt-1 text-sm text-paper/60">
-          Gather nights and sets that belong together: best closers, sunrise sets, the nights that got you into it.
-        </Text>
-      )}
+      <View className="mt-2 gap-2">
+        {lists.map((list) => (
+          <Pressable
+            key={list.id}
+            onPress={() => router.push(ROUTES.LIST(list.id))}
+            accessibilityRole="link"
+            className="flex-row items-center gap-3 border border-white/10 bg-zine-panel/90 p-3 active:opacity-80"
+          >
+            <View className="flex-row">
+              {list.coverImages.slice(0, 3).map((uri, i) => (
+                <View key={uri} style={{ marginLeft: i ? -14 : 0 }}>
+                  <Avatar uri={uri} name={list.title} size={36} />
+                </View>
+              ))}
+              {!list.coverImages.length && <Icon name="list" size={28} className="text-paper/60" />}
+            </View>
+            <View className="flex-1">
+              <Text variant="display" className="text-xl leading-6 text-paper" numberOfLines={1}>
+                {list.title}
+              </Text>
+              <Text className="text-xs text-paper/60">{plural(list.itemCount, "entry", "entries")}</Text>
+            </View>
+          </Pressable>
+        ))}
+      </View>
       {creating && (
         <ListFormSheet
           onSaved={(list) => {
@@ -466,7 +460,10 @@ export function StatsSummary({ username, favorites }: { username: string; favori
           <Skeleton className="h-5 w-32" />
           <View className="flex-row gap-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 w-24 rounded-full" />
+              <View key={i} className="w-[104px] items-center gap-2">
+                <Skeleton className="h-[100px] w-[100px] rounded-full" />
+                <Skeleton className="h-4 w-20" />
+              </View>
             ))}
           </View>
         </View>

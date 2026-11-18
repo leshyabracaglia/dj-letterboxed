@@ -1,5 +1,6 @@
 import { View } from "react-native";
 
+import { Icon } from "./Icon";
 import { Text } from "./Text";
 import { colors } from "@/lib/colors";
 
@@ -13,10 +14,12 @@ function rimText(rim: string): string {
 }
 
 /** A rubber-stamp seal: `label` (one line, or a few) in the middle of a
- * black disc, `rim` set around its edge. `labelScale` shrinks (or grows)
- * the label from the size that fills the inner ring. */
+ * black disc, or with `star` the logo's star, and `rim` set around its edge.
+ * `labelScale` shrinks (or grows) the label from the size that fills the
+ * inner ring. */
 export function Stamp({
-  label,
+  label = [],
+  star = false,
   rim = DEFAULT_RIM,
   size = 72,
   color = "red",
@@ -24,7 +27,9 @@ export function Stamp({
   labelScale = 1,
   accessibilityLabel,
 }: {
-  label: string | string[];
+  label?: string | string[];
+  // A white star in the middle instead of a label.
+  star?: boolean;
   rim?: string;
   size?: number;
   color?: keyof typeof colors.stamp;
@@ -34,10 +39,12 @@ export function Stamp({
 }) {
   const ring = colors.stamp[color];
   const chars = rimText(rim.toUpperCase()).split("");
-  const charSize = Math.max(6, size * 0.1);
+  // A long rim (a club's name and city) sets its glyphs a little smaller so
+  // they still fit the whole way round.
+  const charSize = Math.max(5, size * 0.1 * Math.min(1, RIM_GLYPHS / chars.length));
   const inset = size * 0.2;
   const lines = typeof label === "string" ? [label] : label;
-  const longest = Math.max(...lines.map((line) => line.length));
+  const longest = Math.max(1, ...lines.map((line) => line.length));
   // Big for a number, shrinking to keep a word or a few lines inside the
   // inner ring (Jersey 10 runs about half an em wide).
   const fontSize = labelScale * Math.min(size * 0.4, (size * 0.56) / (longest * 0.5), (size * 0.5) / lines.length);
@@ -99,16 +106,18 @@ export function Stamp({
           justifyContent: "center",
         }}
       >
-        {lines.map((line, i) => (
-          <Text
-            key={i}
-            className="font-display uppercase text-white"
-            style={{ fontSize, lineHeight: fontSize * 1.05 }}
-            numberOfLines={1}
-          >
-            {line}
-          </Text>
-        ))}
+        {star && <Icon name="star" size={size * 0.32} className="text-white" />}
+        {!star &&
+          lines.map((line, i) => (
+            <Text
+              key={i}
+              className="font-display uppercase text-white"
+              style={{ fontSize, lineHeight: fontSize * 1.05 }}
+              numberOfLines={1}
+            >
+              {line}
+            </Text>
+          ))}
       </View>
     </View>
   );

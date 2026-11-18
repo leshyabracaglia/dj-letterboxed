@@ -99,6 +99,26 @@ function ForceUpdateGate({ children }: { children: ReactNode }) {
   );
 }
 
+// How long the splash screen waits for sign-in to load before giving way
+// anyway (offline, a slow network): the screens have their own loading
+// states from there.
+const SPLASH_MAX_MS = 4000;
+
+// Keeps the splash screen up until we know whether someone's signed in, so
+// launching goes straight from the splash to the app instead of through a
+// blank screen. Rendered once the fonts are in; renders nothing.
+function HideSplashWhenReady() {
+  const { isLoaded } = useCurrentUser();
+  useEffect(() => {
+    const timer = setTimeout(() => SplashScreen.hideAsync(), SPLASH_MAX_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  useEffect(() => {
+    if (isLoaded) SplashScreen.hideAsync();
+  }, [isLoaded]);
+  return null;
+}
+
 // Hooks need a component inside AuthProvider; renders nothing.
 function PushNotifications() {
   usePushNotifications();
@@ -141,12 +161,6 @@ export default function RootLayout() {
     setColorScheme("dark");
   }, [setColorScheme]);
 
-  useEffect(() => {
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, fontError]);
-
   if (!fontsLoaded && !fontError) {
     return null;
   }
@@ -156,6 +170,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
+            <HideSplashWhenReady />
             <PushNotifications />
             <StatusBar style="light" />
             <ThemeProvider value={NAV_THEME}>

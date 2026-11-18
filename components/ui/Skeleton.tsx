@@ -1,6 +1,5 @@
-import { cssInterop } from "nativewind";
 import { useEffect, type ReactNode } from "react";
-import type { StyleProp, ViewStyle } from "react-native";
+import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import Animated, {
   cancelAnimation,
   makeMutable,
@@ -13,7 +12,10 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-cssInterop(Animated.View, { className: "style" });
+// Classes and an animated style never share a view here: on the phone apps
+// NativeWind dropped one or the other when both landed on one Animated.View,
+// leaving blank placeholders. So a plain View takes the classes (size, color,
+// corners) and an Animated.View inside it only fades.
 
 const PULSE_MS = 1000;
 // Placeholders stay invisible this long, so a fast load goes straight from
@@ -69,11 +71,17 @@ export function LoadingFade({
   const appear = useAppear();
   const fade = useAnimatedStyle(() => ({ opacity: appear.value }));
   return (
-    <Animated.View style={[style, fade]} className={className}>
-      {children}
+    <Animated.View style={fade}>
+      <View className={className} style={style}>
+        {children}
+      </View>
     </Animated.View>
   );
 }
+
+// A placeholder block's fill: light on the wall and near-black panels, dark
+// ink on blank violet paper.
+const FILLS = { wall: "rgba(255,255,255,0.10)", paper: "rgba(0,0,0,0.25)" } as const;
 
 // Placeholder block shaped like the content it stands in for — adapted from
 // React Native Reusables' Skeleton (reanimated opacity pulse). Size and shape
@@ -87,7 +95,10 @@ export function Skeleton({ className = "", tone = "wall" }: { className?: string
   const appear = useAppear();
 
   const animatedStyle = useAnimatedStyle(() => ({ opacity: appear.value * pulse.value }));
-  const fill = tone === "paper" ? "bg-black/25" : "bg-white/10";
 
-  return <Animated.View style={animatedStyle} className={`${fill} ${className}`} />;
+  return (
+    <View className={`overflow-hidden ${className}`}>
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: FILLS[tone] }, animatedStyle]} />
+    </View>
+  );
 }
