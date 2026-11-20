@@ -1,8 +1,8 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Image, Pressable, TextInput, type TextInputProps, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { KeyboardScrollView, Stamp, Tape, Text, TornEdge, CARD_COLORS, WallView } from "@/components/ui";
+import { Icon, KeyboardScrollView, Stamp, Tape, Text, TornEdge, CARD_COLORS, WallView } from "@/components/ui";
 
 const PLACEHOLDER_COLOR = "rgba(246,246,249,0.4)";
 export const LOGO = require("@/assets/logo-mark.png");
@@ -14,12 +14,14 @@ export function FieldLabel({ children, className = "" }: { children: ReactNode; 
 
 /** A labelled input. `solid` is a plain near-black well (on violet paper);
  * `outlined` adds a faint border (on a dark panel). `aside` sits at the
- * label's right (a "Forgot?" link). */
+ * label's right (a "Forgot?" link). A password field (`secureTextEntry`)
+ * gets an eye button that shows what's been typed. */
 export function AuthField({
   label,
   aside,
   variant = "solid",
   labelClassName = "text-paper/60",
+  secureTextEntry,
   ...props
 }: TextInputProps & {
   label: string;
@@ -27,19 +29,47 @@ export function AuthField({
   variant?: "solid" | "outlined";
   labelClassName?: string;
 }) {
+  const [revealed, setRevealed] = useState(false);
+  const [focused, setFocused] = useState(false);
   return (
     <View className="gap-1">
       <View className="flex-row items-center justify-between">
         <FieldLabel className={labelClassName}>{label}</FieldLabel>
         {aside}
       </View>
-      <TextInput
-        placeholderTextColor={PLACEHOLDER_COLOR}
-        {...props}
-        className={`h-[46px] px-3 text-[16px] text-paper ${
-          variant === "solid" ? "bg-zine-panel" : "border border-paper/20 bg-[#050405] focus:border-paper/60"
+      <View
+        className={`h-[46px] flex-row items-center ${
+          variant === "solid"
+            ? "bg-zine-panel"
+            : `border bg-[#050405] ${focused ? "border-paper/60" : "border-paper/20"}`
         }`}
-      />
+      >
+        <TextInput
+          placeholderTextColor={PLACEHOLDER_COLOR}
+          {...props}
+          onFocus={(e) => {
+            setFocused(true);
+            props.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            props.onBlur?.(e);
+          }}
+          secureTextEntry={secureTextEntry && !revealed}
+          className="h-full flex-1 px-3 text-[16px] text-paper"
+        />
+        {secureTextEntry && (
+          <Pressable
+            onPress={() => setRevealed((r) => !r)}
+            accessibilityRole="button"
+            accessibilityLabel={revealed ? "Hide password" : "Show password"}
+            hitSlop={8}
+            className="h-full justify-center px-3 active:opacity-60"
+          >
+            <Icon name={revealed ? "eye-off-outline" : "eye-outline"} size={20} className="text-paper/60" />
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }

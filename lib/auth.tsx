@@ -55,10 +55,10 @@ export function useCurrentUser(): AuthContextValue {
 }
 
 // PATCH /users/me. On success the response is written straight into the
-// current-user cache *before* the caller's onSuccess runs — onboarding
-// navigates into (tabs) right away, and the tabs layout's onboarding gate
-// reads `me` on mount; an async invalidate wouldn't land in time and would
-// bounce the user back to onboarding with the stale fallback username.
+// current-user cache before the caller's onSuccess runs. Components reading
+// `me` still see it a tick later (React Query notifies asynchronously), so
+// don't navigate on the assumption that they already have: onboarding waits
+// for `me` to show the new username instead.
 export function useUpdateProfile({
   onSuccess,
   onError,

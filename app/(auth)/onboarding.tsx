@@ -1,6 +1,6 @@
 import { useUser } from "@clerk/expo";
 import { skipToken, useQuery } from "@tanstack/react-query";
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import { useState } from "react";
 import { Image, Keyboard, Pressable, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,6 +18,7 @@ import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { pickAndUploadAvatar } from "@/lib/avatarUpload";
 import { useSignOut } from "@/lib/push";
 import { ROUTES } from "@/lib/routes";
+import { needsOnboarding } from "@/lib/user";
 
 const USERNAME_RE = /^[a-z0-9_]{3,32}$/;
 
@@ -79,10 +80,7 @@ export default function OnboardingScreen() {
   };
 
   const submit = useUpdateProfile({
-    onSuccess: () => {
-      track("onboarding_completed");
-      router.dismissTo(ROUTES.FEED);
-    },
+    onSuccess: () => track("onboarding_completed"),
     onError: setError,
   });
 
@@ -100,6 +98,14 @@ export default function OnboardingScreen() {
       avatarUrl: avatarUrl ?? undefined,
     });
   };
+
+  // Leave once the saved username has reached `me`, rather than from the
+  // mutation's onSuccess: navigating there raced the cache update, and the
+  // tabs' onboarding gate, still seeing the fallback username, sent people
+  // straight back here. This also moves on anyone who lands here already set up.
+  if (me && !needsOnboarding(me.username)) {
+    return <Redirect href={ROUTES.FEED} />;
+  }
 
   return (
     <WallView>
