@@ -16,12 +16,13 @@ It's its own npm project (own `node_modules`, its own React): the root
 
 ## What's in it
 
-- `app/page.tsx` — the page: hero with the app mocked up in HTML
-  (`components/Phones.tsx`), features, tracks, passport, call to action, FAQ.
+- `app/page.tsx` — the page: hero with a write-up card, "what happened at
+  4am", the record (write-ups), track IDs, profile, passport stamps, the
+  three points (DJ pages, no editors, free), call to action.
 - `app/layout.tsx` — fonts (Jersey 10 + Roboto via `next/font`), title,
   description, canonical URL, Open Graph/Twitter cards (`public/og.png`), the
   App Store smart banner (`itunes.appId`) and `MobileApplication` structured
-  data. The FAQ adds `FAQPage` structured data.
+  data. The page adds `FAQPage` structured data for "Is BeatBox'd free?".
 - `app/sitemap.ts`, `app/robots.ts`, `app/icon.png`, `app/apple-icon.png`.
 - `next.config.ts` — redirects every path the app serves (`/feed`, `/dj/…`,
   `/review/…`, `/privacy`, `/support`, …) to app.beatboxd.com, since

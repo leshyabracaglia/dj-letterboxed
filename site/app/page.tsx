@@ -1,71 +1,116 @@
 import Image from "next/image";
 
-import { AppStoreButton } from "@/components/AppStoreButton";
-import { HeroPhones } from "@/components/Phones";
 import { Stamp } from "@/components/Stamp";
-import { TornEdge } from "@/components/TornEdge";
-import { APP_STORE_URL, PRIVACY_URL, SUPPORT_URL, TERMS_URL } from "@/lib/links";
+import { APP_STORE_URL, APP_URL, PRIVACY_URL, SUPPORT_URL, TERMS_URL } from "@/lib/links";
 
-const FEATURES = [
-  {
-    kicker: "01 · Log",
-    title: "Log every night",
-    body: "Add a night in a few taps: the club, the DJ, the date, and a note on how it felt. Add the songs you Shazamed or recognized along the way. Check in at a club and log the night later.",
-  },
-  {
-    kicker: "02 · Passport",
-    title: "Collect your passport",
-    body: "Every club you visit earns a stamp, with the city, your first night and how many times you've been back. Watch it fill up across clubs and cities.",
-  },
-  {
-    kicker: "03 · Share",
-    title: "Share it with friends",
-    body: "Follow your friends, see where they went out, and tag the people you danced with. Your profile shows your nights, your DJs and your passport.",
-  },
-];
-
-// Illustrative passport entries for the section that shows one filling up.
-const PASSPORT = [
-  { city: "Brooklyn", club: "Halle 4", date: "8 Nov 2026", nights: "3 nights" },
-  { city: "Berlin", club: "The Vault", date: "18 Oct 2026", nights: "1 night" },
-  { city: "Brooklyn", club: "Outpost", date: "31 Oct 2026", nights: "5 nights" },
-  { city: "London", club: "Room 9", date: "30 Aug 2026", nights: "2 nights" },
-];
-
-// Asked of every free app: kept as the one FAQ (and its structured data,
-// for search results).
-const FREE = {
-  q: "Is BeatBox'd free?",
-  a: "Yes, completely, and there are no ads. Logging nights, collecting stamps, checking in, lists, stats and following friends all cost nothing.",
-};
+// Asked of every free app: kept as structured data for search results.
+const FREE_ANSWER =
+  "Yes, completely, and there are no ads. Logging nights, collecting stamps, checking in, lists, stats and following friends all cost nothing.";
 
 const FAQ_DATA = {
   "@context": "https://schema.org",
   "@type": "FAQPage",
-  mainEntity: [{ "@type": "Question", name: FREE.q, acceptedAnswer: { "@type": "Answer", text: FREE.a } }],
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "Is BeatBox'd free?",
+      acceptedAnswer: { "@type": "Answer", text: FREE_ANSWER },
+    },
+  ],
 };
 
-const COLLAGE = [
-  { src: "/photos/night-1.jpg", alt: "A DJ under purple lights", className: "collage-a" },
-  { src: "/photos/night-4.jpg", alt: "A packed room in red light", className: "collage-b" },
-  { src: "/photos/night-3.jpg", alt: "A DJ behind the decks", className: "collage-c" },
-  { src: "/photos/night-2.jpg", alt: "A warehouse crowd at golden hour", className: "collage-d" },
+// Illustrative write-ups for "The record": a note on a DJ's set, or on the
+// whole night, one on each kind of paper.
+const WRITE_UPS = [
+  {
+    dj: "Mita Gami",
+    meta: "Nowadays · Sun 02 Nov · Day",
+    quote: "Stayed in one groove for two hours and it kept getting better somehow.",
+    by: "sunrise_sam",
+    tone: "dark",
+  },
+  {
+    dj: "Eden Burns",
+    meta: "Basement · Fri 31 Oct · Night",
+    quote: "Couldn't tell where one track ended and the next started. Didn't want to.",
+    by: "dee.mono",
+    tone: "violet",
+  },
+  {
+    dj: "The whole night",
+    meta: "Public Records · Thu 13 Nov",
+    quote: "Lost my friends at 2, found them by the bar at 5. Worth it.",
+    by: "rj_digs",
+    tone: "paper",
+  },
 ];
+
+// Illustrative passport stamps, taking turns through the app's five inks.
+const PASSPORT = [
+  { club: "Good Room", detail: "08 Nov 26", ink: "ring" },
+  { club: "Nowadays", detail: "02 Nov 26 · Day", ink: "box" },
+  { club: "Basement", detail: "31 Oct 26", ink: "seal" },
+  { club: "Public Records", detail: "13 Nov 26", ink: "dashed" },
+  { club: "Halle 4", detail: "Berlin · 19 Jul", ink: "violet" },
+];
+
+const POINTS = [
+  {
+    title: "Every DJ gets a page",
+    body: "The tracks people loved, where they're seen most, and the best things said about their sets.",
+  },
+  {
+    title: "No editors",
+    body: "Every DJ, club and party page is built from what people log. Nothing is paid placement.",
+  },
+  { title: "Free. No ads.", body: "Nothing to buy and nothing sponsored in your feed." },
+];
+
+function PlayIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+      <path d="M3 1.5v9l7.5-4.5z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function PinIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 22s7-6.6 7-12.2A7 7 0 0 0 5 9.8C5 15.4 12 22 12 22Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <circle cx="12" cy="9.8" r="2.4" fill="currentColor" />
+    </svg>
+  );
+}
+
+function PhoneIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="6" y="2" width="12" height="20" rx="2.5" fill="none" stroke="currentColor" strokeWidth="2" />
+      <path d="M10.5 18h3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 export default function Home() {
   return (
     <>
       <header className="site-header wrap">
         <a className="brand" href="/" aria-label="BeatBox'd home">
-          <Image src="/logo-mark.png" alt="" width={36} height={36} priority />
+          <Image src="/logo-mark.png" alt="" width={44} height={44} priority />
           <span>BeatBox&apos;d</span>
         </a>
         <nav aria-label="Sections" className="nav">
-          <a href="#features">Features</a>
+          <a href="#record">The record</a>
+          <a href="#ids">Track IDs</a>
           <a href="#passport">Passport</a>
-          <a href="#check-in">Check in</a>
         </nav>
-        <a className="button-white button-small" href={APP_STORE_URL} rel="noopener">
+        <a className="pill pill-white" href={APP_STORE_URL} rel="noopener">
           Get the app
         </a>
       </header>
@@ -73,190 +118,194 @@ export default function Home() {
       <main>
         <section className="hero wrap">
           <div className="hero-copy">
-            <p className="kicker">The clubbing passport for music lovers</p>
-            <h1>
-              For people who go for the <mark>music.</mark>
-            </h1>
-            <p className="lede">
-              Log the nights you danced, collect a stamp for every club you visit, and share where you went with
-              friends.
-            </p>
+            <p className="kicker">Write about DJ sets · Free on iPhone</p>
+            <h1>You had to be there.</h1>
+            <p className="lede">Log the nights you go out. Write about the sets you saw and the tracks you heard.</p>
             <div className="hero-actions">
-              <AppStoreButton />
-              <a className="text-link" href="#features">
-                See how it works
+              <a className="pill pill-violet" href={APP_STORE_URL} rel="noopener">
+                <PhoneIcon />
+                Download on the App Store
               </a>
+              <p className="fine">
+                Or use it on the web at <a href={APP_URL}>{APP_URL.replace(/^https?:\/\//, "")}</a>
+              </p>
             </div>
           </div>
-          <HeroPhones />
+          <div className="hero-card-wrap" aria-hidden="true">
+            <div className="hero-card">
+              <p className="label lilac">Sat 08 Nov · Night</p>
+              <p className="hero-dj">Mira</p>
+              <p className="hero-venue">The Ruins, Queens</p>
+              <p className="hero-quote">
+                &ldquo;Hours of slow, hypnotic grooves. She never rushed a single build.&rdquo;
+              </p>
+              <p className="hero-by">
+                <span className="avatar">M</span>
+                maya.k · 3 tracks · 2 friends tagged
+              </p>
+              <p className="hero-foot label">
+                <span>No. 0417</span>
+                <span>Verified</span>
+              </p>
+              <Stamp
+                lines={["NOV", "8"]}
+                rim="LOGGED · BEATBOXD · LOGGED · BEATBOXD · "
+                label=""
+                size={92}
+                rotate={-8}
+                className="hero-stamp"
+              />
+            </div>
+          </div>
         </section>
 
-        <section id="features" className="wrap section" aria-labelledby="features-title">
-          <h2 id="features-title">Your nights, kept.</h2>
-          <div className="features">
-            {FEATURES.map((f) => (
-              <article key={f.title} className="panel feature">
-                <p className="kicker lilac">{f.kicker}</p>
-                <h3>{f.title}</h3>
-                <p>{f.body}</p>
+        <section className="band band-paper" aria-labelledby="four-am-title">
+          <div className="wrap band-row">
+            <h2 id="four-am-title">What happened at 4am?</h2>
+            <p>Write-ups from people who were there. No star ratings, no ranking DJs.</p>
+          </div>
+        </section>
+
+        <section id="record" className="wrap section" aria-labelledby="record-title">
+          <div className="section-head">
+            <div>
+              <p className="kicker">The record</p>
+              <h2 id="record-title">Write about the set.</h2>
+            </div>
+            <p className="aside">
+              A line about the whole night, or a note on each DJ you saw. Write as much or as little as you want.
+            </p>
+          </div>
+          <div className="write-ups" aria-hidden="true">
+            {WRITE_UPS.map((w) => (
+              <article key={w.by} className={`write-up write-up-${w.tone}`}>
+                <div>
+                  <p className="label">{w.meta}</p>
+                  <p className="write-up-dj">{w.dj}</p>
+                </div>
+                <p className="write-up-quote">&ldquo;{w.quote}&rdquo;</p>
+                <p className="write-up-by">{w.by}</p>
               </article>
             ))}
           </div>
         </section>
 
-        <section id="check-in" className="wrap section split" aria-labelledby="check-in-title">
+        <section id="ids" className="wrap section split" aria-labelledby="ids-title">
           <div className="split-copy">
-            <p className="kicker">Check in · Friends</p>
-            <h2 id="check-in-title">Check in. See who&apos;s here.</h2>
+            <p className="kicker">Tracks · IDs</p>
+            <h2 id="ids-title">Track IDs</h2>
             <p className="lede">
-              Tap Check in when you get to the club. The club goes in your passport, the night you log gets a verified
-              mark, and if a friend checked in at the same place, you&apos;ll both get a heads-up that the other&apos;s
-              here too. Didn&apos;t log it? Your friends still see you were out.
-            </p>
-            <p className="fine">Where you check in only shows to friends: people you follow who follow you back.</p>
-          </div>
-          <div className="checkin-demo" aria-hidden="true">
-            <div className="panel checkin-card">
-              <p className="mini-label lilac">Sat 08 Nov · Checked in</p>
-              <p className="checkin-who">You were at</p>
-              <p className="checkin-venue">Good Room</p>
-              <p className="checkin-city">Brooklyn</p>
-              <Stamp
-                lines={["NOV", "08"]}
-                rim="CHECKED IN · CHECKED IN · "
-                label=""
-                size={84}
-                rotate={8}
-                className="checkin-stamp"
-              />
-              <TornEdge color="rgba(14, 11, 12, 0.92)" />
-            </div>
-            <div className="toast">
-              <Image src="/photos/night-3.jpg" alt="" width={40} height={40} />
-              <p>
-                <b>@carla</b> is at Good Room too
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className="wrap section tracks" aria-labelledby="tracks-title">
-          <div className="tracks-copy">
-            <p className="kicker">Songs · Sets · DJs</p>
-            <h2 id="tracks-title">The tracks that got you.</h2>
-            <p className="lede">
-              Add the songs you Shazamed or recognized, then see who you&apos;ve caught most, who you saw most recently,
-              and the sets you&apos;d go back for. Can&apos;t name one? Post it as an ID and let people who were there
-              help.
+              Add the tracks you remember from a set. If you don&apos;t know one, post it as an ID with a short clip and
+              other people can suggest what it is.
             </p>
           </div>
-          <div className="collage">
-            {COLLAGE.map((photo) => (
-              <figure key={photo.src} className={`collage-photo ${photo.className}`}>
-                <Image
-                  src={photo.src}
-                  alt={photo.alt}
-                  width={360}
-                  height={360}
-                  sizes="(max-width: 720px) 45vw, 220px"
-                />
-                <span className="tape" />
-              </figure>
-            ))}
-          </div>
-        </section>
-
-        <section className="wrap section split split-flip" aria-labelledby="profile-title">
-          <div className="split-copy">
-            <p className="kicker">Profile · Lists · Stats</p>
-            <h2 id="profile-title">Your nights, in numbers.</h2>
-            <p className="lede">
-              Your profile keeps count for you: nights out, DJs you&apos;ve caught (and who you&apos;ve seen most),
-              clubs and cities. Make lists of the nights and sets that belong together, like best closers or sunrise
-              sets, and pin the three clubs you love.
-            </p>
-          </div>
-          <div className="profile-demo" aria-hidden="true">
-            <div className="profile-stats">
-              {[
-                ["48", "nights"],
-                ["31", "DJs"],
-                ["17", "clubs"],
-                ["6", "cities"],
-              ].map(([n, label]) => (
-                <span key={label}>
-                  <b>{n}</b>
-                  {label}
-                </span>
-              ))}
-            </div>
-            <div className="panel profile-row">
-              <p className="mini-label lilac">Seen most</p>
-              <p className="profile-big">Dixon ×7</p>
-            </div>
-            <div className="panel profile-row profile-list">
-              <Image src="/photos/night-1.jpg" alt="" width={48} height={48} />
-              <div>
-                <p className="profile-big">Best closing sets of 2026</p>
-                <p className="mini-label">8 entries</p>
+          <div className="id-demo" aria-hidden="true">
+            <div className="id-row">
+              <span className="id-badge">ID</span>
+              <div className="id-text">
+                <p className="label">ID · Around 3:40</p>
+                <p className="id-note">&ldquo;The one with the vocal that kept coming back.&rdquo;</p>
               </div>
+              <span className="play">
+                <PlayIcon />
+              </span>
+            </div>
+            <div className="id-suggestion">
+              <div>
+                <p className="id-who">rj_digs suggested</p>
+                <p className="id-track">[Track title] · [Artist]</p>
+              </div>
+              <Stamp lines={["ID'D"]} rim="NAMED · BEATBOXD · " label="" size={64} rotate={-8} />
+            </div>
+          </div>
+        </section>
+
+        <section className="band band-violet" aria-labelledby="profile-title">
+          <div className="wrap split">
+            <div className="profile-demo" aria-hidden="true">
+              <div className="tile">
+                <p className="label lilac">Seen most</p>
+                <p className="tile-big">Dixon ×7</p>
+              </div>
+              <div className="tile">
+                <p className="label lilac">This year</p>
+                <p className="tile-big">31 nights</p>
+              </div>
+              <div className="tile tile-paper tile-wide">
+                <p className="label violet">A list by you</p>
+                <p className="tile-big">Best closing sets of 2026</p>
+                <p className="tile-meta">8 nights</p>
+              </div>
+            </div>
+            <div className="split-copy">
+              <p className="kicker kicker-light">Profile · Lists</p>
+              <h2 id="profile-title">Your profile</h2>
+              <p className="lede lede-light">
+                Every DJ you&apos;ve seen, how often, and what you wrote. Make lists of sets. Follow friends and people
+                whose write-ups you like.
+              </p>
             </div>
           </div>
         </section>
 
         <section id="passport" className="wrap section" aria-labelledby="passport-title">
           <div className="section-head">
-            <h2 id="passport-title">A passport that fills up.</h2>
-            <p className="kicker">17 clubs · 6 cities</p>
+            <div>
+              <p className="kicker">Passport · Check in</p>
+              <h2 id="passport-title">Passport</h2>
+            </div>
+            <p className="aside">
+              Each club you go to gets a stamp. Check in on the night to verify it and see which friends are there. Only
+              friends can see your check-ins.
+            </p>
           </div>
-          <div className="passport">
-            {PASSPORT.map((stamp, i) => (
-              <div key={stamp.club} className="entry" style={{ rotate: `${[-1.5, 1, -0.5, 1.5][i]}deg` }}>
-                <div className="entry-inner">
-                  <span className="entry-city">{stamp.city}</span>
-                  <span className="entry-club">{stamp.club}</span>
-                  <span className="entry-foot">
-                    <span>{stamp.date}</span>
-                    <span>{stamp.nights}</span>
-                  </span>
-                </div>
+          <div className="passport" aria-hidden="true">
+            {PASSPORT.map((s) => (
+              <div key={s.club} className={`pstamp pstamp-${s.ink}`}>
+                <span className="pstamp-club">{s.club}</span>
+                <span className="pstamp-detail">{s.detail}</span>
               </div>
             ))}
+            <p className="passport-count">
+              17 clubs
+              <span>6 cities</span>
+            </p>
           </div>
+          <p className="checked-in">
+            <PinIcon />
+            <span>
+              You checked in at <b>Good Room</b>. Jo and Priya are here too.
+            </span>
+          </p>
         </section>
 
-        <section id="free" className="wrap section" aria-labelledby="free-title">
-          <div className="free">
-            <h2 id="free-title">
-              Free. <mark>No ads.</mark>
-            </h2>
-            <p className="lede">{FREE.a}</p>
+        <section className="points" aria-label="What makes it different">
+          <div className="wrap points-row">
+            {POINTS.map((p) => (
+              <div key={p.title}>
+                <h3>{p.title}</h3>
+                <p>{p.body}</p>
+              </div>
+            ))}
           </div>
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_DATA) }} />
         </section>
 
-        <section className="wrap section section-last" aria-labelledby="cta-title">
-          <div className="cta">
-            <div>
-              <h2 id="cta-title">Where were you last night?</h2>
-              <p>Start your passport. Free on iPhone.</p>
-              <AppStoreButton />
-            </div>
-            <Stamp star ring="var(--violet)" size={180} rotate={10} label="" className="cta-stamp" />
-            <TornEdge color="var(--violet)" />
-          </div>
+        <section className="wrap cta" aria-labelledby="cta-title">
+          <h2 id="cta-title">Where were you last night?</h2>
+          <a className="pill pill-violet" href={APP_STORE_URL} rel="noopener">
+            Free on iPhone
+          </a>
         </section>
       </main>
 
-      <footer className="site-footer">
-        <div className="wrap footer-row">
-          <span>BeatBox&apos;d · {new Date().getFullYear()}</span>
-          <nav aria-label="Legal">
-            <a href={TERMS_URL}>Terms</a>
-            <a href={PRIVACY_URL}>Privacy</a>
-            <a href={SUPPORT_URL}>Contact</a>
-          </nav>
-        </div>
+      <footer className="wrap site-footer">
+        <span>BeatBox&apos;d · Made in Brooklyn</span>
+        <nav aria-label="Legal">
+          <a href={PRIVACY_URL}>Privacy</a>
+          <a href={TERMS_URL}>Terms</a>
+          <a href={SUPPORT_URL}>Contact</a>
+        </nav>
       </footer>
     </>
   );

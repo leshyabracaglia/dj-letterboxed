@@ -34,6 +34,10 @@ export function Stamp({
 }) {
   const id = useId().replace(/:/g, "");
   const lineHeight = lines && lines.length > 1 ? 18 : 0;
+  // One line fills the inner ring, shrinking so a longer one ("08·11") still
+  // fits inside it (Jersey 10 runs about half an em wide).
+  const longest = Math.max(1, ...(lines ?? []).map((line) => line.length));
+  const fontSize = lines && lines.length > 1 ? 19 : Math.min(30, 100 / longest);
   return (
     <svg
       width={size}
@@ -59,7 +63,7 @@ export function Stamp({
           y={56 + (i - (lines.length - 1) / 2) * lineHeight}
           textAnchor="middle"
           fontFamily="var(--font-display)"
-          fontSize={lines.length > 1 ? 19 : 30}
+          fontSize={fontSize}
           fill="#FFFFFF"
         >
           {line}
