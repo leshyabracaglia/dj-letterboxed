@@ -12,10 +12,10 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
 import { useEffect, useState, type ReactNode } from "react";
-import { AppState, Linking, View } from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { AppState, Linking, Pressable, View } from "react-native";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Button, Page, Text, useIsDesktopWeb } from "@/components/ui";
+import { Button, Icon, Page, Text, useIsDesktopWeb } from "@/components/ui";
 import { WebNav } from "@/components/WebNav";
 import { WHATS_NEW_VERSION, WhatsNewSheet } from "@/components/WhatsNewSheet";
 import { ApiError, useApi, unwrap } from "@/lib/api/client";
@@ -145,6 +145,45 @@ function WhatsNew() {
   );
 }
 
+// What the stack hands a custom header: the screen's options (its title)
+// and whether there's a screen to go back to.
+type StackHeaderProps = {
+  navigation: { goBack: () => void };
+  options: { title?: string };
+  back?: unknown;
+};
+
+// The bar over every pushed screen: a back chevron (when there's somewhere
+// to go back to) and the screen's title beside it, on the chrome color.
+function StackHeader({ navigation, options, back }: StackHeaderProps) {
+  const { top } = useSafeAreaInsets();
+  return (
+    <View style={{ paddingTop: top, backgroundColor: colors.chrome }}>
+      <View className="h-12 flex-row items-center gap-1 px-2">
+        {!!back && (
+          <Pressable
+            onPress={navigation.goBack}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            className="p-1.5 active:opacity-70"
+          >
+            <Icon name="chevron-back" size={24} className="text-paper" />
+          </Pressable>
+        )}
+        <Text
+          variant="display"
+          accessibilityRole="header"
+          className={`flex-1 text-2xl text-paper ${back ? "" : "pl-2"}`}
+          numberOfLines={1}
+        >
+          {options.title ?? ""}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Roboto_400Regular,
@@ -180,18 +219,10 @@ export default function RootLayout() {
                 <Stack
                   screenOptions={{
                     // Desktop web gets the same persistent top nav as the tabs group
-                    // instead of a per-page title bar; phone-width web and native keep
-                    // the standard themed header with a back chevron.
-                    header: isDesktopWeb ? () => <WebNav /> : undefined,
-                    headerStyle: { backgroundColor: colors.chrome },
-                    headerTintColor: colors.paper,
-                    headerTitleStyle: { fontFamily: "Jersey10_400Regular", fontSize: 24 },
-                    // Chevron only: the default back title is the previous route's
-                    // name, which for anything pushed from the tabs reads "(tabs)".
-                    // (A custom headerBackTitleStyle font forces a static title, so
-                    // none is set.)
-                    headerBackButtonDisplayMode: "minimal",
-                    headerShadowVisible: false,
+                    // instead of a per-page title bar; phone-width web and native get
+                    // our own bar, a back chevron with the title left-aligned beside
+                    // it (iOS's native bar always centers the title).
+                    header: isDesktopWeb ? () => <WebNav /> : (props: StackHeaderProps) => <StackHeader {...props} />,
                     contentStyle: { backgroundColor: colors.ink },
                   }}
                 >

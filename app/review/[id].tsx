@@ -2,7 +2,15 @@ import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { View } from "react-native";
 
-import { Button, KeyboardScrollView, paperFor, type Paper, Text, usePageContentStyle } from "@/components/ui";
+import {
+  Button,
+  KeyboardScrollView,
+  paperFor,
+  type Paper,
+  Text,
+  useIsDesktopWeb,
+  usePageContentStyle,
+} from "@/components/ui";
 import { DetailPage } from "@/components/DetailPage";
 import { ModerationButton } from "@/components/ModerationSheet";
 import { ReviewCard, ReviewCardSkeleton } from "@/components/ReviewCard";
@@ -25,12 +33,12 @@ import { ROUTES } from "@/lib/routes";
 // one tap opens the log tab filled in with the night.
 function LogItTooPrompt({ review }: { review: ReviewDetail }) {
   return (
-    <View className="w-full max-w-xl items-center gap-3 rounded-2xl border border-accent/40 bg-accent/10 p-4">
-      <Text className="text-center text-base text-paper">
+    <View className="w-full flex-row items-center gap-3 border border-accent/60 bg-accent/10 p-3">
+      <Text className="flex-1 text-sm text-paper">
         @{review.user.username} tagged you here. Log the night and the sets you caught.
       </Text>
-      <Button onPress={() => router.push(ROUTES.REVIEW_FROM(review.id))} className="w-full py-3">
-        <Text className="font-semibold text-paper">Log this night</Text>
+      <Button onPress={() => router.push(ROUTES.REVIEW_FROM(review.id))} className="px-3 py-2">
+        <Text className="text-sm font-semibold text-paper">Log this night</Text>
       </Button>
     </View>
   );
@@ -107,6 +115,7 @@ function ReviewDetailBody({
   justLogged: boolean;
 }) {
   const contentStyle = usePageContentStyle("roomy");
+  const wide = useIsDesktopWeb();
   const { me } = useCurrentUser();
   // A list's copy of the review shows at once, but what you can do with it
   // waits for the real one.
@@ -114,48 +123,63 @@ function ReviewDetailBody({
   const isAuthor = loaded && me?.id === review.userId;
   const isSomeoneElses = loaded && me?.id !== review.userId;
 
-  return (
-    <KeyboardScrollView contentContainerStyle={[contentStyle, { paddingTop: REVIEW_TOP, alignItems: "center" }]}>
-      <View className="w-full max-w-xl">
-        <ReviewCard
-          review={review}
-          index={0}
-          paper={paper}
-          expanded
-          trackExtra={(track) => loaded && <TrackIdRequest review={review} track={track} />}
-          actions={
-            <View className="flex-row items-center gap-2">
-              <LikeButton
-                reviewId={review.id}
-                likeCount={review.likeCount}
-                isLiked={review.isLikedByMe}
-                disabled={isPlaceholderData}
-              />
-              <CommentCount reviewId={review.id} fallback={review.commentCount} />
-            </View>
-          }
+  const card = (
+    <ReviewCard
+      review={review}
+      index={0}
+      paper={paper}
+      expanded
+      trackExtra={(track) => loaded && <TrackIdRequest review={review} track={track} />}
+    />
+  );
+
+  // What you can do with the night: like it, read and add comments, list it,
+  // log it yourself if you were tagged, and the author's own tools.
+  const side = (
+    <View className="w-full gap-4">
+      <View className="flex-row gap-2">
+        <LikeButton
+          reviewId={review.id}
+          likeCount={review.likeCount}
+          isLiked={review.isLikedByMe}
+          disabled={isPlaceholderData}
         />
+        <CommentCount reviewId={review.id} fallback={review.commentCount} />
+        {loaded && !!me && <AddToListButton review={review} labelled={wide} />}
       </View>
 
-      {/* Clear of the torn edge and passport stamp hanging off the card. */}
-      <View className="mt-14 w-full items-center gap-4">
-        {isAuthor && <WhoWasThereButton review={review} />}
-        {loaded && !!me && <AddToListButton review={review} />}
+      {loaded && review.viewerLoggedNight === false && <LogItTooPrompt review={review} />}
+      {isAuthor && <WhoWasThereButton review={review} />}
 
-        {loaded && review.viewerLoggedNight === false && <LogItTooPrompt review={review} />}
+      {/* Story sharing hands the image to Instagram via the OS share sheet,
+          which only works well from the native iOS app. */}
+      {isIos && isAuthor && <ShareStoryButton review={review} paper={paper} justLogged={justLogged} />}
 
-        {/* Story sharing hands the image to Instagram via the OS share sheet,
-            which only works well from the native iOS app. */}
-        {isIos && isAuthor && <ShareStoryButton review={review} paper={paper} justLogged={justLogged} />}
+      <View className="mt-2" />
+      <CommentSection reviewId={review.id} />
+      {isAuthor && <DeleteReviewButton reviewId={review.id} />}
+      {isSomeoneElses && (
+        <ModerationButton user={review.user} target={{ reviewId: review.id }} label="Report or block" />
+      )}
+    </View>
+  );
 
-        <View className="mt-4 w-full max-w-xl gap-4">
-          <CommentSection reviewId={review.id} />
-          {isAuthor && <DeleteReviewButton reviewId={review.id} />}
-          {isSomeoneElses && (
-            <ModerationButton user={review.user} target={{ reviewId: review.id }} label="Report or block" />
-          )}
+  return (
+    <KeyboardScrollView contentContainerStyle={[contentStyle, { paddingTop: REVIEW_TOP }]}>
+      {wide ? (
+        // Desktop web: the card on the left, everything else beside it.
+        <View className="flex-row items-start gap-6">
+          <View className="flex-[1.35]">{card}</View>
+          <View className="flex-1">{side}</View>
         </View>
-      </View>
+      ) : (
+        <View className="w-full max-w-xl self-center">
+          {card}
+          {/* Clear of the torn edge and passport stamp hanging off the card. */}
+          <View className="mt-10" />
+          {side}
+        </View>
+      )}
     </KeyboardScrollView>
   );
 }

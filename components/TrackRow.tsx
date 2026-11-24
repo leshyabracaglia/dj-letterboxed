@@ -3,12 +3,22 @@ import { Image, Linking, Pressable, View } from "react-native";
 
 import { Icon, Stamp, Text } from "./ui";
 import type { ReviewTrack } from "@/lib/api/types";
+import { pluralWord } from "@/lib/format";
 
 /** What a track row shows; a review's track, a search result, or a draft
  * one all fit. */
 type TrackLike = Pick<ReviewTrack, "title" | "artist" | "artworkUrl" | "url" | "source" | "note"> & {
   identifiedBy?: ReviewTrack["identifiedBy"];
+  suggestions?: ReviewTrack["suggestions"];
+  clipDurationMs?: ReviewTrack["clipDurationMs"];
 };
+
+// Text colors for a row on the dark or violet papers, or (`light`) on a
+// white panel, where an open ID sits on a night's card.
+const TONES = {
+  dark: { title: "text-paper", sub: "text-paper/70", note: "text-paper/90", box: "border-paper/30 bg-black/30" },
+  light: { title: "text-ink", sub: "text-ink/60", note: "text-ink/80", box: "border-ink/70 border-dashed" },
+} as const;
 
 const SOURCE_LABELS: Record<string, string> = {
   spotify: "Spotify",
@@ -27,25 +37,31 @@ function trackTitle(track: Pick<ReviewTrack, "title">): string {
 /** A track: cover art, title and artist, where it's from, and the note
  * someone wrote about it. Opens its link, if it has one. `trailing` sits on
  * the right (a pick count, a remove button); an ID someone else named gets
- * an "ID'D" stamp there instead, crediting them. `showNote` false leaves the
- * note out (search results). */
+ * an "ID'D" stamp there instead, crediting them. An open ID says how many
+ * suggestions it has and whether there's a clip. `showNote` false leaves the
+ * note out (search results); `light` is for a white panel. */
 export function TrackRow({
   track,
   trailing,
   showNote = true,
   noteLines,
+  light = false,
 }: {
   track: TrackLike;
   trailing?: ReactNode;
   showNote?: boolean;
   // Clamp the note (list cards); unset shows all of it.
   noteLines?: number;
+  light?: boolean;
 }) {
+  const tone = TONES[light ? "light" : "dark"];
   const { url } = track;
   const from = SOURCE_LABELS[track.source];
   const { identifiedBy } = track;
+  const suggested = track.suggestions?.length ?? 0;
   const subtitle = [
-    track.title ? track.artist : "Unidentified",
+    track.title ? track.artist : suggested ? `${suggested} ${pluralWord(suggested, "suggestion")}` : "Unidentified",
+    !track.title && !!track.clipDurationMs && "Clip attached",
     from,
     identifiedBy && `ID'd by @${identifiedBy.username}`,
   ]
@@ -72,18 +88,24 @@ export function TrackRow({
             />
           ) : (
             <View
-              className="items-center justify-center border border-paper/30 bg-black/30"
+              className={`items-center justify-center border ${tone.box}`}
               style={{ width: ART_SIZE, height: ART_SIZE }}
             >
-              <Icon name={track.title ? "musical-notes" : "help"} size={20} className="text-paper/70" />
+              {track.title ? (
+                <Icon name="musical-notes" size={20} className="text-paper/70" />
+              ) : (
+                <Text variant="display" className={`text-lg ${tone.title}`}>
+                  ID
+                </Text>
+              )}
             </View>
           )}
           <View className="flex-1">
-            <Text variant="display" className="text-lg leading-5 text-paper" numberOfLines={2}>
+            <Text variant="display" className={`text-lg leading-5 ${tone.title}`} numberOfLines={2}>
               {trackTitle(track)}
             </Text>
             {!!subtitle && (
-              <Text className="text-xs text-paper/70" numberOfLines={1}>
+              <Text className={`text-xs ${tone.sub}`} numberOfLines={1}>
                 {subtitle}
               </Text>
             )}
@@ -102,7 +124,7 @@ export function TrackRow({
           ))}
       </View>
       {showNote && !!track.note && (
-        <Text className="text-sm italic leading-5 text-paper/90" numberOfLines={noteLines}>
+        <Text className={`text-sm italic leading-5 ${tone.note}`} numberOfLines={noteLines}>
           “{track.note}”
         </Text>
       )}

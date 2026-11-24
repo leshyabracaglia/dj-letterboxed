@@ -314,90 +314,116 @@ function Lists({ username, isSelf }: { username: string; isSelf: boolean }) {
 
 // How many of the newest passport stamps the profile shows; the rest open
 // in a sheet.
-const PASSPORT_SHOWN = 2;
+const PASSPORT_SHOWN = 3;
 
-// "11 NOV 2026", the date inked on a passport entry.
-function entryDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }).toUpperCase();
+// "08 NOV 26", the date inked on a passport stamp.
+function stampDate(iso: string) {
+  const date = new Date(iso);
+  const month = date.toLocaleDateString(undefined, { month: "short" });
+  const year = String(date.getFullYear() % 100).padStart(2, "0");
+  return `${String(date.getDate()).padStart(2, "0")} ${month} ${year}`.toUpperCase();
 }
 
-// The widest an entry stamp gets: half a phone's width, but no more on a
-// wide desktop column.
-const ENTRY_STAMP_MAX_WIDTH = 220;
+// The inks a passport takes turns through, like a real one stamped at
+// different borders: an outlined double ring, a violet box, a white seal, a
+// dashed box and a violet seal, each landing at its own angle.
+const STAMP_INKS = [
+  { shape: "ring", tilt: -5 },
+  { shape: "box", tilt: 4 },
+  { shape: "seal", tilt: -3 },
+  { shape: "dashed", tilt: 2 },
+  { shape: "violet", tilt: -7 },
+] as const;
 
-// A passport entry stamp, wider than it is tall: the city across the top,
-// the club in the middle, the date of the first visit and how often along
-// the bottom, inside a double ruled border. Fills its slot's width.
-function EntryStamp({ stamp, index, onPress }: { stamp: Visit; index: number; onPress: () => void }) {
-  const ring = colors.stamp[index % 2 ? "purple" : "red"];
+const ROUND_STAMP_SIZE = 92;
+const BOX_STAMP_WIDTH = 118;
+const BOX_STAMP_HEIGHT = 74;
+
+// One club's stamp, inked on the dark wall: its name, and the date of
+// the first visit (with the city on the violet seal). `index` is its place in
+// the passport, oldest first, so a stamp keeps its ink as new ones land.
+function PassportStamp({ stamp, index, onPress }: { stamp: Visit; index: number; onPress: () => void }) {
+  const { shape, tilt } = STAMP_INKS[index % STAMP_INKS.length];
+  const round = shape === "ring" || shape === "seal" || shape === "violet";
+  const width = round ? ROUND_STAMP_SIZE : BOX_STAMP_WIDTH;
+  const height = round ? ROUND_STAMP_SIZE : BOX_STAMP_HEIGHT;
+  // White ink, but the violet box in a lighter violet that reads on black,
+  // and the seal flipped to black on white so it stands apart from the ring.
+  const ink = shape === "box" ? colors.accent : shape === "seal" ? colors.ink : colors.paper;
+  const fill = shape === "seal" ? colors.paper : shape === "violet" ? colors.primary : "transparent";
+  // Size the name so its longest word fits across the stamp (Jersey 10 runs
+  // about half an em wide); longer names wrap onto a second line.
+  const textWidth = width * (round ? 0.68 : 0.84);
+  const longestWord = Math.max(1, ...stamp.name.split(/\s+/).map((word) => word.length));
+  const nameSize = Math.max(11, Math.min(18, textWidth / (longestWord * 0.5)));
+  const date = stampDate(stamp.firstVisitAt);
+  const detail = shape === "violet" && stamp.city ? `${stampCity(stamp)} · ${date}` : date;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="link"
       accessibilityLabel={visitLabel(stamp)}
-      className="flex-1 active:opacity-80"
-      style={{
-        maxWidth: ENTRY_STAMP_MAX_WIDTH,
-        transform: [{ rotate: `${PASSPORT_TILTS[index % PASSPORT_TILTS.length] / 3}deg` }],
-      }}
+      className="active:opacity-80"
+      style={{ transform: [{ rotate: `${tilt}deg` }] }}
     >
       <View
-        className="rounded-md border-2 bg-ink p-1"
         style={{
-          aspectRatio: 1.6,
-          borderColor: ring,
-          shadowColor: "#000",
-          shadowOpacity: 0.5,
-          shadowRadius: 6,
-          shadowOffset: { width: 0, height: 3 },
-          elevation: 6,
+          width,
+          height,
+          borderRadius: round ? width / 2 : 0,
+          borderWidth: shape === "seal" || shape === "violet" ? 0 : 2,
+          borderStyle: shape === "dashed" ? "dashed" : "solid",
+          borderColor: ink,
+          backgroundColor: fill,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: (width - textWidth) / 2,
         }}
       >
-        <View className="flex-1 justify-between rounded-sm border px-2 py-1" style={{ borderColor: ring }}>
-          <Text
-            variant="display"
-            className="text-center text-xs leading-4 tracking-widest"
-            style={{ color: ring }}
-            numberOfLines={1}
-          >
-            {stampCity(stamp)}
-          </Text>
-          <Text
-            variant="display"
-            className="text-center text-xl leading-5 text-white"
-            numberOfLines={2}
-            adjustsFontSizeToFit
-            minimumFontScale={0.6}
-          >
-            {stamp.name}
-          </Text>
-          <View className="flex-row items-center justify-between gap-2 border-t pt-0.5" style={{ borderColor: ring }}>
-            <Text variant="display" className="text-xs leading-4" style={{ color: ring }} numberOfLines={1}>
-              {entryDate(stamp.firstVisitAt)}
-            </Text>
-            <Text variant="display" className="text-xs leading-4 text-paper/70" numberOfLines={1}>
-              {stamp.nights ? plural(stamp.nights, "night") : "Checked in"}
-            </Text>
-          </View>
-        </View>
+        {round && (
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: 5,
+              left: 5,
+              right: 5,
+              bottom: 5,
+              borderRadius: width,
+              borderWidth: 1.5,
+              borderColor: ink,
+            }}
+          />
+        )}
+        <Text
+          variant="display"
+          className="text-center uppercase"
+          style={{ color: ink, fontSize: nameSize, lineHeight: nameSize * 1.05 }}
+          numberOfLines={2}
+        >
+          {stamp.name}
+        </Text>
+        <Text
+          variant="display"
+          className="text-center uppercase"
+          style={{ color: ink, fontSize: 10, lineHeight: 12 }}
+          numberOfLines={1}
+        >
+          {detail}
+        </Text>
       </View>
     </Pressable>
   );
 }
 
-// Stamps two to a row, the last row padded so a lone stamp keeps its size.
-function StampGrid({ stamps, onPress }: { stamps: Visit[]; onPress: (stamp: Visit) => void }) {
-  const rows: Visit[][] = [];
-  for (let i = 0; i < stamps.length; i += 2) rows.push(stamps.slice(i, i + 2));
+// A page of the passport: the stamps inked across the wall,
+// newest first. `total` is how many stamps the whole passport has, so each
+// keeps the ink of its place in it.
+function PassportPage({ stamps, total, onPress }: { stamps: Visit[]; total: number; onPress: (stamp: Visit) => void }) {
   return (
-    <View className="gap-4">
-      {rows.map((row, r) => (
-        <View key={r} className="flex-row gap-4">
-          {row.map((stamp, i) => (
-            <EntryStamp key={stamp.venueId} stamp={stamp} index={r * 2 + i} onPress={() => onPress(stamp)} />
-          ))}
-          {row.length === 1 && <View className="flex-1" />}
-        </View>
+    <View className="flex-row flex-wrap items-center justify-center gap-x-4 gap-y-5 py-3">
+      {stamps.map((stamp, i) => (
+        <PassportStamp key={stamp.venueId} stamp={stamp} index={total - 1 - i} onPress={() => onPress(stamp)} />
       ))}
     </View>
   );
@@ -430,12 +456,12 @@ function Passport({ stamps }: { stamps: UserStats["passport"] }) {
         )}
       </View>
       <View className="mt-3">
-        <StampGrid stamps={newestFirst.slice(0, PASSPORT_SHOWN)} onPress={visit} />
+        <PassportPage stamps={newestFirst.slice(0, PASSPORT_SHOWN)} total={stamps.length} onPress={visit} />
       </View>
       {open && (
         <Sheet title="Passport" tag={plural(stamps.length, "club")} onClose={() => setOpen(false)}>
           <ScrollView className="mt-3 shrink" contentContainerClassName="px-4 pb-4 pt-2">
-            <StampGrid stamps={newestFirst} onPress={visit} />
+            <PassportPage stamps={newestFirst} total={stamps.length} onPress={visit} />
           </ScrollView>
         </Sheet>
       )}
@@ -467,16 +493,10 @@ export function StatsSummary({ username, favorites }: { username: string; favori
             ))}
           </View>
         </View>
-        {/* The passport: wide entry stamps, two to a row. */}
+        {/* The passport: a page of stamps. */}
         <View className="gap-3">
           <Skeleton className="h-5 w-48" />
-          <View className="flex-row gap-4">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <View key={i} className="flex-1" style={{ maxWidth: ENTRY_STAMP_MAX_WIDTH }}>
-                <Skeleton className="aspect-[1.6] w-full" />
-              </View>
-            ))}
-          </View>
+          <Skeleton className="h-[132px] w-full" />
         </View>
       </View>
     );

@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable, TextInput, View } from "react-native";
 
-import { Avatar, Button, Icon, SectionTitle, Skeleton, Text, TextField } from "@/components/ui";
+import { Avatar, Icon, SectionTitle, Skeleton, Text } from "@/components/ui";
 import { ModerationButton } from "@/components/ModerationSheet";
 import { track } from "@/lib/analytics";
 import { patchCachedReview } from "@/lib/api/cache";
@@ -12,7 +12,11 @@ import { useReviewComments } from "@/lib/api/hooks";
 import { queryKeys } from "@/lib/api/queryKeys";
 import type { ReviewComment } from "@/lib/api/types";
 import { useCurrentUser } from "@/lib/auth";
+import { colors } from "@/lib/colors";
+import { confirmDestructive } from "@/lib/dialog";
+import { formatTimeAgo } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
+import { ACTION_BOX } from "./actionBox";
 
 // Comments go up before the server confirms them, under a temporary id.
 const TEMP_ID_PREFIX = "temp-";
@@ -22,6 +26,7 @@ export function CommentSection({ reviewId }: { reviewId: string }) {
   const api = useApi();
   const queryClient = useQueryClient();
   const [body, setBody] = useState("");
+  const [focused, setFocused] = useState(false);
   const { data: comments } = useReviewComments(reviewId);
 
   const commentsKey = queryKeys.reviews.comments(reviewId);
@@ -76,63 +81,135 @@ export function CommentSection({ reviewId }: { reviewId: string }) {
     onSettled: invalidate,
   });
 
+  const remove = async (id: string) => {
+    const confirmed = await confirmDestructive({
+      title: "Delete comment",
+      message: "This removes your comment for everyone.",
+    });
+    if (confirmed) deleteComment.mutate(id);
+  };
+  const post = () => {
+    const text = body.trim();
+    if (text && !addComment.isPending) addComment.mutate({ body: text });
+  };
+
   return (
-    <View className="gap-2">
-      <SectionTitle>Comments</SectionTitle>
-      <View className="gap-3">
-        {(comments ?? []).map((comment) => (
-          <View key={comment.id} className="flex-row items-start justify-between">
-            <View className="flex-1 flex-row items-start gap-2 pr-2">
-              <Avatar uri={comment.user?.avatarUrl} name={comment.user?.username ?? "?"} size={24} />
-              <View className="flex-1">
-                <Text variant="display" className="text-base text-paper/80">
-                  @{comment.user?.username}
-                </Text>
-                <Text className="text-sm text-paper">{comment.body}</Text>
-              </View>
-            </View>
-            {me?.id === comment.userId ? (
-              <Pressable onPress={() => deleteComment.mutate(comment.id)}>
-                <Text className="text-xs text-muted">Delete</Text>
-              </Pressable>
-            ) : (
-              !!comment.user &&
-              !comment.id.startsWith(TEMP_ID_PREFIX) && (
-                <ModerationButton user={comment.user} target={{ commentId: comment.id }} />
-              )
-            )}
-          </View>
+    <View className="gap-3">
+      <SectionTitle>{comments?.length ? `Comments · ${comments.length}` : "Comments"}</SectionTitle>
+      <View className="gap-2">
+        {comments?.map((comment) => (
+          <CommentRow
+            key={comment.id}
+            comment={comment}
+            isMine={me?.id === comment.userId}
+            onDelete={() => void remove(comment.id)}
+          />
         ))}
-        {!comments ? (
+        {!comments &&
           Array.from({ length: 2 }).map((_, i) => (
-            <View key={i} className="flex-row items-start gap-2">
-              <Skeleton className="h-6 w-6 rounded-[5px]" />
+            <View key={i} className="flex-row items-start gap-3 border border-white/5 bg-zine-panel/50 p-3">
+              <Skeleton className="h-8 w-8 rounded-full" />
               <View className="flex-1">
                 <Skeleton className="h-3.5 w-24" />
-                <Skeleton className="mt-1.5 h-3.5 w-3/4" />
+                <Skeleton className="mt-2 h-3.5 w-3/4" />
               </View>
             </View>
-          ))
-        ) : !comments.length ? (
-          <Text className="text-sm text-paper/60">No comments yet.</Text>
-        ) : null}
-        {isSignedIn ? (
-          <View className="flex-row items-center gap-2">
-            <TextField placeholder="Add a comment..." value={body} onChangeText={setBody} className="flex-1" />
-            <Button
-              disabled={!body.trim() || addComment.isPending}
-              onPress={() => addComment.mutate({ body: body.trim() })}
-              className="px-4 py-2"
-            >
-              <Text className="text-paper">Post</Text>
-            </Button>
+          ))}
+        {!!comments && !comments.length && (
+          <View className="items-center gap-1 border border-dashed border-white/20 px-4 py-5">
+            <Icon name="chatbubbles-outline" size={22} className="text-paper/50" />
+            <Text className="text-center text-sm text-paper/60">No comments yet. Were you there too?</Text>
           </View>
-        ) : (
-          <Link href={ROUTES.SIGN_IN}>
-            <Text className="text-primary-dark">Sign in to comment</Text>
-          </Link>
         )}
       </View>
+
+      {isSignedIn ? (
+        // One bar: the text grows as you type, the send button sits at its
+        // bottom right.
+        <View
+          className={`flex-row items-end gap-2 border-2 bg-zine-panel/90 py-1.5 pl-3 pr-1.5 ${focused ? "border-paper" : "border-white/15"}`}
+        >
+          <TextInput
+            value={body}
+            onChangeText={setBody}
+            placeholder="Add a comment"
+            placeholderTextColor={colors.muted}
+            multiline
+            maxLength={MAX_COMMENT}
+            accessibilityLabel="Comment"
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            className="max-h-32 flex-1 py-2 text-[16px] text-paper"
+          />
+          <Pressable
+            onPress={post}
+            disabled={!body.trim() || addComment.isPending}
+            accessibilityRole="button"
+            accessibilityLabel="Post comment"
+            className={`h-10 w-10 items-center justify-center bg-zine-purple active:opacity-80 ${
+              body.trim() ? "" : "opacity-40"
+            }`}
+          >
+            <Icon name="send" size={17} className="text-paper" />
+          </Pressable>
+        </View>
+      ) : (
+        <Link href={ROUTES.SIGN_IN} asChild>
+          <Pressable className="items-center border border-white/15 bg-zine-panel/90 py-3 active:opacity-80">
+            <Text variant="display" className="text-lg text-paper">
+              Sign in to comment
+            </Text>
+          </Pressable>
+        </Link>
+      )}
+    </View>
+  );
+}
+
+// The longest comment the API takes.
+const MAX_COMMENT = 500;
+
+// One comment on its panel: who (linked to their profile) and how long ago,
+// what they said, and a way to delete your own or report someone else's.
+// A comment still on its way up is faded with "Posting…".
+function CommentRow({ comment, isMine, onDelete }: { comment: ReviewComment; isMine: boolean; onDelete: () => void }) {
+  const pending = comment.id.startsWith(TEMP_ID_PREFIX);
+  const user = comment.user;
+  const openProfile = () => user && router.push(ROUTES.USER(user.username));
+  return (
+    <View
+      className={`flex-row items-start gap-3 border border-white/10 bg-zine-panel/90 p-3 ${pending ? "opacity-60" : ""}`}
+    >
+      <Pressable onPress={openProfile} disabled={!user} accessibilityRole="link" className="active:opacity-80">
+        <View className="overflow-hidden rounded-full">
+          <Avatar uri={user?.avatarUrl} name={user?.username ?? "?"} size={32} />
+        </View>
+      </Pressable>
+      <View className="flex-1 gap-0.5">
+        <View className="flex-row items-center gap-2">
+          <Pressable onPress={openProfile} disabled={!user} className="shrink active:opacity-80">
+            <Text variant="display" className="text-lg leading-5 text-paper" numberOfLines={1}>
+              {user?.username ?? "someone"}
+            </Text>
+          </Pressable>
+          <Text className="text-xs text-paper/50">{pending ? "Posting…" : formatTimeAgo(comment.createdAt)}</Text>
+        </View>
+        <Text className="text-[15px] leading-5 text-paper/90">{comment.body}</Text>
+      </View>
+      {!pending &&
+        (isMine ? (
+          <Pressable
+            onPress={onDelete}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Delete comment"
+            className="p-1 active:opacity-70"
+          >
+            <Icon name="trash-outline" size={16} className="text-paper/50" />
+          </Pressable>
+        ) : (
+          !!user && <ModerationButton user={user} target={{ commentId: comment.id }} />
+        ))}
     </View>
   );
 }
@@ -141,10 +218,11 @@ export function CommentSection({ reviewId }: { reviewId: string }) {
 // they're in, the review's own count until then.
 export function CommentCount({ reviewId, fallback }: { reviewId: string; fallback: number }) {
   const { data: comments } = useReviewComments(reviewId);
+  const count = comments?.length ?? fallback;
   return (
-    <View className="flex-row items-center gap-1.5 rounded-lg bg-black/25 px-3 py-1.5">
+    <View accessibilityLabel={`${count} comments`} className={`flex-1 ${ACTION_BOX}`}>
       <Icon name="chatbubble-outline" size={15} className="text-paper" />
-      <Text className="font-numeric text-lg leading-5 text-paper">{comments?.length ?? fallback}</Text>
+      <Text className="font-numeric text-lg leading-5 text-paper">{count}</Text>
     </View>
   );
 }

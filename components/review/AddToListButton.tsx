@@ -13,22 +13,23 @@ import { useCurrentUser } from "@/lib/auth";
 import { showAlert } from "@/lib/dialog";
 import { plural } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
+import { ACTION_BOX } from "./actionBox";
 
 /** "Add to a list" under a night: put it, or one DJ's set on it, on one of
- * your lists (or a new one), with a note. */
-export function AddToListButton({ review }: { review: Review }) {
+ * your lists (or a new one), with a note. `labelled` spells it out beside
+ * the icon (where the row of actions has room). */
+export function AddToListButton({ review, labelled = false }: { review: Review; labelled?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <Pressable
         onPress={() => setOpen(true)}
         accessibilityRole="button"
-        className="flex-row items-center justify-center gap-2 self-center border border-dashed border-paper/60 px-4 py-2 active:opacity-70"
+        accessibilityLabel="Add to a list"
+        className={`${labelled ? "flex-1" : ""} ${ACTION_BOX}`}
       >
         <Icon name="list" size={16} className="text-paper" />
-        <Text variant="display" className="text-lg leading-5 text-paper">
-          Add to a list
-        </Text>
+        {labelled && <Text className="text-sm text-paper">Add to list</Text>}
       </Pressable>
       {open && <AddToListSheet review={review} onClose={() => setOpen(false)} />}
     </>

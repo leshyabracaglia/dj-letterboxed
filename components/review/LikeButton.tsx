@@ -9,6 +9,7 @@ import { useApi, unwrap } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/queryKeys";
 import { useCurrentUser } from "@/lib/auth";
 import { ROUTES } from "@/lib/routes";
+import { ACTION_BOX } from "./actionBox";
 
 export function LikeButton({
   reviewId,
@@ -68,9 +69,10 @@ export function LikeButton({
     <Pressable
       disabled={pending || disabled}
       onPress={() => (isSignedIn ? (isLiked ? unlike.mutate() : like.mutate()) : router.push(ROUTES.SIGN_IN))}
-      className={`flex-row items-center gap-1.5 rounded-lg px-3 py-1.5 active:opacity-80 ${
-        isLiked ? "bg-black/60" : "bg-black/25"
-      }`}
+      accessibilityRole="button"
+      accessibilityLabel={isLiked ? "Unlike" : "Like"}
+      accessibilityState={{ selected: isLiked }}
+      className={`flex-1 ${ACTION_BOX} ${isLiked ? "border-primary" : ""}`}
     >
       <Icon name={isLiked ? "heart" : "heart-outline"} size={16} className="text-paper" />
       <Text className="font-numeric text-lg leading-5 text-paper">{likeCount}</Text>
